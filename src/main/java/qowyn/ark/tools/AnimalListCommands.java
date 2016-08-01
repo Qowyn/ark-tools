@@ -214,6 +214,16 @@ public class AnimalListCommands {
           generator.write("tamed", true);
         }
 
+        String tribeName = i.getPropertyValue("TribeName", String.class);
+        if (tribeName != null) {
+          generator.write("tribe", tribeName);
+        }
+
+        String tamerName = i.getPropertyValue("TamerString", String.class);
+        if (tamerName != null) {
+          generator.write("tamer", tamerName);
+        }
+
         String name = i.getPropertyValue("TamedName", String.class);
         if (name != null) {
           generator.write("name", name);
