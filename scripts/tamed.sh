@@ -1,2 +1,2 @@
 #!/bin/sh
-java -jar ark-tools-0.0.1-SNAPSHOT.jar tamed "$@"
+java -jar ark-tools.jar tamed "$@"
