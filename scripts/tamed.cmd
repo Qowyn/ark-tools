@@ -1,2 +1,2 @@
 @ECHO OFF
-java -jar ark-tools-0.0.1-SNAPSHOT.jar tamed %*
+%windir%\system32\java.exe -jar ark-tools-0.0.1-SNAPSHOT.jar tamed %*
