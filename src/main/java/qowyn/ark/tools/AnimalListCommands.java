@@ -47,18 +47,16 @@ public class AnimalListCommands {
   }
 
   public static void animals(String[] args) {
-    if (args.length < 2 || args.length > 3) {
-      System.out.println("Usage: animals <save> <output_directory> [mapSize]");
+    if (args.length != 2) {
+      System.out.println("Usage: animals <save> <output_directory>");
       return;
     }
-    
-    int mapSize = args.length == 3 ? Integer.parseInt(args[2]) : 8000;
 
     try {
       Instant start = Instant.now();
       ArkSavegame saveFile = new ArkSavegame(args[0]);
       Instant readFinished = Instant.now();
-      writeAnimalLists(args[1], saveFile, mapSize);
+      writeAnimalLists(args[1], saveFile);
       Instant dumpFinished = Instant.now();
 
       System.out.println("Reading finshed after " + ChronoUnit.MILLIS.between(start, readFinished) + " ms");
@@ -70,18 +68,16 @@ public class AnimalListCommands {
   }
 
   public static void tamed(String[] args) {
-    if (args.length < 2 || args.length > 3) {
-      System.out.println("Usage: tamed <save> <output_directory> [mapSize]");
+    if (args.length != 2) {
+      System.out.println("Usage: tamed <save> <output_directory>");
       return;
     }
-    
-    int mapSize = args.length == 3 ? Integer.parseInt(args[2]) : 8000;
 
     try {
       Instant start = Instant.now();
       ArkSavegame saveFile = new ArkSavegame(args[0]);
       Instant readFinished = Instant.now();
-      writeAnimalLists(args[1], saveFile, mapSize, CommonFunctions::onlyTamed);
+      writeAnimalLists(args[1], saveFile, CommonFunctions::onlyTamed);
       Instant dumpFinished = Instant.now();
 
       System.out.println("Reading finshed after " + ChronoUnit.MILLIS.between(start, readFinished) + " ms");
@@ -93,18 +89,16 @@ public class AnimalListCommands {
   }
 
   public static void wild(String[] args) {
-    if (args.length < 2 || args.length > 3) {
-      System.out.println("Usage: wild <save> <output_directory> [mapSize]");
+    if (args.length != 2) {
+      System.out.println("Usage: wild <save> <output_directory>");
       return;
     }
-    
-    int mapSize = args.length == 3 ? Integer.parseInt(args[2]) : 8000;
 
     try {
       Instant start = Instant.now();
       ArkSavegame saveFile = new ArkSavegame(args[0]);
       Instant readFinished = Instant.now();
-      writeAnimalLists(args[1], saveFile, mapSize, CommonFunctions::onlyWild);
+      writeAnimalLists(args[1], saveFile, CommonFunctions::onlyWild);
       Instant dumpFinished = Instant.now();
 
       System.out.println("Reading finshed after " + ChronoUnit.MILLIS.between(start, readFinished) + " ms");
@@ -115,11 +109,11 @@ public class AnimalListCommands {
     }
   }
 
-  public static void writeAnimalLists(String outputDirectory, ArkSavegame saveFile, int mapSize) {
-    writeAnimalLists(outputDirectory, saveFile, mapSize, null);
+  public static void writeAnimalLists(String outputDirectory, ArkSavegame saveFile) {
+    writeAnimalLists(outputDirectory, saveFile, null);
   }
 
-  public static void writeAnimalLists(String outputDirectory, ArkSavegame saveFile, int mapSize, Predicate<GameObject> filter) {
+  public static void writeAnimalLists(String outputDirectory, ArkSavegame saveFile, Predicate<GameObject> filter) {
     List<GameObject> objects;
 
     if (filter != null) {
@@ -138,7 +132,7 @@ public class AnimalListCommands {
 
     writeClassNames(outputDirectory, classNames);
 
-    dinoLists.entrySet().parallelStream().forEach(e -> writeList(e, outputDirectory, saveFile, mapSize));
+    dinoLists.entrySet().parallelStream().forEach(e -> writeList(e, outputDirectory, saveFile));
   }
 
   public static Map<String, String> readClassNames(String directory) {
@@ -183,10 +177,11 @@ public class AnimalListCommands {
     }
   }
 
-  public static void writeList(Map.Entry<String, List<GameObject>> entry, String outputDirectory, ArkSavegame saveFile, int mapSize) {
+  public static void writeList(Map.Entry<String, List<GameObject>> entry, String outputDirectory, ArkSavegame saveFile) {
     Path outputFile = Paths.get(outputDirectory, entry.getKey() + ".json");
 
     List<? extends GameObject> filteredClasses = entry.getValue();
+    LatLonCalculator latLongCalculator = LatLonCalculator.forSave(saveFile);
 
     try {
       PrintWriter writer = new PrintWriter(outputFile.toFile());
@@ -207,8 +202,8 @@ public class AnimalListCommands {
           generator.write("x", ld.getX());
           generator.write("y", ld.getY());
           generator.write("z", ld.getZ());
-          generator.write("lat", Math.round(ld.getLat(mapSize) * 10.0) / 10.0);
-          generator.write("lon", Math.round(ld.getLon(mapSize) * 10.0) / 10.0);
+          generator.write("lat", Math.round(latLongCalculator.calculateLat(ld.getY()) * 10.0) / 10.0);
+          generator.write("lon", Math.round(latLongCalculator.calculateLon(ld.getX()) * 10.0) / 10.0);
         }
 
         if (i.hasAnyProperty("bIsFemale")) {
