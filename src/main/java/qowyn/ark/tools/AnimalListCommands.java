@@ -10,6 +10,7 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
@@ -28,6 +29,7 @@ import javax.json.stream.JsonGeneratorFactory;
 
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
+import qowyn.ark.ReadingOptions;
 import qowyn.ark.properties.PropertyObject;
 import qowyn.ark.types.ArkByteValue;
 import qowyn.ark.types.LocationData;
@@ -52,19 +54,7 @@ public class AnimalListCommands {
       return;
     }
 
-    try {
-      Instant start = Instant.now();
-      ArkSavegame saveFile = new ArkSavegame(args[0]);
-      Instant readFinished = Instant.now();
-      writeAnimalLists(args[1], saveFile);
-      Instant dumpFinished = Instant.now();
-
-      System.out.println("Reading finshed after " + ChronoUnit.MILLIS.between(start, readFinished) + " ms");
-      System.out.println("Dump finshed after " + ChronoUnit.MILLIS.between(readFinished, dumpFinished) + " ms");
-      System.out.println("Completly finshed after " + ChronoUnit.MILLIS.between(start, dumpFinished) + " ms");
-    } catch (IOException ex) {
-      throw new RuntimeException(ex);
-    }
+    listImpl(args[0], args[1], null);
   }
 
   public static void tamed(String[] args) {
@@ -73,19 +63,7 @@ public class AnimalListCommands {
       return;
     }
 
-    try {
-      Instant start = Instant.now();
-      ArkSavegame saveFile = new ArkSavegame(args[0]);
-      Instant readFinished = Instant.now();
-      writeAnimalLists(args[1], saveFile, CommonFunctions::onlyTamed);
-      Instant dumpFinished = Instant.now();
-
-      System.out.println("Reading finshed after " + ChronoUnit.MILLIS.between(start, readFinished) + " ms");
-      System.out.println("Dump finshed after " + ChronoUnit.MILLIS.between(readFinished, dumpFinished) + " ms");
-      System.out.println("Completly finshed after " + ChronoUnit.MILLIS.between(start, dumpFinished) + " ms");
-    } catch (IOException ex) {
-      throw new RuntimeException(ex);
-    }
+    listImpl(args[0], args[1], CommonFunctions::onlyTamed);
   }
 
   public static void wild(String[] args) {
@@ -94,11 +72,21 @@ public class AnimalListCommands {
       return;
     }
 
+    listImpl(args[0], args[1], CommonFunctions::onlyWild);
+  }
+
+  protected static boolean neededClasses(GameObject object) {
+    return object.getClassString().contains("_Character_") || object.getClassString().startsWith("DinoCharacterStatusComponent_");
+  }
+
+  protected static void listImpl(String savePath, String outputDirectory, Predicate<GameObject> filter) {
     try {
+      ReadingOptions options = ReadingOptions.create().withObjectFilter(AnimalListCommands::neededClasses);
+
       Instant start = Instant.now();
-      ArkSavegame saveFile = new ArkSavegame(args[0]);
+      ArkSavegame saveFile = new ArkSavegame(savePath, options);
       Instant readFinished = Instant.now();
-      writeAnimalLists(args[1], saveFile, CommonFunctions::onlyWild);
+      writeAnimalLists(outputDirectory, saveFile, filter);
       Instant dumpFinished = Instant.now();
 
       System.out.println("Reading finshed after " + ChronoUnit.MILLIS.between(start, readFinished) + " ms");
@@ -192,7 +180,18 @@ public class AnimalListCommands {
       JsonGeneratorFactory factory = Json.createGeneratorFactory(properties);
 
       JsonGenerator generator = factory.createGenerator(writer);
-      generator.writeStartArray();
+
+      generator.writeStartObject();
+
+      IntSummaryStatistics statistics = filteredClasses.stream().mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
+      generator.write("count", statistics.getCount());
+      if (statistics.getCount() > 0) {
+        generator.write("min", statistics.getMin());
+        generator.write("max", statistics.getMax());
+        generator.write("average", statistics.getAverage());
+      }
+
+      generator.writeStartArray("dinos");
 
       for (GameObject i : filteredClasses) {
         generator.writeStartObject();
@@ -267,7 +266,8 @@ public class AnimalListCommands {
         generator.writeEnd();
       }
 
-      generator.writeEnd();
+      generator.writeEnd(); // Array
+      generator.writeEnd(); // Object
       generator.close();
     } catch (Exception e) {
       e.printStackTrace();
