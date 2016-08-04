@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
+import qowyn.ark.ReadingOptions;
 
 public class DebugCommands {
 
@@ -17,7 +18,7 @@ public class DebugCommands {
     }
 
     try {
-      ArkSavegame savegame = new ArkSavegame(args[0]);
+      ArkSavegame savegame = new ArkSavegame(args[0], ReadingOptions.create().withObjectFilter(o -> false));
 
       ConcurrentMap<String, List<GameObject>> map = savegame.getObjects().parallelStream().collect(Collectors.groupingByConcurrent(GameObject::getClassString));
 
