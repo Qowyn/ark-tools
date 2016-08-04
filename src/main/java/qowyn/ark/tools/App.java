@@ -17,6 +17,8 @@ public class App {
 
     COMMAND_MAP.put("b2j", ConversionCommands::binary2json);
     COMMAND_MAP.put("j2b", ConversionCommands::json2binary);
+
+    COMMAND_MAP.put("classes", DebugCommands::classes);
   }
 
   public static void main(String[] args) throws Exception {
