@@ -21,6 +21,8 @@ public class App {
     COMMAND_MAP.put("classes", DebugCommands::classes);
 
     COMMAND_MAP.put("feed", EditCommands::feed);
+    COMMAND_MAP.put("export", EditCommands::exportThing);
+    COMMAND_MAP.put("import", EditCommands::importThing);
   }
 
   public static void main(String[] args) throws Exception {
