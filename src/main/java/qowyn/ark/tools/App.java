@@ -19,6 +19,8 @@ public class App {
     COMMAND_MAP.put("j2b", ConversionCommands::json2binary);
 
     COMMAND_MAP.put("classes", DebugCommands::classes);
+
+    COMMAND_MAP.put("feed", EditCommands::feed);
   }
 
   public static void main(String[] args) throws Exception {
