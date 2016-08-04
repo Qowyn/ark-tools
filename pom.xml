@@ -78,7 +78,7 @@
 						<configuration>
 							<headerType>console</headerType>
 							<outfile>${project.build.directory}/ark-tools.exe</outfile>
-							<jar>${project.artifactId}-${project.version}.jar</jar>
+							<jar>${project.artifactId}.jar</jar>
 							<dontWrapJar>true</dontWrapJar>
 							<errTitle>ARK Tools</errTitle>
 							<classPath>
