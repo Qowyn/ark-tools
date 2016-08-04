@@ -1,2 +1,2 @@
 @ECHO OFF
-%windir%\system32\java.exe -jar ark-tools.jar j2b %*
+ark-tools.exe j2b %*
