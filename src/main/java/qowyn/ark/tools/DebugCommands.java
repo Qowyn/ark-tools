@@ -25,6 +25,7 @@ public class DebugCommands {
       map.entrySet().stream().sorted((e1, e2) -> -Integer.compare(e1.getValue().size(), e2.getValue().size())).forEach(e -> {
         System.out.println(e.getKey() + ": " + e.getValue().size());
       });
+      System.out.println("Total: " + savegame.getObjects().size());
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
