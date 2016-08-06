@@ -5,10 +5,19 @@ import java.util.Map;
 
 import qowyn.ark.ArkSavegame;
 
+/**
+ * Provides calculation of ingame coordinates to lat and lon values
+ * 
+ * @author Roland Firmont
+ *
+ */
 public final class LatLonCalculator {
 
   public static final Map<String, LatLonCalculator> knownMaps = new HashMap<>();
 
+  /**
+   * Default based on TheIsland
+   */
   public static final LatLonCalculator defaultCalculator = new LatLonCalculator(50.0f, 8000.0f, 50.0f, 8000.0f);
 
   static {
@@ -16,8 +25,13 @@ public final class LatLonCalculator {
     knownMaps.put("TheCenter", new LatLonCalculator(30.2922997f, 9584.0f, 55.054167f, 9600.0f));
   }
 
-  public static LatLonCalculator forSave(ArkSavegame save) {
-    String mapName = save.getDataFiles().get(0);
+  /**
+   * Tries to find the best match for the given {@code savegame}  
+   * @param savegame The savegame to find a LatLonCalculator for
+   * @return a LatLonCalculator for the given {@code savegame} or {@link #defaultCalculator}
+   */
+  public static LatLonCalculator forSave(ArkSavegame savegame) {
+    String mapName = savegame.getDataFiles().get(0);
 
     return knownMaps.getOrDefault(mapName, defaultCalculator);
   }
