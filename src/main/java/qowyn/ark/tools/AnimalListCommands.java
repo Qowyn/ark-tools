@@ -7,8 +7,6 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.IntSummaryStatistics;
 import java.util.List;
@@ -48,50 +46,47 @@ public class AnimalListCommands {
     ATTRIBUTE_NAME_MAP.put(9, "speed");
   }
 
-  public static void animals(String[] args) {
-    if (args.length != 2) {
-      System.out.println("Usage: animals <save> <output_directory>");
-      return;
-    }
-
-    listImpl(args[0], args[1], null);
+  public static void animals(OptionHandler oh) {
+    listImpl(oh, null);
   }
 
-  public static void tamed(String[] args) {
-    if (args.length != 2) {
-      System.out.println("Usage: tamed <save> <output_directory>");
-      return;
-    }
-
-    listImpl(args[0], args[1], CommonFunctions::onlyTamed);
+  public static void tamed(OptionHandler oh) {
+    listImpl(oh, CommonFunctions::onlyTamed);
   }
 
-  public static void wild(String[] args) {
-    if (args.length != 2) {
-      System.out.println("Usage: wild <save> <output_directory>");
-      return;
-    }
-
-    listImpl(args[0], args[1], CommonFunctions::onlyWild);
+  public static void wild(OptionHandler oh) {
+    listImpl(oh, CommonFunctions::onlyWild);
   }
 
   protected static boolean neededClasses(GameObject object) {
     return object.getClassString().contains("_Character_") || object.getClassString().startsWith("DinoCharacterStatusComponent_");
   }
 
-  protected static void listImpl(String savePath, String outputDirectory, Predicate<GameObject> filter) {
+  protected static void listImpl(OptionHandler oh, Predicate<GameObject> filter) {
     try {
-      ReadingOptions options = ReadingOptions.create().withObjectFilter(AnimalListCommands::neededClasses);
+      List<String> params = oh.getParams();
+      if (params.size() != 2 || oh.wantsHelp()) {
+        System.out.println("Usage: ark-tools " + oh.getCommand() + " <save> <output_directory> [options]");
+        oh.printHelp();
+        System.exit(1);
+        return;
+      }
 
-      Instant start = Instant.now();
+      String savePath = params.get(0);
+      String outputDirectory = params.get(1);
+
+      ReadingOptions options = ReadingOptions.create()
+          .withObjectFilter(AnimalListCommands::neededClasses)
+          .withMemoryMapping(oh.useMmap())
+          .withParallelReading(oh.useParallel());
+
+      Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
       ArkSavegame saveFile = new ArkSavegame(savePath, options);
-      Instant readFinished = Instant.now();
+      stopwatch.stop("Reading");
       writeAnimalLists(outputDirectory, saveFile, filter);
-      Instant dumpFinished = Instant.now();
+      stopwatch.stop("Dumping");
 
-      System.out.println("Reading finshed after " + ChronoUnit.MILLIS.between(start, readFinished) + " ms");
-      System.out.println("Dump finshed after " + ChronoUnit.MILLIS.between(readFinished, dumpFinished) + " ms");
-      System.out.println("Completly finshed after " + ChronoUnit.MILLIS.between(start, dumpFinished) + " ms");
+      stopwatch.print();
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }

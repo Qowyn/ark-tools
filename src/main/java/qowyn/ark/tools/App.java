@@ -1,14 +1,16 @@
 
 package qowyn.ark.tools;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
+import joptsimple.OptionException;
 
 public class App {
 
-  private static final Map<String, Consumer<String[]>> COMMAND_MAP = new HashMap<>();
+  private static final Map<String, Consumer<OptionHandler>> COMMAND_MAP = new HashMap<>();
 
   static {
     COMMAND_MAP.put("animals", AnimalListCommands::animals);
@@ -26,14 +28,33 @@ public class App {
   }
 
   public static void main(String[] args) throws Exception {
-    if (args.length < 1 || !COMMAND_MAP.containsKey(args[0])) {
-      System.out.println("Commands:");
-      System.out.print("\t");
-      System.out.println(String.join(", ", COMMAND_MAP.keySet()));
+    OptionHandler oh;
+    try {
+      oh = new OptionHandler(args);
+    } catch (OptionException oe) {
+      System.err.println(oe.getMessage());
+      System.exit(2); // System.exit never returns normally but javac does not care
       return;
     }
 
-    COMMAND_MAP.get(args[0]).accept(Arrays.copyOfRange(args, 1, args.length));
+    if (!oh.hasCommand() || !COMMAND_MAP.containsKey(oh.getCommand())) {
+      System.out.println("Usage: ark-tools command [options]");
+      System.out.println();
+      System.out.print("Commands: ");
+      System.out.println(String.join(", ", COMMAND_MAP.keySet().stream().sorted().collect(Collectors.toList())));
+      oh.printHelp();
+      System.exit(1);
+    }
+
+    try {
+      COMMAND_MAP.get(oh.getCommand()).accept(oh);
+    } catch (OptionException oe) {
+      System.err.println(oe.getMessage());
+      System.exit(2);
+    } catch (Exception ex) {
+      ex.printStackTrace();
+      System.exit(2);
+    }
   }
 
 }

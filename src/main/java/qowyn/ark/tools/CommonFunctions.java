@@ -13,6 +13,7 @@ import javax.json.JsonReader;
 import javax.json.JsonWriterFactory;
 import javax.json.stream.JsonGenerator;
 import javax.json.stream.JsonGeneratorFactory;
+import javax.json.stream.JsonParser;
 
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
@@ -61,6 +62,13 @@ public class CommonFunctions {
     try (FileReader fileReader = new FileReader(inFile)) {
       JsonReader reader = Json.createReader(fileReader);
       return reader.readObject();
+    }
+  }
+
+  public static void readJson(String inFile, Consumer<JsonParser> parseJson) throws IOException {
+    try (FileReader fileReader = new FileReader(inFile)) {
+      JsonParser parser = Json.createParser(fileReader);
+      parseJson.accept(parser);
     }
   }
 

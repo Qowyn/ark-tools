@@ -1,57 +1,79 @@
 package qowyn.ark.tools;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 import javax.json.JsonObject;
 
 import qowyn.ark.ArkSavegame;
+import qowyn.ark.ReadingOptions;
+import qowyn.ark.WritingOptions;
 
 public class ConversionCommands {
 
-  public static void binary2json(String[] args) {
-    if (args.length != 2) {
-      System.out.println("Usage: b2j <save> <outfile>");
+  public static void binary2json(OptionHandler oh) {
+    List<String> params = oh.getParams();
+    if (params.size() != 2 || oh.wantsHelp()) {
+      System.out.println("Usage: ark-tools b2j <save> <outfile> [options]");
+      oh.printHelp();
+      System.exit(1);
       return;
     }
 
     try {
-      System.out.println("This may take some time...");
-      Instant start = Instant.now();
-      ArkSavegame saveFile = new ArkSavegame(args[0]);
-      Instant readFinished = Instant.now();
-      CommonFunctions.writeJson(args[1], saveFile::writeJson);
-      Instant dumpFinished = Instant.now();
+      if (!oh.isQuiet()) {
+        System.out.println("This may take some time...");
+      }
 
-      System.out.println("Read after " + ChronoUnit.MILLIS.between(start, readFinished) + " ms");
-      System.out.println("Dumped after " + ChronoUnit.MILLIS.between(readFinished, dumpFinished) + " ms");
-      System.out.println("Total time " + ChronoUnit.MILLIS.between(start, dumpFinished) + " ms");
+      String savePath = params.get(0);
+      String outPath = params.get(1);
+
+      ReadingOptions options = ReadingOptions.create()
+          .withMemoryMapping(oh.useMmap())
+          .withParallelReading(oh.useParallel());
+
+      Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
+      ArkSavegame saveFile = new ArkSavegame(savePath, options);
+      stopwatch.stop("Reading");
+      CommonFunctions.writeJson(outPath, saveFile::writeJson);
+      stopwatch.stop("Dumping");
+
+      stopwatch.print();
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
   }
 
-  public static void json2binary(String[] args) {
-    if (args.length != 2) {
-      System.out.println("Usage: j2b <json> <outfile>");
+  public static void json2binary(OptionHandler oh) {
+    List<String> params = oh.getParams();
+    if (params.size() != 2 || oh.wantsHelp()) {
+      System.out.println("Usage: ark-tools j2b <json> <outfile> [options]");
+      oh.printHelp();
+      System.exit(1);
       return;
     }
 
     try {
-      System.out.println("This may take some time...");
-      Instant start = Instant.now();
-      JsonObject object = CommonFunctions.readJson(args[0]);
-      Instant json = Instant.now();
-      ArkSavegame saveFile = new ArkSavegame(object);
-      Instant loaded = Instant.now();
-      saveFile.writeBinary(args[1]);
-      Instant written = Instant.now();
+      if (!oh.isQuiet()) {
+        System.out.println("This may take some time...");
+      }
 
-      System.out.println("Parsed after " + ChronoUnit.MILLIS.between(start, json));
-      System.out.println("Loaded after " + ChronoUnit.MILLIS.between(json, loaded));
-      System.out.println("Written after " + ChronoUnit.MILLIS.between(loaded, written));
-      System.out.println("Total time " + ChronoUnit.MILLIS.between(start, written));
+      String jsonPath = params.get(0);
+      String outPath = params.get(1);
+
+      WritingOptions options = WritingOptions.create()
+          .withMemoryMapping(oh.useMmap())
+          .withParallelWriting(oh.useParallel());
+
+      Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
+      JsonObject object = CommonFunctions.readJson(jsonPath);
+      stopwatch.stop("Parsing");
+      ArkSavegame saveFile = new ArkSavegame(object);
+      stopwatch.stop("Loading");
+      saveFile.writeBinary(outPath, options);
+      stopwatch.stop("Writing");
+
+      stopwatch.print();
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
