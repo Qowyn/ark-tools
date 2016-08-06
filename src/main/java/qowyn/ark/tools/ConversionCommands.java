@@ -21,7 +21,7 @@ public class ConversionCommands {
       Instant start = Instant.now();
       ArkSavegame saveFile = new ArkSavegame(args[0]);
       Instant readFinished = Instant.now();
-      CommonFunctions.writeJson(args[1], saveFile.toJson());
+      CommonFunctions.writeJson(args[1], saveFile::writeJson);
       Instant dumpFinished = Instant.now();
 
       System.out.println("Read after " + ChronoUnit.MILLIS.between(start, readFinished) + " ms");
