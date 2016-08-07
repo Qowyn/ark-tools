@@ -1,9 +1,14 @@
 package qowyn.ark.tools;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import javax.json.stream.JsonGenerator;
 
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
@@ -13,8 +18,9 @@ public class DebugCommands {
 
   public static void classes(OptionHandler oh) {
     List<String> params = oh.getParams();
-    if (params.size() != 1 || oh.wantsHelp()) {
-      System.out.println("Usage: ark-tools classes <save> [options]");
+    if (params.size() < 1 || params.size() > 2 || oh.wantsHelp()) {
+      System.out.println("Dumps a list of all classes with count of objects to stdout or outFile.");
+      System.out.println("Usage: ark-tools classes <save> [outFile] [options]");
       oh.printHelp();
       System.exit(1);
       return;
@@ -35,6 +41,110 @@ public class DebugCommands {
       System.out.println("Total: " + savegame.getObjects().size());
     } catch (IOException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  public static void dump(OptionHandler oh) {
+    List<String> params = oh.getParams();
+    if (params.size() < 2 || params.size() > 3 || oh.wantsHelp()) {
+      System.out.println("Dumps all objects of given className to stdout or outFile.");
+      System.out.println("Usage: ark-tools dump <save> <className> [outFile] [options]");
+      oh.printHelp();
+      System.exit(1);
+      return;
+    }
+
+    try {
+      String savePath = params.get(0);
+      String className = params.get(1);
+
+      Predicate<GameObject> filter = o -> o.getClassString().equals(className);
+
+      ArkSavegame savegame = new ArkSavegame(savePath, oh.readingOptions().withObjectFilter(filter));
+
+      Consumer<JsonGenerator> dumpObjects = g -> {
+        g.writeStartArray();
+
+        savegame.getObjects().stream().filter(filter).forEach(o -> g.write(o.toJson()));
+
+        g.writeEnd();
+        g.flush();
+      };
+
+      if (params.size() > 2) {
+        CommonFunctions.writeJson(params.get(2), dumpObjects);
+      } else {
+        CommonFunctions.writeJson(System.out, dumpObjects);
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static void sizes(OptionHandler oh) {
+    List<String> params = oh.getParams();
+    if (params.size() < 1 || params.size() > 2 || oh.wantsHelp()) {
+      System.out.println("Dumps className and size in byte of all objects to stdout or outFile.");
+      System.out.println("Usage: ark-tools sizes <save> [outFile] [options]");
+      oh.printHelp();
+      System.exit(1);
+      return;
+    }
+
+    try {
+      String savePath = params.get(0);
+
+      Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
+
+      ArkSavegame savegame = new ArkSavegame(savePath, oh.readingOptions());
+
+      stopwatch.stop("Loading");
+
+      List<SizeObjectPair> pairList = savegame.getObjects().parallelStream()
+          .map(SizeObjectPair::new)
+          .sorted(Comparator.comparingInt(SizeObjectPair::getSize).reversed())
+          .collect(Collectors.toList());
+
+      stopwatch.stop("Collecting");
+
+      Consumer<JsonGenerator> writer = g -> {
+        g.writeStartArray();
+
+        pairList.forEach(pair -> {
+          g.writeStartObject();
+          g.write("class", pair.object.getClassString());
+          g.write("size", pair.size);
+          g.writeEnd();
+        });
+
+        g.writeEnd();
+        g.flush();
+      };
+
+      if (params.size() > 1) {
+        CommonFunctions.writeJson(params.get(1), writer);
+      } else {
+        CommonFunctions.writeJson(System.out, writer);
+      }
+
+      stopwatch.stop("Dump");
+      stopwatch.print();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static class SizeObjectPair {
+    private final int size;
+    private final GameObject object;
+
+    public SizeObjectPair(GameObject object) {
+      this.object = object;
+      this.size = object.getSize(true) + object.getPropertiesSize(true);
+    }
+
+    public int getSize() {
+      return size;
     }
   }
 

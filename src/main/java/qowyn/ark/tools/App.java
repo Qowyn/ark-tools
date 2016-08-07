@@ -21,6 +21,8 @@ public class App {
     COMMAND_MAP.put("j2b", ConversionCommands::json2binary);
 
     COMMAND_MAP.put("classes", DebugCommands::classes);
+    COMMAND_MAP.put("dump", DebugCommands::dump);
+    COMMAND_MAP.put("sizes", DebugCommands::sizes);
 
     COMMAND_MAP.put("feed", EditCommands::feed);
     COMMAND_MAP.put("export", EditCommands::exportThing);
