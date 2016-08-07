@@ -22,10 +22,7 @@ public class ObjectCollector {
 
   private Map<Integer, GameObject> mappedObjects = new HashMap<>();
 
-  private GameObject baseObject;
-
   public ObjectCollector(ArkSavegame saveFile, GameObject baseObject) {
-    this.baseObject = baseObject;
     Deque<PropertyContainer> toVisit = new ArrayDeque<>();
 
     mappedObjects.put(baseObject.getId(), baseObject);
@@ -78,10 +75,11 @@ public class ObjectCollector {
   public List<GameObject> remap(int startId) {
     List<GameObject> remappedList = new ArrayList<>(mappedObjects.values().size());
 
-    // Make sure baseObject is the first Object, needed in case of dinos
-    remappedList.add(baseObject);
+    applyOrderRules(remappedList);
 
-    mappedObjects.values().stream().filter(go -> go != baseObject).forEach(remappedList::add);
+    List<GameObject> alreadySorted = new ArrayList<>(remappedList);
+
+    mappedObjects.values().stream().filter(go -> !alreadySorted.contains(go)).forEach(remappedList::add);
 
     for (int i = 0; i < remappedList.size(); i++) {
       remappedList.get(i).setId(startId + i);
@@ -92,7 +90,28 @@ public class ObjectCollector {
     return remappedList;
   }
 
-  public void doRemap(GameObject instance) {
+  protected void applyOrderRules(List<GameObject> remappedList) {
+    for (GameObject object : remappedList) {
+      if (object.getClassString().contains("_Character_")) {
+        // Dinos need to be defined before their components, might be related to GameObject#names
+        remappedList.add(object);
+
+        ObjectReference statusReference = object.getPropertyValue("MyCharacterStatusComponent", ObjectReference.class);
+
+        if (statusReference != null) {
+          remappedList.add(mappedObjects.get(statusReference.getObjectId()));
+        }
+
+        ObjectReference inventoryReference = object.getPropertyValue("MyInventoryComponent", ObjectReference.class);
+
+        if (inventoryReference != null) {
+          remappedList.add(mappedObjects.get(inventoryReference.getObjectId()));
+        }
+      }
+    }
+  }
+
+  protected void doRemap(GameObject instance) {
     Deque<PropertyContainer> toVisit = new ArrayDeque<>();
     toVisit.push(instance);
 
