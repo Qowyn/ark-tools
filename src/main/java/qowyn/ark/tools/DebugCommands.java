@@ -29,16 +29,38 @@ public class DebugCommands {
     try {
       String savePath = params.get(0);
 
+      Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
+
       // Don't load any properties, we don't need them
       ArkSavegame savegame = new ArkSavegame(savePath, ReadingOptions.create().withObjectFilter(o -> false));
 
+      stopwatch.stop("Loading");
+
       ConcurrentMap<String, List<GameObject>> map = savegame.getObjects().parallelStream().collect(Collectors.groupingByConcurrent(GameObject::getClassString));
 
-      // Reverse sort by count of objects
-      map.entrySet().stream().sorted((e1, e2) -> -Integer.compare(e1.getValue().size(), e2.getValue().size())).forEach(e -> {
-        System.out.println(e.getKey() + ": " + e.getValue().size());
-      });
-      System.out.println("Total: " + savegame.getObjects().size());
+      stopwatch.stop("Grouping");
+
+      Consumer<JsonGenerator> writer = g -> {
+        g.writeStartObject();
+
+        g.write("_count", savegame.getObjects().size());
+
+        map.entrySet().stream().sorted(Comparator.comparing(e -> e.getValue().size(), Comparator.reverseOrder())).forEach(e -> {
+          g.write(e.getKey(), e.getValue().size());
+        });
+
+        g.writeEnd();
+      };
+
+      if (params.size() > 1) {
+        CommonFunctions.writeJson(params.get(1), writer);
+      } else {
+        CommonFunctions.writeJson(System.out, writer);
+      }
+
+      stopwatch.stop("Writing");
+      stopwatch.print();
+
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -58,9 +80,13 @@ public class DebugCommands {
       String savePath = params.get(0);
       String className = params.get(1);
 
+      Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
+
       Predicate<GameObject> filter = o -> o.getClassString().equals(className);
 
       ArkSavegame savegame = new ArkSavegame(savePath, oh.readingOptions().withObjectFilter(filter));
+
+      stopwatch.stop("Loading");
 
       Consumer<JsonGenerator> dumpObjects = g -> {
         g.writeStartArray();
@@ -76,6 +102,9 @@ public class DebugCommands {
       } else {
         CommonFunctions.writeJson(System.out, dumpObjects);
       }
+
+      stopwatch.stop("Writing");
+      stopwatch.print();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -127,7 +156,7 @@ public class DebugCommands {
         CommonFunctions.writeJson(System.out, writer);
       }
 
-      stopwatch.stop("Dump");
+      stopwatch.stop("Writing");
       stopwatch.print();
     } catch (IOException e) {
       throw new RuntimeException(e);
