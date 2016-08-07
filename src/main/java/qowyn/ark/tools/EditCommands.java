@@ -9,8 +9,6 @@ import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
-import qowyn.ark.ReadingOptions;
-import qowyn.ark.WritingOptions;
 import qowyn.ark.properties.PropertyFloat;
 
 public class EditCommands {
@@ -34,17 +32,9 @@ public class EditCommands {
     }
 
     try {
-      ReadingOptions readingOptions = ReadingOptions.create()
-          .withMemoryMapping(oh.useMmap())
-          .withParallelReading(oh.useParallel());
-
-      WritingOptions writingOptions = WritingOptions.create()
-          .withMemoryMapping(oh.useMmap())
-          .withParallelWriting(oh.useParallel());
-
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
 
-      ArkSavegame savegame = new ArkSavegame(fileToRead.toString(), readingOptions);
+      ArkSavegame savegame = new ArkSavegame(fileToRead.toString(), oh.readingOptions());
 
       stopwatch.stop("Reading");
 
@@ -57,7 +47,7 @@ public class EditCommands {
 
       stopwatch.stop("Setting values");
 
-      savegame.writeBinary(fileToWrite.toString(), writingOptions);
+      savegame.writeBinary(fileToWrite.toString(), oh.writingOptions());
 
       stopwatch.stop("Writing");
 
@@ -93,13 +83,9 @@ public class EditCommands {
     }
 
     try {
-      ReadingOptions readingOptions = ReadingOptions.create()
-          .withMemoryMapping(oh.useMmap())
-          .withParallelReading(oh.useParallel());
-
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
 
-      ArkSavegame savegame = new ArkSavegame(fileToRead.toString(), readingOptions);
+      ArkSavegame savegame = new ArkSavegame(fileToRead.toString(), oh.readingOptions());
 
       stopwatch.stop("Loading");
 
@@ -142,7 +128,7 @@ public class EditCommands {
 
       stopwatch.stop("Remapping");
 
-      CommonFunctions.writeJson(fileToWrite.toString(), export.toJson());
+      CommonFunctions.writeJson(fileToWrite.toString(), export::writeJson, oh.writingOptions());
 
       stopwatch.stop("Writing");
 
@@ -171,22 +157,14 @@ public class EditCommands {
     }
 
     try {
-      ReadingOptions readingOptions = ReadingOptions.create()
-          .withMemoryMapping(oh.useMmap())
-          .withParallelReading(oh.useParallel());
-
-      WritingOptions writingOptions = WritingOptions.create()
-          .withMemoryMapping(oh.useMmap())
-          .withParallelWriting(oh.useParallel());
-
-      ArkSavegame savegame = new ArkSavegame(fileToRead.toString(), readingOptions);
-      ArkSavegame jsonFile = new ArkSavegame(CommonFunctions.readJson(params.get(1)), readingOptions);
+      ArkSavegame savegame = new ArkSavegame(fileToRead.toString(), oh.readingOptions());
+      ArkSavegame jsonFile = new ArkSavegame(CommonFunctions.readJson(params.get(1)), oh.readingOptions());
 
       ObjectCollector collector = new ObjectCollector(jsonFile, jsonFile.getObjects().get(0));
 
       savegame.getObjects().addAll(collector.remap(savegame.getObjects().size()));
 
-      savegame.writeBinary(fileToWrite.toString(), writingOptions);
+      savegame.writeBinary(fileToWrite.toString(), oh.writingOptions());
 
     } catch (IOException e) {
       throw new RuntimeException(e);

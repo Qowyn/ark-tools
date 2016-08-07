@@ -8,6 +8,10 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import joptsimple.OptionSpecBuilder;
+import qowyn.ark.ReadingOptions;
+import qowyn.ark.WritingOptions;
+import qowyn.ark.tools.options.BooleanValueConverter;
+import qowyn.ark.tools.options.IntegerValueConverter;
 
 public class OptionHandler {
 
@@ -15,11 +19,15 @@ public class OptionHandler {
 
   private final OptionSpec<String> nonOptionsSpec;
 
-  private final OptionSpec<Boolean> mmapSpec;
+  private final OptionSpec<Integer> asyncSizeSpec;
 
-  private final OptionSpec<Boolean> parallelSpec;
+  private final OptionSpec<Boolean> asyncSpec;
 
-  private final OptionSpec<Boolean> stopwatchSpec;
+  private final OptionSpec<Void> mmapSpec;
+
+  private final OptionSpec<Void> parallelSpec;
+
+  private final OptionSpec<Void> stopwatchSpec;
 
   private final OptionSpec<Void> quietSpec;
 
@@ -34,16 +42,25 @@ public class OptionHandler {
   public OptionHandler(String... args) {
     parser = new OptionParser();
     parser.allowsUnrecognizedOptions();
-    
+
     nonOptionsSpec = parser.nonOptions();
-    mmapSpec = parser.acceptsAll(Arrays.asList("mmap", "m"), "False if the file should be read directly to memory, true if memory mapping should be used.").withRequiredArg().ofType(Boolean.class).defaultsTo(true);
-    parallelSpec = parser.acceptsAll(Arrays.asList("parallel", "p"), "True if the file should be read with multiple threads.").withRequiredArg().ofType(Boolean.class).defaultsTo(false);
-    stopwatchSpec = parser.acceptsAll(Arrays.asList("stopwatch", "s"), "True if the time spent for the task should be measured.").withRequiredArg().ofType(Boolean.class).defaultsTo(false);
-    helpSpec = parser.acceptsAll(Arrays.asList("help", "h"), "Displays this help screen, use with a command specified to get contextual help.").forHelp();
+
+    WritingOptions options = WritingOptions.create();
+
+    asyncSizeSpec = parser.accepts("async-size", "Size of buffer for asynchronous I/O, higher values increase used memory but can reduce total processing time with slow I/O.")
+        .withRequiredArg().withValuesConvertedBy(new IntegerValueConverter()).defaultsTo(options.getAsyncBufferSize());
+    asyncSpec = parser.acceptsAll(Arrays.asList("async", "a"), "Wether asynchronous I/O should be used.")
+        .withRequiredArg().withValuesConvertedBy(new BooleanValueConverter()).defaultsTo(options.isAsynchronous());
+    mmapSpec = parser.acceptsAll(Arrays.asList("mmap", "m"), "If set memory mapping will be used. Efficency depends on available RAM and OS.");
+    parallelSpec = parser.acceptsAll(Arrays.asList("parallel", "p"), "If set files will be processed by multiple threads.");
+    stopwatchSpec = parser.acceptsAll(Arrays.asList("stopwatch", "s"), "Measure time spent.");
+    helpSpec = parser.acceptsAll(Arrays.asList("help", "h"), "Displays this help screen, use with a command to get contextual help.")
+        .forHelp();
     quietSpec = parser.acceptsAll(Arrays.asList("quiet", "q"), "Surpresses output, except for stopwatch and help.");
+
     initialOptions = parser.parse(args);
     originalArgs = args;
-    nonOptions = nonOptionsSpec.values(initialOptions);
+    nonOptions = initialOptions.valuesOf(nonOptionsSpec);
   }
 
   public boolean hasCommand() {
@@ -66,16 +83,24 @@ public class OptionHandler {
     return parser.nonOptions().values(options);
   }
 
+  public int asyncSize() {
+    return initialOptions.valueOf(asyncSizeSpec);
+  }
+
+  public boolean useAsync() {
+    return initialOptions.valueOf(asyncSpec);
+  }
+
   public boolean useMmap() {
-    return mmapSpec.value(initialOptions);
+    return initialOptions.has(mmapSpec);
   }
 
   public boolean useParallel() {
-    return parallelSpec.value(initialOptions);
+    return initialOptions.has(parallelSpec);
   }
 
   public boolean useStopwatch() {
-    return stopwatchSpec.value(initialOptions);
+    return initialOptions.has(stopwatchSpec);
   }
 
   public boolean wantsHelp() {
@@ -101,6 +126,21 @@ public class OptionHandler {
 
   public OptionSpecBuilder acceptsAll(List<String> options, String description) {
     return parser.acceptsAll(options, description);
+  }
+  
+  public WritingOptions writingOptions() {
+    return WritingOptions.create()
+        .asyncBufferSize(asyncSize())
+        .asynchronous(useAsync())
+        .parallel(useParallel())
+        .withMemoryMapping(useMmap());
+  }
+  
+  public ReadingOptions readingOptions() {
+    return ReadingOptions.create()
+        .asynchronous(useAsync())
+        .parallel(useParallel())
+        .withMemoryMapping(useMmap());
   }
 
 }

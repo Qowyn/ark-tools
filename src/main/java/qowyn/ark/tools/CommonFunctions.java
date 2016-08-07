@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import javax.json.Json;
@@ -17,6 +18,7 @@ import javax.json.stream.JsonParser;
 
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
+import qowyn.ark.WritingOptions;
 import qowyn.ark.types.ObjectReference;
 
 public class CommonFunctions {
@@ -46,14 +48,14 @@ public class CommonFunctions {
     }
   }
 
-  public static void writeJson(String outFile, Consumer<JsonGenerator> writeJson) throws IOException {
+  public static void writeJson(String outFile, BiConsumer<JsonGenerator, WritingOptions> writeJson, WritingOptions options) throws IOException {
     try (PrintWriter out = new PrintWriter(outFile)) {
       Map<String, Object> properties = new HashMap<>(1);
       properties.put(JsonGenerator.PRETTY_PRINTING, true);
 
       JsonGeneratorFactory jgf = Json.createGeneratorFactory(properties);
       JsonGenerator jg = jgf.createGenerator(out);
-      writeJson.accept(jg);
+      writeJson.accept(jg, options);
       jg.close();
     }
   }

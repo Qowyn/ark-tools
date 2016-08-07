@@ -75,10 +75,8 @@ public class AnimalListCommands {
       String savePath = params.get(0);
       String outputDirectory = params.get(1);
 
-      ReadingOptions options = ReadingOptions.create()
-          .withObjectFilter(AnimalListCommands::neededClasses)
-          .withMemoryMapping(oh.useMmap())
-          .withParallelReading(oh.useParallel());
+      ReadingOptions options = oh.readingOptions()
+          .withObjectFilter(AnimalListCommands::neededClasses);
 
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
       ArkSavegame saveFile = new ArkSavegame(savePath, options);

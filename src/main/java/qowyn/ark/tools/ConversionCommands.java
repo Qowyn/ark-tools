@@ -6,8 +6,6 @@ import java.util.List;
 import javax.json.JsonObject;
 
 import qowyn.ark.ArkSavegame;
-import qowyn.ark.ReadingOptions;
-import qowyn.ark.WritingOptions;
 
 public class ConversionCommands {
 
@@ -28,14 +26,10 @@ public class ConversionCommands {
       String savePath = params.get(0);
       String outPath = params.get(1);
 
-      ReadingOptions options = ReadingOptions.create()
-          .withMemoryMapping(oh.useMmap())
-          .withParallelReading(oh.useParallel());
-
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
-      ArkSavegame saveFile = new ArkSavegame(savePath, options);
+      ArkSavegame saveFile = new ArkSavegame(savePath, oh.readingOptions());
       stopwatch.stop("Reading");
-      CommonFunctions.writeJson(outPath, saveFile::writeJson);
+      CommonFunctions.writeJson(outPath, saveFile::writeJson, oh.writingOptions());
       stopwatch.stop("Dumping");
 
       stopwatch.print();
@@ -61,16 +55,12 @@ public class ConversionCommands {
       String jsonPath = params.get(0);
       String outPath = params.get(1);
 
-      WritingOptions options = WritingOptions.create()
-          .withMemoryMapping(oh.useMmap())
-          .withParallelWriting(oh.useParallel());
-
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
       JsonObject object = CommonFunctions.readJson(jsonPath);
       stopwatch.stop("Parsing");
-      ArkSavegame saveFile = new ArkSavegame(object);
+      ArkSavegame saveFile = new ArkSavegame(object, oh.readingOptions());
       stopwatch.stop("Loading");
-      saveFile.writeBinary(outPath, options);
+      saveFile.writeBinary(outPath, oh.writingOptions());
       stopwatch.stop("Writing");
 
       stopwatch.print();
