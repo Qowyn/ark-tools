@@ -80,7 +80,8 @@ public class OptionHandler {
   }
 
   public List<String> getParams(OptionSet options) {
-    return parser.nonOptions().values(options);
+    List<String> params = options.valuesOf(nonOptionsSpec);
+    return params.subList(1, params.size());
   }
 
   public int asyncSize() {
