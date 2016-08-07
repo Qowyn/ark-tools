@@ -55,7 +55,7 @@ public class Stopwatch {
       sb.append(" ms\n");
     }
 
-    System.out.print(sb.toString());
+    System.err.print(sb.toString());
   }
 
   private static class Entry {
