@@ -43,7 +43,7 @@ public class Stopwatch {
     Instant startPoint = start;
     for (Entry next : stops) {
       sb.append(next.description);
-      sb.append(" finished after");
+      sb.append(" finished after ");
       sb.append(ChronoUnit.MILLIS.between(startPoint, next.pointInTime));
       sb.append(" ms\n");
       startPoint = next.pointInTime;
