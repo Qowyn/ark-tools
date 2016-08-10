@@ -285,6 +285,11 @@ public class AnimalListCommands {
               generator.writeEnd();
             }
 
+            Short extraLevel = status.getPropertyValue("ExtraCharacterLevel", Short.class);
+            if (baseLevel != null && extraLevel != null) {
+              generator.write("fullLevel", extraLevel + baseLevel);
+            }
+
             if (status.hasAnyProperty("NumberOfLevelUpPointsAppliedTamed")) {
               generator.writeStartObject("tamedLevels");
               for (Map.Entry<Integer, String> attribute : ATTRIBUTE_NAME_MAP.entrySet()) {
@@ -311,7 +316,7 @@ public class AnimalListCommands {
         }
 
         generator.writeEnd(); // Array
-        
+
         if (options.has(statisticsSpec)) {
           generator.writeEnd(); // Object
         }
@@ -331,7 +336,7 @@ public class AnimalListCommands {
       } else {
         writerFunction = g -> g.writeStartArray().writeEnd();
       }
-      
+
       CommonFunctions.writeJson(out, writerFunction, oh);
     } catch (IOException e) {
       e.printStackTrace();
