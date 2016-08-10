@@ -158,19 +158,27 @@ public class AnimalListCommands {
       CommonFunctions.writeJson(out, generator -> {
         generator.writeStartObject();
 
-        IntSummaryStatistics statistics = filteredClasses.stream().mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
-        generator.write("count", statistics.getCount());
+        generator.write("count", filteredClasses.size());
+
+        IntSummaryStatistics statistics = filteredClasses.stream().filter(CommonFunctions::onlyWild).mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
         if (statistics.getCount() > 0) {
-          generator.write("min", statistics.getMin());
-          generator.write("max", statistics.getMax());
-          generator.write("average", statistics.getAverage());
+          generator.write("wildMin", statistics.getMin());
+          generator.write("wildMax", statistics.getMax());
+          generator.write("wildAverage", statistics.getAverage());
         }
 
-        IntSummaryStatistics fullLevelStatistics = filteredClasses.stream().filter(CommonFunctions::onlyTamed).mapToInt(a -> CommonFunctions.getFullLevel(a, saveFile)).summaryStatistics();
-        if (fullLevelStatistics.getCount() > 0) {
-          generator.write("tamedMin", fullLevelStatistics.getMin());
-          generator.write("tamedMax", fullLevelStatistics.getMax());
-          generator.write("tamedAverage", fullLevelStatistics.getAverage());
+        IntSummaryStatistics tamedBaseStatistics = filteredClasses.stream().filter(CommonFunctions::onlyTamed).mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
+        if (tamedBaseStatistics.getCount() > 0) {
+          generator.write("tamedBaseMin", tamedBaseStatistics.getMin());
+          generator.write("tamedBaseMax", tamedBaseStatistics.getMax());
+          generator.write("tamedBaseAverage", tamedBaseStatistics.getAverage());
+        }
+
+        IntSummaryStatistics tamedFullStatistics = filteredClasses.stream().filter(CommonFunctions::onlyTamed).mapToInt(a -> CommonFunctions.getFullLevel(a, saveFile)).summaryStatistics();
+        if (tamedFullStatistics.getCount() > 0) {
+          generator.write("tamedFullMin", tamedFullStatistics.getMin());
+          generator.write("tamedFullMax", tamedFullStatistics.getMax());
+          generator.write("tamedFullAverage", tamedFullStatistics.getAverage());
         }
 
         generator.writeStartArray("dinos");

@@ -72,9 +72,9 @@ public class CommonFunctions {
 
     Integer baseLevel = statusComponent.getPropertyValue("BaseCharacterLevel", Integer.class);
     Short extraLevel = statusComponent.getPropertyValue("ExtraCharacterLevel", Short.class);
-    
+
     int level = 0;
-    
+
     if (baseLevel != null) {
       level += baseLevel;
     }
