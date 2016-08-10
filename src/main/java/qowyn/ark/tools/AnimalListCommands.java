@@ -3,7 +3,6 @@ package qowyn.ark.tools;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -17,13 +16,8 @@ import java.util.stream.Collectors;
 
 import javax.json.Json;
 import javax.json.JsonArray;
-import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
-import javax.json.JsonWriter;
-import javax.json.JsonWriterFactory;
-import javax.json.stream.JsonGenerator;
-import javax.json.stream.JsonGeneratorFactory;
 
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
@@ -82,7 +76,7 @@ public class AnimalListCommands {
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
       ArkSavegame saveFile = new ArkSavegame(savePath, options);
       stopwatch.stop("Reading");
-      writeAnimalLists(outputDirectory, saveFile, filter);
+      writeAnimalLists(outputDirectory, saveFile, filter, oh);
       stopwatch.stop("Dumping");
 
       stopwatch.print();
@@ -91,11 +85,7 @@ public class AnimalListCommands {
     }
   }
 
-  public static void writeAnimalLists(String outputDirectory, ArkSavegame saveFile) {
-    writeAnimalLists(outputDirectory, saveFile, null);
-  }
-
-  public static void writeAnimalLists(String outputDirectory, ArkSavegame saveFile, Predicate<GameObject> filter) {
+  public static void writeAnimalLists(String outputDirectory, ArkSavegame saveFile, Predicate<GameObject> filter, OptionHandler oh) {
     List<GameObject> objects;
 
     if (filter != null) {
@@ -112,9 +102,11 @@ public class AnimalListCommands {
 
     dinoLists.keySet().forEach(dinoClass -> classNames.putIfAbsent(dinoClass, dinoClass));
 
-    writeClassNames(outputDirectory, classNames);
+    writeClassNames(outputDirectory, classNames, oh);
 
-    dinoLists.entrySet().parallelStream().forEach(e -> writeList(e, outputDirectory, saveFile));
+    dinoLists.entrySet().parallelStream().forEach(e -> writeList(e, outputDirectory, saveFile, oh));
+
+    classNames.keySet().stream().filter(s -> !dinoLists.containsKey(s)).forEach(s -> writeEmpty(s, outputDirectory, oh));
   }
 
   public static Map<String, String> readClassNames(String directory) {
@@ -140,130 +132,129 @@ public class AnimalListCommands {
     return classNames;
   }
 
-  public static void writeClassNames(String directory, Map<String, String> classNames) {
+  public static void writeClassNames(String directory, Map<String, String> classNames, OptionHandler oh) {
     Path clsFile = Paths.get(directory, "classes.json");
 
     try (OutputStream clsStream = Files.newOutputStream(clsFile)) {
-      JsonArrayBuilder clsBuilder = Json.createArrayBuilder();
+      CommonFunctions.writeJson(clsStream, g -> {
+        g.writeStartArray();
 
-      classNames.entrySet().forEach(cls -> clsBuilder.add(Json.createObjectBuilder().add("cls", cls.getKey()).add("name", cls.getValue())));
+        classNames.forEach((cls, name) -> g.writeStartObject().write("cls", cls).write("name", name).writeEnd());
 
-      Map<String, Object> properties = new HashMap<>(1);
-      properties.put(JsonGenerator.PRETTY_PRINTING, true);
-
-      JsonWriterFactory clsFactory = Json.createWriterFactory(properties);
-      JsonWriter clsWriter = clsFactory.createWriter(clsStream);
-      clsWriter.writeArray(clsBuilder.build());
+        g.writeEnd();
+      }, oh);
     } catch (IOException e) {
       e.printStackTrace();
     }
   }
 
-  public static void writeList(Map.Entry<String, List<GameObject>> entry, String outputDirectory, ArkSavegame saveFile) {
+  public static void writeList(Map.Entry<String, List<GameObject>> entry, String outputDirectory, ArkSavegame saveFile, OptionHandler oh) {
     Path outputFile = Paths.get(outputDirectory, entry.getKey() + ".json");
 
     List<? extends GameObject> filteredClasses = entry.getValue();
     LatLonCalculator latLongCalculator = LatLonCalculator.forSave(saveFile);
 
-    try {
-      PrintWriter writer = new PrintWriter(outputFile.toFile());
-
-      Map<String, Object> properties = new HashMap<>(1);
-      properties.put(JsonGenerator.PRETTY_PRINTING, true);
-
-      JsonGeneratorFactory factory = Json.createGeneratorFactory(properties);
-
-      JsonGenerator generator = factory.createGenerator(writer);
-
-      generator.writeStartObject();
-
-      IntSummaryStatistics statistics = filteredClasses.stream().mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
-      generator.write("count", statistics.getCount());
-      if (statistics.getCount() > 0) {
-        generator.write("min", statistics.getMin());
-        generator.write("max", statistics.getMax());
-        generator.write("average", statistics.getAverage());
-      }
-
-      generator.writeStartArray("dinos");
-
-      for (GameObject i : filteredClasses) {
+    try (OutputStream out = Files.newOutputStream(outputFile)) {
+      CommonFunctions.writeJson(out, generator -> {
         generator.writeStartObject();
 
-        LocationData ld = i.getLocation();
-        if (ld != null) {
-          generator.write("x", ld.getX());
-          generator.write("y", ld.getY());
-          generator.write("z", ld.getZ());
-          generator.write("lat", Math.round(latLongCalculator.calculateLat(ld.getY()) * 10.0) / 10.0);
-          generator.write("lon", Math.round(latLongCalculator.calculateLon(ld.getX()) * 10.0) / 10.0);
+        IntSummaryStatistics statistics = filteredClasses.stream().mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
+        generator.write("count", statistics.getCount());
+        if (statistics.getCount() > 0) {
+          generator.write("min", statistics.getMin());
+          generator.write("max", statistics.getMax());
+          generator.write("average", statistics.getAverage());
         }
 
-        if (i.hasAnyProperty("bIsFemale")) {
-          generator.write("female", true);
-        }
+        generator.writeStartArray("dinos");
 
-        if (i.hasAnyProperty("TamedAtTime")) {
-          generator.write("tamed", true);
-        }
+        for (GameObject i : filteredClasses) {
+          generator.writeStartObject();
 
-        String tribeName = i.getPropertyValue("TribeName", String.class);
-        if (tribeName != null) {
-          generator.write("tribe", tribeName);
-        }
-
-        String tamerName = i.getPropertyValue("TamerString", String.class);
-        if (tamerName != null) {
-          generator.write("tamer", tamerName);
-        }
-
-        String name = i.getPropertyValue("TamedName", String.class);
-        if (name != null) {
-          generator.write("name", name);
-        }
-
-        PropertyObject statusComp = i.getTypedProperty("MyCharacterStatusComponent", PropertyObject.class);
-        GameObject status = null;
-        if (statusComp != null) {
-          status = statusComp.getValue().getObject(saveFile);
-        }
-
-        if (status != null && status.getClassString().startsWith("DinoCharacterStatusComponent_")) {
-          Integer baseLevel = status.getPropertyValue("BaseCharacterLevel", Integer.class);
-          if (baseLevel != null) {
-            generator.write("baseLevel", baseLevel);
+          LocationData ld = i.getLocation();
+          if (ld != null) {
+            generator.write("x", ld.getX());
+            generator.write("y", ld.getY());
+            generator.write("z", ld.getZ());
+            generator.write("lat", Math.round(latLongCalculator.calculateLat(ld.getY()) * 10.0) / 10.0);
+            generator.write("lon", Math.round(latLongCalculator.calculateLon(ld.getX()) * 10.0) / 10.0);
           }
 
-          if (baseLevel != null && baseLevel > 1) {
-            generator.writeStartObject("wildLevels");
-            for (Map.Entry<Integer, String> attribute : ATTRIBUTE_NAME_MAP.entrySet()) {
-              ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsApplied", ArkByteValue.class, attribute.getKey());
-              if (attrProp != null) {
-                generator.write(attribute.getValue(), attrProp.getByteValue());
-              }
+          if (i.hasAnyProperty("bIsFemale")) {
+            generator.write("female", true);
+          }
+
+          if (i.hasAnyProperty("TamedAtTime")) {
+            generator.write("tamed", true);
+          }
+
+          String tribeName = i.getPropertyValue("TribeName", String.class);
+          if (tribeName != null) {
+            generator.write("tribe", tribeName);
+          }
+
+          String tamerName = i.getPropertyValue("TamerString", String.class);
+          if (tamerName != null) {
+            generator.write("tamer", tamerName);
+          }
+
+          String name = i.getPropertyValue("TamedName", String.class);
+          if (name != null) {
+            generator.write("name", name);
+          }
+
+          PropertyObject statusComp = i.getTypedProperty("MyCharacterStatusComponent", PropertyObject.class);
+          GameObject status = null;
+          if (statusComp != null) {
+            status = statusComp.getValue().getObject(saveFile);
+          }
+
+          if (status != null && status.getClassString().startsWith("DinoCharacterStatusComponent_")) {
+            Integer baseLevel = status.getPropertyValue("BaseCharacterLevel", Integer.class);
+            if (baseLevel != null) {
+              generator.write("baseLevel", baseLevel);
             }
-            generator.writeEnd();
+
+            if (baseLevel != null && baseLevel > 1) {
+              generator.writeStartObject("wildLevels");
+              for (Map.Entry<Integer, String> attribute : ATTRIBUTE_NAME_MAP.entrySet()) {
+                ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsApplied", ArkByteValue.class, attribute.getKey());
+                if (attrProp != null) {
+                  generator.write(attribute.getValue(), attrProp.getByteValue());
+                }
+              }
+              generator.writeEnd();
+            }
+
+            if (status.hasAnyProperty("NumberOfLevelUpPointsAppliedTamed")) {
+              generator.writeStartObject("tamedLevels");
+              for (Map.Entry<Integer, String> attribute : ATTRIBUTE_NAME_MAP.entrySet()) {
+                ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsAppliedTamed", ArkByteValue.class, attribute.getKey());
+                if (attrProp != null) {
+                  generator.write(attribute.getValue(), attrProp.getByteValue());
+                }
+              }
+              generator.writeEnd();
+            }
           }
 
-          if (status.hasAnyProperty("NumberOfLevelUpPointsAppliedTamed")) {
-            generator.writeStartObject("tamedLevels");
-            for (Map.Entry<Integer, String> attribute : ATTRIBUTE_NAME_MAP.entrySet()) {
-              ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsAppliedTamed", ArkByteValue.class, attribute.getKey());
-              if (attrProp != null) {
-                generator.write(attribute.getValue(), attrProp.getByteValue());
-              }
-            }
-            generator.writeEnd();
-          }
+          generator.writeEnd();
         }
 
-        generator.writeEnd();
-      }
-
-      generator.writeEnd(); // Array
-      generator.writeEnd(); // Object
-      generator.close();
+        generator.writeEnd(); // Array
+        generator.writeEnd(); // Object
+      }, oh);
     } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  public static void writeEmpty(String s, String outputDirectory, OptionHandler oh) {
+    Path outputFile = Paths.get(outputDirectory, s + ".json");
+
+    try (OutputStream out = Files.newOutputStream(outputFile)) {
+      CommonFunctions.writeJson(out, g -> g.writeStartObject().write("count", 0).writeStartArray("dinos").writeEnd().writeEnd(), oh);
+    } catch (IOException e) {
       e.printStackTrace();
     }
   }
