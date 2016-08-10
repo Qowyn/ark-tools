@@ -41,9 +41,48 @@ public class CommonFunctions {
 
   public static int getBaseLevel(GameObject animal, ArkSavegame saveFile) {
     ObjectReference statusComponentReference = animal.getPropertyValue("MyCharacterStatusComponent", ObjectReference.class);
-    GameObject statusComponent = statusComponentReference != null ? statusComponentReference.getObject(saveFile) : null;
-    Integer baseLevel = statusComponent != null ? statusComponent.getPropertyValue("BaseCharacterLevel", Integer.class) : null;
+
+    if (statusComponentReference == null) {
+      return 0;
+    }
+
+    GameObject statusComponent = statusComponentReference.getObject(saveFile);
+
+    if (statusComponent == null) {
+      return 0;
+    }
+
+    Integer baseLevel = statusComponent.getPropertyValue("BaseCharacterLevel", Integer.class);
+
     return baseLevel != null ? baseLevel : 0;
+  }
+
+  public static int getFullLevel(GameObject animal, ArkSavegame saveFile) {
+    ObjectReference statusComponentReference = animal.getPropertyValue("MyCharacterStatusComponent", ObjectReference.class);
+
+    if (statusComponentReference == null) {
+      return 0;
+    }
+
+    GameObject statusComponent = statusComponentReference.getObject(saveFile);
+
+    if (statusComponent == null) {
+      return 0;
+    }
+
+    Integer baseLevel = statusComponent.getPropertyValue("BaseCharacterLevel", Integer.class);
+    Short extraLevel = statusComponent.getPropertyValue("ExtraCharacterLevel", Short.class);
+    
+    int level = 0;
+    
+    if (baseLevel != null) {
+      level += baseLevel;
+    }
+    if (extraLevel != null) {
+      level += extraLevel;
+    }
+
+    return level;
   }
 
   public static void writeJson(OutputStream out, JsonObject o, OptionHandler oh) throws IOException {

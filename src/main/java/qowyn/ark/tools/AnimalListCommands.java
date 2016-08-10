@@ -166,6 +166,13 @@ public class AnimalListCommands {
           generator.write("average", statistics.getAverage());
         }
 
+        IntSummaryStatistics fullLevelStatistics = filteredClasses.stream().filter(CommonFunctions::onlyTamed).mapToInt(a -> CommonFunctions.getFullLevel(a, saveFile)).summaryStatistics();
+        if (fullLevelStatistics.getCount() > 0) {
+          generator.write("tamedMin", fullLevelStatistics.getMin());
+          generator.write("tamedMax", fullLevelStatistics.getMax());
+          generator.write("tamedAverage", fullLevelStatistics.getAverage());
+        }
+
         generator.writeStartArray("dinos");
 
         for (GameObject i : filteredClasses) {
@@ -186,6 +193,7 @@ public class AnimalListCommands {
 
           if (i.hasAnyProperty("TamedAtTime")) {
             generator.write("tamed", true);
+            generator.write("tamedTime", saveFile.getGameTime() - i.getPropertyValue("TamedAtTime", Double.class));
           }
 
           String tribeName = i.getPropertyValue("TribeName", String.class);
@@ -201,6 +209,11 @@ public class AnimalListCommands {
           String name = i.getPropertyValue("TamedName", String.class);
           if (name != null) {
             generator.write("name", name);
+          }
+
+          String imprinter = i.getPropertyValue("ImprinterName", String.class);
+          if (imprinter != null) {
+            generator.write("imprinter", imprinter);
           }
 
           PropertyObject statusComp = i.getTypedProperty("MyCharacterStatusComponent", PropertyObject.class);
@@ -235,6 +248,16 @@ public class AnimalListCommands {
                 }
               }
               generator.writeEnd();
+            }
+
+            Float experience = status.getPropertyValue("ExperiencePoints", Float.class);
+            if (experience != null) {
+              generator.write("experience", experience);
+            }
+
+            Float imprintingQuality = status.getPropertyValue("DinoImprintingQuality", Float.class);
+            if (imprintingQuality != null) {
+              generator.write("imprintingQuality", imprintingQuality);
             }
           }
 
