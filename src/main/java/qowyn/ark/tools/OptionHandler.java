@@ -27,6 +27,8 @@ public class OptionHandler {
 
   private final OptionSpec<Void> parallelSpec;
 
+  private final OptionSpec<Void> prettySpec;
+
   private final OptionSpec<Void> stopwatchSpec;
 
   private final OptionSpec<Void> quietSpec;
@@ -49,13 +51,21 @@ public class OptionHandler {
 
     asyncSizeSpec = parser.accepts("async-size", "Size of buffer for asynchronous I/O, higher values increase used memory but can reduce total processing time with slow I/O.")
         .withRequiredArg().withValuesConvertedBy(new IntegerValueConverter()).defaultsTo(options.getAsyncBufferSize());
+
     asyncSpec = parser.acceptsAll(Arrays.asList("async", "a"), "Wether asynchronous I/O should be used.")
         .withRequiredArg().withValuesConvertedBy(new BooleanValueConverter()).defaultsTo(options.isAsynchronous());
+
     mmapSpec = parser.acceptsAll(Arrays.asList("mmap", "m"), "If set memory mapping will be used. Efficency depends on available RAM and OS.");
+
     parallelSpec = parser.acceptsAll(Arrays.asList("parallel", "p"), "If set files will be processed by multiple threads.");
+
+    prettySpec = parser.accepts("pretty-printing", "If set all JSON output will use pretty printing.");
+
     stopwatchSpec = parser.acceptsAll(Arrays.asList("stopwatch", "s"), "Measure time spent.");
+
     helpSpec = parser.acceptsAll(Arrays.asList("help", "h"), "Displays this help screen, use with a command to get contextual help.")
         .forHelp();
+
     quietSpec = parser.acceptsAll(Arrays.asList("quiet", "q"), "Surpresses output, except for stopwatch and help.");
 
     initialOptions = parser.parse(args);
@@ -100,6 +110,10 @@ public class OptionHandler {
     return initialOptions.has(parallelSpec);
   }
 
+  public boolean usePretty() {
+    return initialOptions.has(prettySpec);
+  }
+
   public boolean useStopwatch() {
     return initialOptions.has(stopwatchSpec);
   }
@@ -128,7 +142,7 @@ public class OptionHandler {
   public OptionSpecBuilder acceptsAll(List<String> options, String description) {
     return parser.acceptsAll(options, description);
   }
-  
+
   public WritingOptions writingOptions() {
     return WritingOptions.create()
         .asyncBufferSize(asyncSize())
@@ -136,7 +150,7 @@ public class OptionHandler {
         .parallel(useParallel())
         .withMemoryMapping(useMmap());
   }
-  
+
   public ReadingOptions readingOptions() {
     return ReadingOptions.create()
         .asynchronous(useAsync())

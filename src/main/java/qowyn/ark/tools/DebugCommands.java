@@ -53,9 +53,9 @@ public class DebugCommands {
       };
 
       if (params.size() > 1) {
-        CommonFunctions.writeJson(params.get(1), writer);
+        CommonFunctions.writeJson(params.get(1), writer, oh);
       } else {
-        CommonFunctions.writeJson(System.out, writer);
+        CommonFunctions.writeJson(System.out, writer, oh);
       }
 
       stopwatch.stop("Writing");
@@ -98,9 +98,9 @@ public class DebugCommands {
       };
 
       if (params.size() > 2) {
-        CommonFunctions.writeJson(params.get(2), dumpObjects);
+        CommonFunctions.writeJson(params.get(2), dumpObjects, oh);
       } else {
-        CommonFunctions.writeJson(System.out, dumpObjects);
+        CommonFunctions.writeJson(System.out, dumpObjects, oh);
       }
 
       stopwatch.stop("Writing");
@@ -151,9 +151,9 @@ public class DebugCommands {
       };
 
       if (params.size() > 1) {
-        CommonFunctions.writeJson(params.get(1), writer);
+        CommonFunctions.writeJson(params.get(1), writer, oh);
       } else {
-        CommonFunctions.writeJson(System.out, writer);
+        CommonFunctions.writeJson(System.out, writer, oh);
       }
 
       stopwatch.stop("Writing");

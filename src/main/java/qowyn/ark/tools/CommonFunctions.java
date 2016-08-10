@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
+import javax.json.JsonWriter;
 import javax.json.JsonWriterFactory;
 import javax.json.stream.JsonGenerator;
 import javax.json.stream.JsonGeneratorFactory;
@@ -45,33 +46,47 @@ public class CommonFunctions {
     return baseLevel != null ? baseLevel : 0;
   }
 
-  public static void writeJson(OutputStream out, JsonObject o) throws IOException {
-    Map<String, Object> properties = new HashMap<>(1);
-    properties.put(JsonGenerator.PRETTY_PRINTING, true);
+  public static void writeJson(OutputStream out, JsonObject o, OptionHandler oh) throws IOException {
+    if (oh.usePretty()) {
+      Map<String, Object> properties = new HashMap<>(1);
+      properties.put(JsonGenerator.PRETTY_PRINTING, true);
 
-    JsonWriterFactory jwf = Json.createWriterFactory(properties);
-    jwf.createWriter(out).writeObject(o);
-  }
-
-  public static void writeJson(String outFile, JsonObject o) throws IOException {
-    try (FileOutputStream out = new FileOutputStream(outFile)) {
-      writeJson(out, o);
+      JsonWriterFactory jwf = Json.createWriterFactory(properties);
+      try (JsonWriter writer = jwf.createWriter(out)) {
+        writer.writeObject(o);
+      }
+    } else {
+      try (JsonWriter writer = Json.createWriter(out)) {
+        writer.writeObject(o);
+      }
     }
   }
-  
-  public static void writeJson(OutputStream out, Consumer<JsonGenerator> writeJson) throws IOException {
-    Map<String, Object> properties = new HashMap<>(1);
-    properties.put(JsonGenerator.PRETTY_PRINTING, true);
 
-    JsonGeneratorFactory jgf = Json.createGeneratorFactory(properties);
-    JsonGenerator jg = jgf.createGenerator(out);
-    writeJson.accept(jg);
-    jg.close();
+  public static void writeJson(String outFile, JsonObject o, OptionHandler oh) throws IOException {
+    try (FileOutputStream out = new FileOutputStream(outFile)) {
+      writeJson(out, o, oh);
+    }
   }
 
-  public static void writeJson(String outFile, Consumer<JsonGenerator> writeJson) throws IOException {
+  public static void writeJson(OutputStream out, Consumer<JsonGenerator> writeJson, OptionHandler oh) throws IOException {
+    if (oh.usePretty()) {
+      Map<String, Object> properties = new HashMap<>(1);
+      properties.put(JsonGenerator.PRETTY_PRINTING, true);
+
+      JsonGeneratorFactory jgf = Json.createGeneratorFactory(properties);
+      try (JsonGenerator jg = jgf.createGenerator(out)) {
+        writeJson.accept(jg);
+      }
+    } else {
+      try (JsonGenerator jg = Json.createGenerator(out)) {
+        writeJson.accept(jg);
+      }
+    }
+  }
+
+  public static void writeJson(String outFile, Consumer<JsonGenerator> writeJson, OptionHandler oh) throws IOException {
     try (FileOutputStream out = new FileOutputStream(outFile)) {
-      writeJson(out, writeJson);
+      writeJson(out, writeJson, oh);
     }
   }
 

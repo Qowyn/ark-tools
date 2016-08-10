@@ -148,7 +148,7 @@ public class EditCommands {
 
       stopwatch.stop("Remapping");
 
-      CommonFunctions.writeJson(fileToWrite.toString(), g -> export.writeJson(g, oh.writingOptions()));
+      CommonFunctions.writeJson(fileToWrite.toString(), g -> export.writeJson(g, oh.writingOptions()), oh);
 
       stopwatch.stop("Writing");
 

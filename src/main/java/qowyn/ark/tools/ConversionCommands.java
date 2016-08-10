@@ -30,7 +30,7 @@ public class ConversionCommands {
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
       ArkSavegame saveFile = new ArkSavegame(savePath, oh.readingOptions());
       stopwatch.stop("Reading");
-      CommonFunctions.writeJson(outPath, g -> saveFile.writeJson(g, oh.writingOptions()));
+      CommonFunctions.writeJson(outPath, g -> saveFile.writeJson(g, oh.writingOptions()), oh);
       stopwatch.stop("Dumping");
 
       stopwatch.print();
