@@ -91,7 +91,7 @@ public class DebugCommands {
       Consumer<JsonGenerator> dumpObjects = g -> {
         g.writeStartArray();
 
-        savegame.getObjects().stream().filter(filter).forEach(o -> g.write(o.toJson()));
+        savegame.getObjects().stream().filter(filter).forEach(o -> g.write(o.toJson(true)));
 
         g.writeEnd();
         g.flush();
