@@ -12,6 +12,7 @@ public class ConversionCommands {
   public static void binary2json(OptionHandler oh) {
     List<String> params = oh.getParams();
     if (params.size() != 2 || oh.wantsHelp()) {
+      System.out.println("Converts 'save' from binary ark format to a much bigger JSON representation.");
       System.out.println("Usage: ark-tools b2j <save> <outfile> [options]");
       oh.printHelp();
       System.exit(1);
@@ -41,6 +42,7 @@ public class ConversionCommands {
   public static void json2binary(OptionHandler oh) {
     List<String> params = oh.getParams();
     if (params.size() != 2 || oh.wantsHelp()) {
+      System.out.println("Converts 'json' from JSON format to the binary ark format.");
       System.out.println("Usage: ark-tools j2b <json> <outfile> [options]");
       oh.printHelp();
       System.exit(1);

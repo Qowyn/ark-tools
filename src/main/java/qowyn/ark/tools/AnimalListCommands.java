@@ -66,6 +66,7 @@ public class AnimalListCommands {
     try {
       List<String> params = oh.getParams();
       if (params.size() != 2 || oh.wantsHelp()) {
+        System.out.println("Writes lists of all/tamed/wild animals in 'save' to the specified 'output_directory'.");
         System.out.println("Usage: ark-tools " + oh.getCommand() + " <save> <output_directory> [options]");
         oh.printHelp();
         System.exit(1);
