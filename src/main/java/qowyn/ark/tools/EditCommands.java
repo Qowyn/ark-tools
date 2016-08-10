@@ -132,6 +132,9 @@ public class EditCommands {
         }
 
         collector = new ObjectCollector(savegame, savegame.getObjects().get(id));
+      } else {
+        // Makes FindBugs happy
+        return;
       }
 
       stopwatch.stop("Collecting");
