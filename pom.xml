@@ -13,7 +13,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.target>1.8</maven.compiler.target>
 		<maven.compiler.source>1.8</maven.compiler.source>
-		<launch4j.version>0.1.0.0</launch4j.version>
+		<launch4j.version>0.1.1.0</launch4j.version>
 	</properties>
 
 	<dependencies>
