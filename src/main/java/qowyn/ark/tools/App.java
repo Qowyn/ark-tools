@@ -52,6 +52,10 @@ public class App {
       System.exit(1);
     }
 
+    if (!oh.wantsHelp()) {
+      DataManager.loadData();
+    }
+
     try {
       COMMAND_MAP.get(oh.getCommand()).accept(oh);
     } catch (OptionException oe) {
