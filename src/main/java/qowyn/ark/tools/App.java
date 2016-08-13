@@ -21,6 +21,8 @@ public class App {
     COMMAND_MAP.put("p2j", ConversionCommands::profileToJson);
     COMMAND_MAP.put("t2j", ConversionCommands::tribeToJson);
     COMMAND_MAP.put("j2m", ConversionCommands::jsonToMap);
+    COMMAND_MAP.put("j2p", ConversionCommands::jsonToProfile);
+    COMMAND_MAP.put("j2t", ConversionCommands::jsonToTribe);
 
     COMMAND_MAP.put("classes", DebugCommands::classes);
     COMMAND_MAP.put("dump", DebugCommands::dump);
