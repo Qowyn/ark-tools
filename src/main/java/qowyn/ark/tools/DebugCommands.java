@@ -19,6 +19,7 @@ public class DebugCommands {
   public static void classes(OptionHandler oh) {
     List<String> params = oh.getParams();
     if (params.size() < 1 || params.size() > 2 || oh.wantsHelp()) {
+      System.out.println("This command is primarily meant for debugging.");
       System.out.println("Dumps a list of all classes with count of objects to stdout or outFile.");
       System.out.println("Usage: ark-tools classes <save> [outFile] [options]");
       oh.printHelp();
@@ -69,6 +70,7 @@ public class DebugCommands {
   public static void dump(OptionHandler oh) {
     List<String> params = oh.getParams();
     if (params.size() < 2 || params.size() > 3 || oh.wantsHelp()) {
+      System.out.println("This command is primarily meant for debugging.");
       System.out.println("Dumps all objects of given className to stdout or outFile.");
       System.out.println("Usage: ark-tools dump <save> <className> [outFile] [options]");
       oh.printHelp();
@@ -113,6 +115,7 @@ public class DebugCommands {
   public static void sizes(OptionHandler oh) {
     List<String> params = oh.getParams();
     if (params.size() < 1 || params.size() > 2 || oh.wantsHelp()) {
+      System.out.println("This command is primarily meant for debugging.");
       System.out.println("Dumps className and size in byte of all objects to stdout or outFile.");
       System.out.println("Usage: ark-tools sizes <save> [outFile] [options]");
       oh.printHelp();
