@@ -31,7 +31,7 @@ import qowyn.ark.properties.PropertyObject;
 import qowyn.ark.types.ArkByteValue;
 import qowyn.ark.types.LocationData;
 
-public class AnimalListCommands {
+public class CreatureListCommands {
 
   private static final Map<Integer, String> ATTRIBUTE_NAME_MAP = new HashMap<>();
 
@@ -57,20 +57,20 @@ public class AnimalListCommands {
 
   private OptionSet options;
 
-  public AnimalListCommands(OptionHandler oh) {
+  public CreatureListCommands(OptionHandler oh) {
     this.oh = oh;
   }
 
   public static void animals(OptionHandler oh) {
-    new AnimalListCommands(oh).listImpl(null);
+    new CreatureListCommands(oh).listImpl(null);
   }
 
   public static void tamed(OptionHandler oh) {
-    new AnimalListCommands(oh).listImpl(CommonFunctions::onlyTamed);
+    new CreatureListCommands(oh).listImpl(CommonFunctions::onlyTamed);
   }
 
   public static void wild(OptionHandler oh) {
-    new AnimalListCommands(oh).listImpl(CommonFunctions::onlyWild);
+    new CreatureListCommands(oh).listImpl(CommonFunctions::onlyWild);
   }
 
   protected static boolean neededClasses(GameObject object) {
@@ -105,7 +105,7 @@ public class AnimalListCommands {
       outputDirectory = params.get(1);
 
       ReadingOptions readingOptions = oh.readingOptions()
-          .withObjectFilter(AnimalListCommands::neededClasses);
+          .withObjectFilter(CreatureListCommands::neededClasses);
 
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
       saveFile = new ArkSavegame(savePath, readingOptions);
@@ -120,14 +120,14 @@ public class AnimalListCommands {
   }
 
   public void writeAnimalLists(Predicate<GameObject> filter) {
-    Stream<GameObject> objectStream = saveFile.getObjects().parallelStream().filter(AnimalListCommands::onlyAnimals);
+    Stream<GameObject> objectStream = saveFile.getObjects().parallelStream().filter(CreatureListCommands::onlyAnimals);
 
     if (filter != null) {
       objectStream = objectStream.filter(filter);
     }
 
     if (!options.has(untameableSpec)) {
-      objectStream = objectStream.filter(AnimalListCommands::onlyTameable);
+      objectStream = objectStream.filter(CreatureListCommands::onlyTameable);
     }
 
     Map<String, String> classNames = readClassNames();

@@ -13,9 +13,9 @@ public class App {
   private static final Map<String, Consumer<OptionHandler>> COMMAND_MAP = new HashMap<>();
 
   static {
-    COMMAND_MAP.put("animals", AnimalListCommands::animals);
-    COMMAND_MAP.put("tamed", AnimalListCommands::tamed);
-    COMMAND_MAP.put("wild", AnimalListCommands::wild);
+    COMMAND_MAP.put("animals", CreatureListCommands::animals);
+    COMMAND_MAP.put("tamed", CreatureListCommands::tamed);
+    COMMAND_MAP.put("wild", CreatureListCommands::wild);
 
     COMMAND_MAP.put("m2j", ConversionCommands::mapToJson);
     COMMAND_MAP.put("p2j", ConversionCommands::profileToJson);
