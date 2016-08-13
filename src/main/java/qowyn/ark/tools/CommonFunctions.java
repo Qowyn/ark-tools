@@ -10,8 +10,8 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import javax.json.Json;
-import javax.json.JsonObject;
 import javax.json.JsonReader;
+import javax.json.JsonStructure;
 import javax.json.JsonWriter;
 import javax.json.JsonWriterFactory;
 import javax.json.stream.JsonGenerator;
@@ -85,25 +85,25 @@ public class CommonFunctions {
     return level;
   }
 
-  public static void writeJson(OutputStream out, JsonObject o, OptionHandler oh) throws IOException {
+  public static void writeJson(OutputStream out, JsonStructure structure, OptionHandler oh) throws IOException {
     if (oh.usePretty()) {
       Map<String, Object> properties = new HashMap<>(1);
       properties.put(JsonGenerator.PRETTY_PRINTING, true);
 
       JsonWriterFactory jwf = Json.createWriterFactory(properties);
       try (JsonWriter writer = jwf.createWriter(out)) {
-        writer.writeObject(o);
+        writer.write(structure);
       }
     } else {
       try (JsonWriter writer = Json.createWriter(out)) {
-        writer.writeObject(o);
+        writer.write(structure);
       }
     }
   }
 
-  public static void writeJson(String outFile, JsonObject o, OptionHandler oh) throws IOException {
+  public static void writeJson(String outFile, JsonStructure structure, OptionHandler oh) throws IOException {
     try (FileOutputStream out = new FileOutputStream(outFile)) {
-      writeJson(out, o, oh);
+      writeJson(out, structure, oh);
     }
   }
 
@@ -129,10 +129,10 @@ public class CommonFunctions {
     }
   }
 
-  public static JsonObject readJson(String inFile) throws IOException {
+  public static JsonStructure readJson(String inFile) throws IOException {
     try (FileReader fileReader = new FileReader(inFile)) {
       JsonReader reader = Json.createReader(fileReader);
-      return reader.readObject();
+      return reader.read();
     }
   }
 

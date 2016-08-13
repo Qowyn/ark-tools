@@ -10,6 +10,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import javax.json.JsonObject;
+
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import qowyn.ark.ArkSavegame;
@@ -183,7 +185,7 @@ public class EditCommands {
       ArkSavegame savegame = new ArkSavegame(fileToRead.toString(), oh.readingOptions());
       stopwatch.stop("Reading save");
 
-      ArkSavegame jsonFile = new ArkSavegame(CommonFunctions.readJson(params.get(1)), oh.readingOptions());
+      ArkSavegame jsonFile = new ArkSavegame((JsonObject)CommonFunctions.readJson(params.get(1)), oh.readingOptions());
       stopwatch.stop("Reading import container");
 
       ObjectCollector collector = new ObjectCollector(jsonFile, jsonFile.getObjects().get(0));

@@ -60,7 +60,7 @@ public class ConversionCommands {
       String outPath = params.get(1);
 
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
-      JsonObject object = CommonFunctions.readJson(jsonPath);
+      JsonObject object = (JsonObject) CommonFunctions.readJson(jsonPath);
       stopwatch.stop("Parsing");
       ArkSavegame saveFile = new ArkSavegame(object, oh.readingOptions());
       stopwatch.stop("Loading");
@@ -114,7 +114,7 @@ public class ConversionCommands {
       String outPath = params.get(1);
 
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
-      JsonObject object = CommonFunctions.readJson(jsonPath);
+      JsonObject object = (JsonObject) CommonFunctions.readJson(jsonPath);
       stopwatch.stop("Parsing");
       ArkProfile profile = new ArkProfile(object);
       stopwatch.stop("Loading");
@@ -168,7 +168,7 @@ public class ConversionCommands {
       String outPath = params.get(1);
 
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
-      JsonObject object = CommonFunctions.readJson(jsonPath);
+      JsonObject object = (JsonObject) CommonFunctions.readJson(jsonPath);
       stopwatch.stop("Parsing");
       ArkTribe tribe = new ArkTribe(object);
       stopwatch.stop("Loading");
