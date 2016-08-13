@@ -11,11 +11,11 @@ import qowyn.ark.ArkTribe;
 
 public class ConversionCommands {
 
-  public static void binary2json(OptionHandler oh) {
+  public static void mapToJson(OptionHandler oh) {
     List<String> params = oh.getParams();
     if (params.size() != 2 || oh.wantsHelp()) {
-      System.out.println("Converts 'save' from binary ark format to a much bigger JSON representation.");
-      System.out.println("Usage: ark-tools b2j <save> <outfile> [options]");
+      System.out.println("Converts 'ARK' from binary ark format to a (huge) JSON object and writes it to 'JSON'.");
+      System.out.println("Usage: ark-tools m2j ARK JSON [OPTIONS]");
       oh.printHelp();
       System.exit(1);
       return;
@@ -41,11 +41,11 @@ public class ConversionCommands {
     }
   }
 
-  public static void json2binary(OptionHandler oh) {
+  public static void jsonToMap(OptionHandler oh) {
     List<String> params = oh.getParams();
     if (params.size() != 2 || oh.wantsHelp()) {
-      System.out.println("Converts 'json' from JSON format to the binary ark format.");
-      System.out.println("Usage: ark-tools j2b <json> <outfile> [options]");
+      System.out.println("Converts 'JSON' from JSON format to the binary ark format and writes it to 'ARK'.");
+      System.out.println("Usage: ark-tools j2m JSON ARK [OPTIONS]");
       oh.printHelp();
       System.exit(1);
       return;
@@ -76,8 +76,8 @@ public class ConversionCommands {
   public static void profileToJson(OptionHandler oh) {
     List<String> params = oh.getParams();
     if (params.size() != 2 || oh.wantsHelp()) {
-      System.out.println("Converts 'profile' from binary ark format to a much bigger JSON representation.");
-      System.out.println("Usage: ark-tools p2j <profile> <outfile> [options]");
+      System.out.println("Converts 'PROFILE' from binary ark format to a JSON representation and writes it to 'JSON'.");
+      System.out.println("Usage: ark-tools p2j PROFILE JSON [OPTIONS]");
       oh.printHelp();
       System.exit(1);
       return;
@@ -106,8 +106,8 @@ public class ConversionCommands {
   public static void tribeToJson(OptionHandler oh) {
     List<String> params = oh.getParams();
     if (params.size() != 2 || oh.wantsHelp()) {
-      System.out.println("Converts 'tribe' from binary ark format to a much bigger JSON representation.");
-      System.out.println("Usage: ark-tools t2j <tribe> <outfile> [options]");
+      System.out.println("Converts 'TRIBE' from binary ark format to a JSON representation and writes it to 'JSON'.");
+      System.out.println("Usage: ark-tools t2j TRIBE JSON [OPTIONS]");
       oh.printHelp();
       System.exit(1);
       return;
