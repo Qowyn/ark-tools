@@ -6,11 +6,14 @@ public class ArkItem {
   
   private final String blueprint;
   
+  private final String blueprintGeneratedClass;
+  
   private final String category;
   
-  public ArkItem(String name, String blueprint, String category) {
+  public ArkItem(String name, String blueprint, String blueprintGeneratedClass, String category) {
     this.name = name;
     this.blueprint = blueprint;
+    this.blueprintGeneratedClass = blueprintGeneratedClass;
     this.category = category;
   }
 
@@ -20,6 +23,10 @@ public class ArkItem {
 
   public String getBlueprint() {
     return blueprint;
+  }
+  
+  public String getBlueprintGeneratedClass() {
+    return blueprintGeneratedClass;
   }
 
   public String getCategory() {
@@ -50,7 +57,7 @@ public class ArkItem {
 
   @Override
   public String toString() {
-    return "ArkItem [name=" + name + ", blueprint=" + blueprint + ", category=" + category + "]";
+    return "ArkItem [name=" + name + ", blueprint=" + blueprint + ", blueprintGeneratedClass=" + blueprintGeneratedClass + ", category=" + category + "]";
   }
 
 }

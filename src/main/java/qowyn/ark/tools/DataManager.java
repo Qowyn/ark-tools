@@ -17,6 +17,8 @@ public class DataManager {
 
   private static final Pattern ITEM_CLASS_PATTERN = Pattern.compile("[^.]+\\.(.+)'\"");
 
+  private static final Pattern BLUEPRINT_PATTERN = Pattern.compile("\"Blueprint'([^']+)'\"");
+
   private static final Map<String, ArkCreature> CREATURE_DATA = new HashMap<>();
 
   private static final Map<String, ArkItem> ITEM_DATA = new HashMap<>();
@@ -40,8 +42,20 @@ public class DataManager {
         }
 
         String name = entry.getString("name");
-        String blueprint = entry.getString("path", null);
+        String blueprintString = entry.getString("path", null);
         String category = entry.getString("category");
+
+        if (blueprintString == null) {
+          continue;
+        }
+
+        Matcher matcher = BLUEPRINT_PATTERN.matcher(blueprintString);
+
+        if (!matcher.matches() || matcher.groupCount() != 1) {
+          continue;
+        }
+
+        String blueprint = matcher.group(1);
 
         CREATURE_DATA.put(id, new ArkCreature(name, id, blueprint, category));
       }
@@ -59,17 +73,26 @@ public class DataManager {
 
       for (JsonObject entry : items.getValuesAs(JsonObject.class)) {
         String name = entry.getString("name");
-        String blueprint = entry.getString("path");
+        String blueprintString = entry.getString("path");
         String category = entry.getString("category");
 
-        Matcher matcher = ITEM_CLASS_PATTERN.matcher(blueprint);
+        Matcher matcher = ITEM_CLASS_PATTERN.matcher(blueprintString);
         if (!matcher.matches()) {
           continue;
         }
 
         String clazz = matcher.group(1) + "_C";
 
-        ITEM_DATA.put(clazz, new ArkItem(name, blueprint, category));
+        Matcher blueprintMatcher = BLUEPRINT_PATTERN.matcher(blueprintString);
+
+        if (!blueprintMatcher.matches()) {
+          continue;
+        }
+
+        String blueprint = blueprintMatcher.group(1);
+        String blueprintGeneratedClass = "BlueprintGeneratedClass " + blueprint + "_C";
+
+        ITEM_DATA.put(clazz, new ArkItem(name, blueprint, blueprintGeneratedClass, category));
       }
     } catch (IOException e) {
       System.err.println("Warning: Cannot load item data.");
