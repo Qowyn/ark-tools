@@ -1,7 +1,13 @@
 package qowyn.ark.tools;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
+import javax.json.JsonValue.ValueType;
 
 import qowyn.ark.ArkSavegame;
 
@@ -26,7 +32,58 @@ public final class LatLonCalculator {
   }
 
   /**
-   * Tries to find the best match for the given {@code savegame}  
+   * Exports current list of known maps as JsonObject.
+   * 
+   * @return list of known maps as JsonObject
+   */
+  public static JsonObject exportList() {
+    JsonObjectBuilder builder = Json.createObjectBuilder();
+
+    knownMaps.entrySet().stream().sorted(Comparator.comparing(Map.Entry::getKey)).forEach(entry -> {
+      JsonObjectBuilder entryBuilder = Json.createObjectBuilder();
+      entryBuilder.add("latShift", entry.getValue().latShift);
+      entryBuilder.add("latDiv", entry.getValue().latDiv);
+      entryBuilder.add("lonShift", entry.getValue().lonShift);
+      entryBuilder.add("lonDiv", entry.getValue().lonDiv);
+      builder.add(entry.getKey(), entryBuilder);
+    });
+
+    return builder.build();
+  }
+
+  /**
+   * Imports list of known maps from JsonObject.
+   * 
+   * @param object list of known maps as a JsonObject
+   */
+  public static void importList(JsonObject object) {
+    knownMaps.clear();
+    try {
+      object.forEach((mapName, entryValue) -> {
+        if (entryValue.getValueType() != ValueType.OBJECT) {
+          System.err.println("Error in provided LatLonCalculator settings: found non-object.");
+          System.exit(3);
+        }
+
+        JsonObject entryObject = (JsonObject) entryValue;
+
+        float latShift = entryObject.getJsonNumber("latShift").bigDecimalValue().floatValue();
+        float latDiv = entryObject.getJsonNumber("latDiv").bigDecimalValue().floatValue();
+        float lonShift = entryObject.getJsonNumber("lonShift").bigDecimalValue().floatValue();
+        float lonDiv = entryObject.getJsonNumber("lonDiv").bigDecimalValue().floatValue();
+
+        knownMaps.put(mapName, new LatLonCalculator(latShift, latDiv, lonShift, lonDiv));
+      });
+    } catch (RuntimeException ex) {
+      System.err.println("Error in provided LatLonCalculator settings.");
+      ex.printStackTrace();
+      System.exit(3);
+    }
+  }
+
+  /**
+   * Tries to find the best match for the given {@code savegame}
+   * 
    * @param savegame The savegame to find a LatLonCalculator for
    * @return a LatLonCalculator for the given {@code savegame} or {@link #defaultCalculator}
    */
