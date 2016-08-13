@@ -1,8 +1,9 @@
 package qowyn.ark.tools;
 
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
@@ -102,7 +103,7 @@ public class CommonFunctions {
   }
 
   public static void writeJson(String outFile, JsonStructure structure, OptionHandler oh) throws IOException {
-    try (FileOutputStream out = new FileOutputStream(outFile)) {
+    try (OutputStream out = new FileOutputStream(outFile)) {
       writeJson(out, structure, oh);
     }
   }
@@ -124,22 +125,32 @@ public class CommonFunctions {
   }
 
   public static void writeJson(String outFile, Consumer<JsonGenerator> writeJson, OptionHandler oh) throws IOException {
-    try (FileOutputStream out = new FileOutputStream(outFile)) {
+    try (OutputStream out = new FileOutputStream(outFile)) {
       writeJson(out, writeJson, oh);
     }
   }
 
-  public static JsonStructure readJson(String inFile) throws IOException {
-    try (FileReader fileReader = new FileReader(inFile)) {
-      JsonReader reader = Json.createReader(fileReader);
+  public static JsonStructure readJson(InputStream stream) throws IOException {
+    try (JsonReader reader = Json.createReader(stream)) {
       return reader.read();
     }
   }
 
-  public static void readJson(String inFile, Consumer<JsonParser> parseJson) throws IOException {
-    try (FileReader fileReader = new FileReader(inFile)) {
-      JsonParser parser = Json.createParser(fileReader);
+  public static JsonStructure readJson(String inFile) throws IOException {
+    try (InputStream stream = new FileInputStream(inFile)) {
+      return readJson(stream);
+    }
+  }
+
+  public static void readJson(InputStream stream, Consumer<JsonParser> parseJson) throws IOException {
+    try (JsonParser parser = Json.createParser(stream)) {
       parseJson.accept(parser);
+    }
+  }
+
+  public static void readJson(String inFile, Consumer<JsonParser> parseJson) throws IOException {
+    try (InputStream stream = new FileInputStream(inFile)) {
+      readJson(stream, parseJson);
     }
   }
 
