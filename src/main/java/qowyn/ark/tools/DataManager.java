@@ -17,11 +17,11 @@ public class DataManager {
 
   private static final Pattern ITEM_CLASS_PATTERN = Pattern.compile("[^.]+\\.(.+)'\"");
 
-  public static final Map<String, ArkCreature> CREATURE_DATA = new HashMap<>();
+  private static final Map<String, ArkCreature> CREATURE_DATA = new HashMap<>();
 
-  public static final Map<String, ArkItem> ITEM_DATA = new HashMap<>();
+  private static final Map<String, ArkItem> ITEM_DATA = new HashMap<>();
 
-  public static void loadData() {
+  static {
     loadCreatureData();
     loadItemData();
   }
@@ -75,6 +75,22 @@ public class DataManager {
       System.err.println("Warning: Cannot load item data.");
       e.printStackTrace();
     }
+  }
+
+  public static boolean hasCreature(String clazz) {
+    return CREATURE_DATA.containsKey(clazz);
+  }
+
+  public static ArkCreature getCreature(String clazz) {
+    return CREATURE_DATA.get(clazz);
+  }
+
+  public static boolean hasItem(String clazz) {
+    return ITEM_DATA.containsKey(clazz);
+  }
+
+  public static ArkItem getItem(String clazz) {
+    return ITEM_DATA.get(clazz);
   }
 
 }
