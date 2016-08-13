@@ -13,7 +13,7 @@ public class App {
   private static final Map<String, Consumer<OptionHandler>> COMMAND_MAP = new HashMap<>();
 
   static {
-    COMMAND_MAP.put("animals", CreatureListCommands::animals);
+    COMMAND_MAP.put("creatures", CreatureListCommands::creatures);
     COMMAND_MAP.put("tamed", CreatureListCommands::tamed);
     COMMAND_MAP.put("wild", CreatureListCommands::wild);
 

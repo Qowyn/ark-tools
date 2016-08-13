@@ -61,7 +61,7 @@ public class CreatureListCommands {
     this.oh = oh;
   }
 
-  public static void animals(OptionHandler oh) {
+  public static void creatures(OptionHandler oh) {
     new CreatureListCommands(oh).listImpl(null);
   }
 
