@@ -50,9 +50,16 @@ public class EditingCommands {
       stopwatch.stop("Reading");
 
       savegame.getObjects().parallelStream().filter(CommonFunctions::onlyTamed).forEach(object -> {
-        PropertyFloat currentFood = object.getTypedProperty("CurrentStatusValues", PropertyFloat.class, 4);
-        if (currentFood != null) {
-          currentFood.setValue(1000000.0f);
+        ObjectReference statusComponentReference = object.getPropertyValue("MyCharacterStatusComponent", ObjectReference.class);
+
+        if (statusComponentReference != null) {
+          GameObject status = statusComponentReference.getObject(savegame);
+          if (status != null) {
+            PropertyFloat currentFood = status.getTypedProperty("CurrentStatusValues", PropertyFloat.class, 4);
+            if (currentFood != null) {
+              currentFood.setValue(1000000.0f);
+            }
+          }
         }
 
         PropertyDouble lastEnterStasisTime = object.getTypedProperty("LastEnterStasisTime", PropertyDouble.class);
@@ -178,7 +185,7 @@ public class EditingCommands {
       ArkSavegame savegame = new ArkSavegame(fileToRead.toString(), oh.readingOptions());
       stopwatch.stop("Reading save");
 
-      ArkSavegame jsonFile = new ArkSavegame((JsonObject)CommonFunctions.readJson(params.get(1)), oh.readingOptions());
+      ArkSavegame jsonFile = new ArkSavegame((JsonObject) CommonFunctions.readJson(params.get(1)), oh.readingOptions());
       stopwatch.stop("Reading import container");
 
       ObjectCollector collector = new ObjectCollector(jsonFile, jsonFile.getObjects().get(0));
