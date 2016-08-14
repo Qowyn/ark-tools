@@ -23,6 +23,8 @@ public class DataManager {
 
   private static final Map<String, ArkItem> ITEM_DATA = new HashMap<>();
 
+  private static final Map<String, ArkItem> ITEM_DATA_BY_BGC = new HashMap<>();
+
   static {
     loadCreatureData();
     loadItemData();
@@ -92,7 +94,9 @@ public class DataManager {
         String blueprint = blueprintMatcher.group(1);
         String blueprintGeneratedClass = "BlueprintGeneratedClass " + blueprint + "_C";
 
-        ITEM_DATA.put(clazz, new ArkItem(name, blueprint, blueprintGeneratedClass, category));
+        ArkItem item = new ArkItem(name, blueprint, blueprintGeneratedClass, category);
+        ITEM_DATA.put(clazz, item);
+        ITEM_DATA_BY_BGC.put(blueprintGeneratedClass, item);
       }
     } catch (IOException e) {
       System.err.println("Warning: Cannot load item data.");
@@ -114,6 +118,14 @@ public class DataManager {
 
   public static ArkItem getItem(String clazz) {
     return ITEM_DATA.get(clazz);
+  }
+
+  public static boolean hasItemByBGC(String blueprintGeneratedClass) {
+    return ITEM_DATA_BY_BGC.containsKey(blueprintGeneratedClass);
+  }
+
+  public static ArkItem getItemByBGC(String blueprintGeneratedClass) {
+    return ITEM_DATA_BY_BGC.get(blueprintGeneratedClass);
   }
 
 }
