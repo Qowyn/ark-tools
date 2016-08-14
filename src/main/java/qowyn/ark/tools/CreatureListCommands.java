@@ -70,7 +70,7 @@ public class CreatureListCommands {
     return !object.hasAnyProperty("bForceDisablingTaming") || !object.getPropertyValue("bForceDisablingTaming", Boolean.class);
   }
 
-  protected static boolean onlyAnimals(GameObject object) {
+  protected static boolean onlyCreatures(GameObject object) {
     return object.getClassString().contains("_Character_");
   }
 
@@ -109,7 +109,7 @@ public class CreatureListCommands {
   }
 
   public void writeAnimalLists(Predicate<GameObject> filter) {
-    Stream<GameObject> objectStream = saveFile.getObjects().parallelStream().filter(CreatureListCommands::onlyAnimals);
+    Stream<GameObject> objectStream = saveFile.getObjects().parallelStream().filter(CreatureListCommands::onlyCreatures);
 
     if (filter != null) {
       objectStream = objectStream.filter(filter);
