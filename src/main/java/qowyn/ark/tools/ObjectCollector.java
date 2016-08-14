@@ -50,7 +50,7 @@ public class ObjectCollector {
             }
           } else if (objectReferenceList != null) {
             for (ObjectReference reference : objectReferenceList) {
-              if (reference.getObjectType() == 0 && !mappedObjects.containsKey(reference.getObjectId())) {
+              if (reference.getObjectType() == 0 && reference.getObjectId() >= 0 && !mappedObjects.containsKey(reference.getObjectId())) {
                 GameObject referenced = saveFile.getObjects().get(reference.getObjectId());
                 mappedObjects.put(referenced.getId(), referenced);
                 toVisit.push(referenced);
@@ -134,7 +134,7 @@ public class ObjectCollector {
             }
           } else if (objectReferenceList != null) {
             for (ObjectReference reference : objectReferenceList) {
-              if (reference.getObjectType() == 0) {
+              if (reference.getObjectType() == 0 && reference.getObjectId() >= 0) {
                 reference.setObjectId(mappedObjects.get(reference.getObjectId()).getId());
               }
             }
