@@ -34,18 +34,6 @@ import qowyn.ark.types.LocationData;
 
 public class CreatureListCommands {
 
-  private static final Map<Integer, String> ATTRIBUTE_NAME_MAP = new HashMap<>();
-
-  static {
-    ATTRIBUTE_NAME_MAP.put(0, "health");
-    ATTRIBUTE_NAME_MAP.put(1, "stamina");
-    ATTRIBUTE_NAME_MAP.put(3, "oxygen");
-    ATTRIBUTE_NAME_MAP.put(4, "food");
-    ATTRIBUTE_NAME_MAP.put(7, "weight");
-    ATTRIBUTE_NAME_MAP.put(8, "melee");
-    ATTRIBUTE_NAME_MAP.put(9, "speed");
-  }
-
   private ArkSavegame saveFile;
 
   private OptionHandler oh;
@@ -265,9 +253,11 @@ public class CreatureListCommands {
           }
 
           PropertyObject statusComp = i.getTypedProperty("MyCharacterStatusComponent", PropertyObject.class);
-          GameObject status = null;
+          GameObject status;
           if (statusComp != null) {
             status = statusComp.getValue().getObject(saveFile);
+          } else {
+            status = null;
           }
 
           if (status != null && status.getClassString().startsWith("DinoCharacterStatusComponent_")) {
@@ -278,12 +268,12 @@ public class CreatureListCommands {
 
             if (baseLevel != null && baseLevel > 1) {
               generator.writeStartObject("wildLevels");
-              for (Map.Entry<Integer, String> attribute : ATTRIBUTE_NAME_MAP.entrySet()) {
-                ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsApplied", ArkByteValue.class, attribute.getKey());
+              AttributeNames.forEach((index, attrName) -> {
+                ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsApplied", ArkByteValue.class, index);
                 if (attrProp != null) {
-                  generator.write(attribute.getValue(), attrProp.getByteValue());
+                  generator.write(attrName, attrProp.getByteValue());
                 }
-              }
+              });
               generator.writeEnd();
             }
 
@@ -294,12 +284,12 @@ public class CreatureListCommands {
 
             if (status.hasAnyProperty("NumberOfLevelUpPointsAppliedTamed")) {
               generator.writeStartObject("tamedLevels");
-              for (Map.Entry<Integer, String> attribute : ATTRIBUTE_NAME_MAP.entrySet()) {
-                ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsAppliedTamed", ArkByteValue.class, attribute.getKey());
+              AttributeNames.forEach((index, attrName) -> {
+                ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsAppliedTamed", ArkByteValue.class, index);
                 if (attrProp != null) {
-                  generator.write(attribute.getValue(), attrProp.getByteValue());
+                  generator.write(attrName, attrProp.getByteValue());
                 }
-              }
+              });
               generator.writeEnd();
             }
 
