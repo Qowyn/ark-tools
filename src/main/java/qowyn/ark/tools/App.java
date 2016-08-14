@@ -56,6 +56,8 @@ public class App {
     addCommand("Editing", "Imports all objects from JSON into SAVE.", "SAVE JSON NEW_SAVE [OPTIONS]", EditingCommands::importThing, "import");
 
     addCommand("Players", "Writes lists of all players in SAVE to the specified DIRECTORY.", "SAVE DIRECTORY [OPTIONS]", PlayerListCommands::players, "players");
+
+    addCommand("Settings", "Exports internal LatLonCalculator data to latLonCalculator.json in the current working directory", "[OPTIONS]", SettingsCommands::latlon, "latlon");
   }
 
   public static void main(String[] args) throws Exception {

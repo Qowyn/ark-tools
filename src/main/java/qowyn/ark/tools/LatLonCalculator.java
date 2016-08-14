@@ -1,5 +1,9 @@
 package qowyn.ark.tools;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,8 +31,11 @@ public final class LatLonCalculator {
   public static final LatLonCalculator defaultCalculator = new LatLonCalculator(50.0f, 8000.0f, 50.0f, 8000.0f);
 
   static {
-    knownMaps.put("TheIsland", defaultCalculator);
-    knownMaps.put("TheCenter", new LatLonCalculator(30.2922997f, 9584.0f, 55.054167f, 9600.0f));
+    if (!importList()) {
+      knownMaps.clear();
+      knownMaps.put("TheIsland", defaultCalculator);
+      knownMaps.put("TheCenter", new LatLonCalculator(30.2922997f, 9584.0f, 55.054167f, 9600.0f));
+    }
   }
 
   /**
@@ -52,11 +59,27 @@ public final class LatLonCalculator {
   }
 
   /**
+   * @return true if latLonCalculator.json could be found and import was successful
+   */
+  private static boolean importList() {
+    try (InputStream stream = new FileInputStream("latLonCalculator.json")) {
+      importList((JsonObject) CommonFunctions.readJson(stream));
+      return true;
+    } catch (FileNotFoundException e) {
+      return false;
+    } catch (IOException e) {
+      e.printStackTrace();
+      System.exit(3);
+      return false;
+    }
+  }
+
+  /**
    * Imports list of known maps from JsonObject.
    * 
    * @param object list of known maps as a JsonObject
    */
-  public static void importList(JsonObject object) {
+  private static void importList(JsonObject object) {
     knownMaps.clear();
     try {
       object.forEach((mapName, entryValue) -> {
