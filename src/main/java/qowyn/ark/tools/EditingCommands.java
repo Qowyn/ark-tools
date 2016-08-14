@@ -74,14 +74,14 @@ public class EditingCommands {
   }
 
   public static void exportThing(OptionHandler oh) {
-    OptionSpec<String> dinoSpec = oh.accepts("dino", "Export dino by Name - required if object not set").withRequiredArg();
-    OptionSpec<Integer> objectSpec = oh.accepts("object", "Export object by Id - required if dino not set").withRequiredArg().ofType(Integer.class);
+    OptionSpec<String> creatureSpec = oh.accepts("creature", "Export creature by Name - required if object not set").withRequiredArg().describedAs("name");
+    OptionSpec<Integer> objectSpec = oh.accepts("object", "Export object by Id - required if creature not set").withRequiredArg().ofType(Integer.class).describedAs("id");
 
     OptionSet options = oh.reparse();
 
     List<String> params = oh.getParams(options);
 
-    if (params.size() != 2 || oh.wantsHelp() || !(options.has(dinoSpec) || options.has(objectSpec))) {
+    if (params.size() != 2 || oh.wantsHelp() || !(options.has(creatureSpec) || options.has(objectSpec))) {
       oh.printCommandHelp();
       System.exit(1);
       return;
@@ -104,8 +104,8 @@ public class EditingCommands {
       stopwatch.stop("Loading");
 
       ObjectCollector collector = null;
-      if (options.has(dinoSpec)) {
-        String name = dinoSpec.value(options);
+      if (options.has(creatureSpec)) {
+        String name = creatureSpec.value(options);
 
         for (GameObject go : savegame.getObjects()) {
           String objectName = go.getPropertyValue("TamedName", String.class);
@@ -116,7 +116,7 @@ public class EditingCommands {
         }
 
         if (collector == null) {
-          System.err.println("Could not find a dino named " + name);
+          System.err.println("Could not find a creature named " + name);
           System.exit(2);
           return;
         }
