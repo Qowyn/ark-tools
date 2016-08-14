@@ -35,8 +35,8 @@ public class ObjectCollector {
         if (property instanceof PropertyObject) {
           PropertyObject po = (PropertyObject) property;
           ObjectReference reference = po.getValue();
-          if (reference.getObjectType() == 0 && !mappedObjects.containsKey(reference.getObjectId())) {
-            GameObject referenced = saveFile.getObjects().get(reference.getObjectId());
+          GameObject referenced = reference.getObject(saveFile);
+          if (referenced != null && !mappedObjects.containsKey(referenced.getId())) {
             mappedObjects.put(referenced.getId(), referenced);
             toVisit.push(referenced);
           }
@@ -50,8 +50,8 @@ public class ObjectCollector {
             }
           } else if (objectReferenceList != null) {
             for (ObjectReference reference : objectReferenceList) {
-              if (reference.getObjectType() == 0 && reference.getObjectId() >= 0 && !mappedObjects.containsKey(reference.getObjectId())) {
-                GameObject referenced = saveFile.getObjects().get(reference.getObjectId());
+              GameObject referenced = reference.getObject(saveFile);
+              if (referenced != null && !mappedObjects.containsKey(referenced.getId())) {
                 mappedObjects.put(referenced.getId(), referenced);
                 toVisit.push(referenced);
               }
@@ -121,7 +121,7 @@ public class ObjectCollector {
         if (property instanceof PropertyObject) {
           PropertyObject po = (PropertyObject) property;
           ObjectReference reference = po.getValue();
-          if (reference.getObjectType() == 0) {
+          if (reference.getObjectType() == 0 && reference.getObjectId() >= 0) {
             reference.setObjectId(mappedObjects.get(reference.getObjectId()).getId());
           }
         } else if (property instanceof PropertyArray) {
