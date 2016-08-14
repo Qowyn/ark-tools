@@ -13,9 +13,12 @@ public class AttributeNames {
     ATTRIBUTE_NAME_MAP.put(1, "stamina");
     ATTRIBUTE_NAME_MAP.put(3, "oxygen");
     ATTRIBUTE_NAME_MAP.put(4, "food");
+    ATTRIBUTE_NAME_MAP.put(5, "water");
     ATTRIBUTE_NAME_MAP.put(7, "weight");
     ATTRIBUTE_NAME_MAP.put(8, "melee");
     ATTRIBUTE_NAME_MAP.put(9, "speed");
+    ATTRIBUTE_NAME_MAP.put(10, "fortitude");
+    ATTRIBUTE_NAME_MAP.put(11, "crafting");
   }
 
   public static String get(int index) {
