@@ -23,13 +23,11 @@ import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.ObjectReference;
 
-public class EditCommands {
+public class EditingCommands {
 
   public static void feed(OptionHandler oh) {
     List<String> params = oh.getParams();
     if (params.size() != 2 || oh.wantsHelp()) {
-      System.out.println("Feeds all dinos in 'save' by setting their current food value to 1,000,000 and bringing them from the past to the present. Mainly useful if you left your server running with no players online.");
-      System.out.println("Usage: ark-tools feed <save> <newsave> [options]");
       oh.printCommandHelp();
       System.exit(1);
       return;
@@ -76,17 +74,14 @@ public class EditCommands {
   }
 
   public static void exportThing(OptionHandler oh) {
-    OptionSpec<String> dinoSpec = oh.accepts("dino", "Export dino by Name").withRequiredArg();
-    OptionSpec<Integer> objectSpec = oh.accepts("object", "Export object by Id").withRequiredArg().ofType(Integer.class);
+    OptionSpec<String> dinoSpec = oh.accepts("dino", "Export dino by Name - required if object not set").withRequiredArg();
+    OptionSpec<Integer> objectSpec = oh.accepts("object", "Export object by Id - required if dino not set").withRequiredArg().ofType(Integer.class);
 
     OptionSet options = oh.reparse();
 
     List<String> params = oh.getParams(options);
 
     if (params.size() != 2 || oh.wantsHelp() || !(options.has(dinoSpec) || options.has(objectSpec))) {
-      System.out.println("Export a specified object/dino and everything attached to it. Can be used to 'revive' dinos from backups or to import bases from another save file. Manually editing exported file might be required.");
-      System.out.println("Usage: ark-tools export <save> --dino <name> <outfile> [options]");
-      System.out.println("       ark-tools export <save> --object <id> <outfile> [options]");
       oh.printCommandHelp();
       System.exit(1);
       return;
@@ -163,8 +158,6 @@ public class EditCommands {
   public static void importThing(OptionHandler oh) {
     List<String> params = oh.getParams();
     if (params.size() != 3 || oh.wantsHelp()) {
-      System.out.println("Imports all objects from specified 'jsonFile'.");
-      System.out.println("Usage: ark-tools import <save> <jsonFile> <outfile> [options]");
       oh.printCommandHelp();
       System.exit(1);
       return;

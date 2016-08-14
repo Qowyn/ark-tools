@@ -40,8 +40,6 @@ public class PlayerListCommands {
 
     List<String> params = oh.getParams(options);
     if (params.size() != 2 || oh.wantsHelp()) {
-      System.out.println("Writes lists of all players in 'ARK' to the specified 'DIRECTORY'.");
-      System.out.println("Usage: ark-tools players ARK DIRECTORY [OPTIONS]");
       oh.printCommandHelp();
       System.exit(1);
       return;

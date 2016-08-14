@@ -43,6 +43,8 @@ public class OptionHandler {
 
   private final FilteredHelpFormatter helpFormatter;
 
+  private Command commandObject;
+
   public OptionHandler(String... args) {
     parser = new OptionParser();
     parser.allowsUnrecognizedOptions();
@@ -82,6 +84,14 @@ public class OptionHandler {
 
   public String getCommand() {
     return nonOptions.get(0);
+  }
+
+  public Command getCommandObject() {
+    return commandObject;
+  }
+
+  public void setCommandObject(Command commandObject) {
+    this.commandObject = commandObject;
   }
 
   public List<String> getParams() {
@@ -140,6 +150,8 @@ public class OptionHandler {
 
   public void printCommandHelp() {
     try {
+      System.out.println(commandObject.getDescription());
+      System.out.println("Usage: ark-tools " + getCommand() + " " + commandObject.getOptions());
       System.out.println();
       parser.formatHelpWith(helpFormatter);
       parser.printHelpOn(System.out);
