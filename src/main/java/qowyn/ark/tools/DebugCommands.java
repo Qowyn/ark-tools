@@ -22,7 +22,7 @@ public class DebugCommands {
       System.out.println("This command is primarily meant for debugging.");
       System.out.println("Dumps a list of all classes with count of objects to stdout or outFile.");
       System.out.println("Usage: ark-tools classes <save> [outFile] [options]");
-      oh.printHelp();
+      oh.printCommandHelp();
       System.exit(1);
       return;
     }
@@ -73,7 +73,7 @@ public class DebugCommands {
       System.out.println("This command is primarily meant for debugging.");
       System.out.println("Dumps all objects of given className to stdout or outFile.");
       System.out.println("Usage: ark-tools dump <save> <className> [outFile] [options]");
-      oh.printHelp();
+      oh.printCommandHelp();
       System.exit(1);
       return;
     }
@@ -118,7 +118,7 @@ public class DebugCommands {
       System.out.println("This command is primarily meant for debugging.");
       System.out.println("Dumps className and size in byte of all objects to stdout or outFile.");
       System.out.println("Usage: ark-tools sizes <save> [outFile] [options]");
-      oh.printHelp();
+      oh.printCommandHelp();
       System.exit(1);
       return;
     }

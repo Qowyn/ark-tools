@@ -2,7 +2,9 @@ package qowyn.ark.tools;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -41,6 +43,8 @@ public class OptionHandler {
 
   private final List<String> nonOptions;
 
+  private final FilteredHelpFormatter helpFormatter;
+
   public OptionHandler(String... args) {
     parser = new OptionParser();
     parser.allowsUnrecognizedOptions();
@@ -71,6 +75,7 @@ public class OptionHandler {
     initialOptions = parser.parse(args);
     originalArgs = args;
     nonOptions = initialOptions.valuesOf(nonOptionsSpec);
+    helpFormatter = new FilteredHelpFormatter(parser.recognizedOptions().keySet());
   }
 
   public boolean hasCommand() {
@@ -129,6 +134,16 @@ public class OptionHandler {
   public void printHelp() {
     try {
       System.out.println();
+      parser.printHelpOn(System.out);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public void printCommandHelp() {
+    try {
+      System.out.println();
+      parser.formatHelpWith(helpFormatter);
       parser.printHelpOn(System.out);
     } catch (IOException e) {
       throw new RuntimeException(e);

@@ -30,7 +30,7 @@ public class EditCommands {
     if (params.size() != 2 || oh.wantsHelp()) {
       System.out.println("Feeds all dinos in 'save' by setting their current food value to 1,000,000 and bringing them from the past to the present. Mainly useful if you left your server running with no players online.");
       System.out.println("Usage: ark-tools feed <save> <newsave> [options]");
-      oh.printHelp();
+      oh.printCommandHelp();
       System.exit(1);
       return;
     }
@@ -87,7 +87,7 @@ public class EditCommands {
       System.out.println("Export a specified object/dino and everything attached to it. Can be used to 'revive' dinos from backups or to import bases from another save file. Manually editing exported file might be required.");
       System.out.println("Usage: ark-tools export <save> --dino <name> <outfile> [options]");
       System.out.println("       ark-tools export <save> --object <id> <outfile> [options]");
-      oh.printHelp();
+      oh.printCommandHelp();
       System.exit(1);
       return;
     }
@@ -165,7 +165,7 @@ public class EditCommands {
     if (params.size() != 3 || oh.wantsHelp()) {
       System.out.println("Imports all objects from specified 'jsonFile'.");
       System.out.println("Usage: ark-tools import <save> <jsonFile> <outfile> [options]");
-      oh.printHelp();
+      oh.printCommandHelp();
       System.exit(1);
       return;
     }
