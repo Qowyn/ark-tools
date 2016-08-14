@@ -31,6 +31,8 @@ public class App {
     COMMAND_MAP.put("feed", EditCommands::feed);
     COMMAND_MAP.put("export", EditCommands::exportThing);
     COMMAND_MAP.put("import", EditCommands::importThing);
+
+    COMMAND_MAP.put("players", PlayerListCommands::players);
   }
 
   public static void main(String[] args) throws Exception {
