@@ -56,6 +56,7 @@ public class App {
     addCommand("Editing", "Imports all objects from JSON into SAVE.", "SAVE JSON NEW_SAVE [OPTIONS]", EditingCommands::importThing, "import");
 
     addCommand("Players", "Writes lists of all players in SAVE to the specified DIRECTORY.", "SAVE DIRECTORY [OPTIONS]", PlayerListCommands::players, "players");
+    addCommand("Players", "Writes lists of all tribes in SAVE to the specified DIRECTORY.", "SAVE DIRECTORY [OPTIONS]", PlayerListCommands::tribes, "tribes");
 
     addCommand("Settings", "Exports internal LatLonCalculator data to latLonCalculator.json in the current working directory", "[OPTIONS]", SettingsCommands::latlon, "latlon");
   }
