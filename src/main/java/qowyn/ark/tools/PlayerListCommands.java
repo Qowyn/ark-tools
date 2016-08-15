@@ -13,7 +13,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import joptsimple.OptionSet;
@@ -30,6 +32,7 @@ import qowyn.ark.properties.PropertyByte;
 import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.structs.StructUniqueNetIdRepl;
 import qowyn.ark.types.ArkName;
+import qowyn.ark.types.LocationData;
 import qowyn.ark.types.ObjectReference;
 
 public class PlayerListCommands {
@@ -37,6 +40,8 @@ public class PlayerListCommands {
   private static final Pattern PROFILE_PATTERN = Pattern.compile("\\d+\\.arkprofile");
 
   private static final Pattern TRIBE_PATTERN = Pattern.compile("\\d+\\.arktribe");
+
+  private static final Pattern BASE_PATTERN = Pattern.compile("Base: (.+)<br>Size: (\\d+)");
 
   public static void players(OptionHandler oh) {
     OptionSpec<Void> noPrivacySpec = oh.accepts("no-privacy", "Include privacy related data (SteamID, IP).");
@@ -186,6 +191,7 @@ public class PlayerListCommands {
     OptionSpec<Void> itemsSpec = oh.accepts("items", "Include a list of all items belonging to the tribe.");
     OptionSpec<Void> tamedSpec = oh.accepts("creatures", "Include a list of all tamed dinos of the tribe.");
     OptionSpec<Void> structuresSpec = oh.accepts("structures", "Include a list of all structures belonging to the tribe.");
+    OptionSpec<Void> basesSpec = oh.accepts("bases", "Allows tribes to create 'bases', groups creatures etc by base.");
     // OptionSpec<Void> tribelessSpec = oh.accepts("tribeless", "Put all players without a tribe
     // into the 'tribeless' tribe.");
 
@@ -208,12 +214,44 @@ public class PlayerListCommands {
       Path outputDirectory = Paths.get(params.get(1)).toAbsolutePath();
       Path saveDir = saveGame.getParent();
 
-      ArkSavegame save;
+      final ArkSavegame save;
+      final Map<Integer, Set<TribeBase>> baseMap;
+
       if (mapNeeded) {
-        // We don't need properties of items (yet)
         save = new ArkSavegame(saveGame.toString(), oh.readingOptions());
+        if (options.has(basesSpec)) {
+          baseMap = new HashMap<>();
+          for (GameObject object : save.getObjects()) {
+            // Skip items and stuff without a location
+            if (object.isItem() || object.getLocation() == null) {
+              continue;
+            }
+
+            String signText = object.getPropertyValue("SignText", String.class);
+            Number targetingTeam = object.getPropertyValue("TargetingTeam", Number.class);
+
+            if (signText != null && targetingTeam != null) {
+              // Might be a 'Base' sign
+              Matcher matcher = BASE_PATTERN.matcher(signText);
+              if (matcher.matches()) {
+                // Found a base sign, add it to the set, automatically replacing duplicates
+                int tribeId = targetingTeam.intValue();
+                LocationData location = object.getLocation();
+                String baseName = matcher.group(1);
+                float size = Float.parseFloat(matcher.group(2));
+
+                TribeBase base = new TribeBase(baseName, location.getX(), location.getY(), location.getZ(), size);
+
+                baseMap.computeIfAbsent(tribeId, key -> new HashSet<>()).add(base);
+              }
+            }
+          }
+        } else {
+          baseMap = null;
+        }
       } else {
         save = null;
+        baseMap = null;
       }
 
       Filter<Path> tribeFilter = path -> TRIBE_PATTERN.matcher(path.getFileName().toString()).matches();
@@ -284,6 +322,8 @@ public class PlayerListCommands {
               // Apparently there is or was a bug in ARK causing certain structures to exist twice
               // within a save
               Set<ArkName> processedList = new HashSet<>();
+              // Bases
+              Set<TribeBase> bases = options.has(basesSpec) ? baseMap.get(tribeId) : null;
 
               for (GameObject object : save.getObjects()) {
                 if (object.isItem()) {
@@ -295,9 +335,28 @@ public class PlayerListCommands {
                   continue;
                 }
 
+                // Determine base if we have bases
+                final TribeBase base;
+                if (bases != null && object.getLocation() != null) {
+                  TribeBase matchedBase = null;
+                  for (TribeBase potentialBase : bases) {
+                    if (potentialBase.insideBounds(object.getLocation())) {
+                      matchedBase = potentialBase;
+                      break;
+                    }
+                  }
+                  base = matchedBase;
+                } else {
+                  base = null;
+                }
+
                 if (object.getClassString().contains("_Character_")) {
                   if (!processedList.contains(object.getNames().get(0))) {
-                    creatures.merge(object.getClassName(), 1, Integer::sum);
+                    if (base != null) {
+                      base.getCreatures().merge(object.getClassName(), 1, Integer::sum);
+                    } else {
+                      creatures.merge(object.getClassName(), 1, Integer::sum);
+                    }
                     processedList.add(object.getNames().get(0));
                   } else {
                     // Duped Creature
@@ -306,7 +365,11 @@ public class PlayerListCommands {
                 } else if (!object.hasAnyProperty("LinkedPlayerDataID")) {
                   // Players ain't structures
                   if (!processedList.contains(object.getNames().get(0))) {
-                    structures.merge(object.getClassName(), 1, Integer::sum);
+                    if (base != null) {
+                      base.getStructures().merge(object.getClassName(), 1, Integer::sum);
+                    } else {
+                      structures.merge(object.getClassName(), 1, Integer::sum);
+                    }
                     processedList.add(object.getNames().get(0));
                   } else {
                     // Duped Structure
@@ -347,9 +410,17 @@ public class PlayerListCommands {
                           processedList.add(item.getNames().get(0));
 
                           if (item.hasAnyProperty("bIsBlueprint")) {
-                            blueprints.merge(item.getClassName(), amount, Integer::sum);
+                            if (base != null) {
+                              base.getBlueprints().merge(item.getClassName(), amount, Integer::sum);
+                            } else {
+                              blueprints.merge(item.getClassName(), amount, Integer::sum);
+                            }
                           } else {
-                            items.merge(item.getClassName(), amount, Integer::sum);
+                            if (base != null) {
+                              base.getItems().merge(item.getClassName(), amount, Integer::sum);
+                            } else {
+                              items.merge(item.getClassName(), amount, Integer::sum);
+                            }
                           }
                         }
                       }
@@ -361,44 +432,50 @@ public class PlayerListCommands {
                 }
               }
 
-              if (options.has(structuresSpec)) {
-                generator.writeStartArray("structures");
+              Consumer<Map<ArkName, Integer>> writeStructures = structMap -> {
+                if (options.has(structuresSpec)) {
+                  generator.writeStartArray("structures");
 
-                structures.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
-                  generator.writeStartObject();
+                  structMap.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
+                    generator.writeStartObject();
 
-                  generator.write("name", e.getKey().toString());
-                  generator.write("count", e.getValue());
+                    generator.write("name", e.getKey().toString());
+                    generator.write("count", e.getValue());
 
-                  generator.writeEnd();
-                });
-
-                generator.writeEnd();
-              }
-
-              if (options.has(tamedSpec)) {
-                generator.writeStartArray("tamed");
-
-                creatures.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
-                  generator.writeStartObject();
-
-                  String name = e.getKey().toString();
-                  if (DataManager.hasCreature(name)) {
-                    name = DataManager.getCreature(name).getName();
-                  }
-
-                  generator.write("name", name);
-                  generator.write("count", e.getValue());
+                    generator.writeEnd();
+                  });
 
                   generator.writeEnd();
-                });
+                }
+              };
 
-                generator.writeEnd();
-              }
+              Consumer<Map<ArkName, Integer>> writeCreatures = creaMap -> {
+                if (options.has(tamedSpec)) {
+                  generator.writeStartArray("tamed");
 
-              if (options.has(itemsSpec)) {
-                Consumer<Map<ArkName, Integer>> listWriter = map -> {
-                  map.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
+                  creaMap.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
+                    generator.writeStartObject();
+
+                    String name = e.getKey().toString();
+                    if (DataManager.hasCreature(name)) {
+                      name = DataManager.getCreature(name).getName();
+                    }
+
+                    generator.write("name", name);
+                    generator.write("count", e.getValue());
+
+                    generator.writeEnd();
+                  });
+
+                  generator.writeEnd();
+                }
+              };
+
+              BiConsumer<Map<ArkName, Integer>, String> writeItems = (itemMap, mapName) -> {
+                if (options.has(itemsSpec)) {
+                  generator.writeStartArray(mapName);
+
+                  itemMap.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
                     generator.writeStartObject();
 
                     String name = e.getKey().toString();
@@ -411,19 +488,45 @@ public class PlayerListCommands {
 
                     generator.writeEnd();
                   });
-                };
 
-                generator.writeStartArray("items");
+                  generator.writeEnd();
+                }
+              };
 
-                listWriter.accept(items);
+              if (options.has(basesSpec) && bases != null) {
+
+                generator.writeStartArray("bases");
+
+                for (TribeBase base : bases) {
+                  generator.writeStartObject();
+
+                  generator.write("name", base.getName());
+                  writeCreatures.accept(base.getCreatures());
+                  writeStructures.accept(base.getStructures());
+                  writeItems.accept(base.getItems(), "items");
+                  writeItems.accept(base.getBlueprints(), "blueprints");
+
+                  generator.writeEnd();
+                }
+
+                generator.writeStartObject();
+
+                writeCreatures.accept(creatures);
+                writeStructures.accept(structures);
+                writeItems.accept(items, "items");
+                writeItems.accept(blueprints, "blueprints");
 
                 generator.writeEnd();
 
-                generator.writeStartArray("blueprints");
-
-                listWriter.accept(blueprints);
-
                 generator.writeEnd();
+
+              } else {
+
+                writeCreatures.accept(creatures);
+                writeStructures.accept(structures);
+                writeItems.accept(items, "items");
+                writeItems.accept(blueprints, "blueprints");
+
               }
             }
 
