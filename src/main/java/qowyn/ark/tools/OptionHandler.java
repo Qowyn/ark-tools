@@ -35,6 +35,8 @@ public class OptionHandler {
 
   private final OptionSpec<Void> helpSpec;
 
+  private final OptionSpec<Void> verboseSpec;
+
   private final String[] originalArgs;
 
   private final OptionSet initialOptions;
@@ -70,7 +72,9 @@ public class OptionHandler {
     helpSpec = parser.acceptsAll(Arrays.asList("help", "h"), "Displays this help screen, use with a command to get contextual help.")
         .forHelp();
 
-    quietSpec = parser.acceptsAll(Arrays.asList("quiet", "q"), "Surpresses output, except for stopwatch and help.");
+    quietSpec = parser.acceptsAll(Arrays.asList("quiet", "q"), "Suppresses output to stdout.");
+
+    verboseSpec = parser.acceptsAll(Arrays.asList("verbose", "v"), "Prints stack traces for potentially corrupt files.");
 
     initialOptions = parser.parse(args);
     originalArgs = args;
@@ -139,10 +143,14 @@ public class OptionHandler {
     return initialOptions.has(quietSpec);
   }
 
+  public boolean isVerbose() {
+    return initialOptions.has(verboseSpec);
+  }
+
   public void printHelp() {
     try {
-      System.out.println();
-      parser.printHelpOn(System.out);
+      System.err.println();
+      parser.printHelpOn(System.err);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -150,11 +158,11 @@ public class OptionHandler {
 
   public void printCommandHelp() {
     try {
-      System.out.println(commandObject.getDescription());
-      System.out.println("Usage: ark-tools " + getCommand() + " " + commandObject.getOptions());
-      System.out.println();
+      System.err.println(commandObject.getDescription());
+      System.err.println("Usage: ark-tools " + getCommand() + " " + commandObject.getOptions());
+      System.err.println();
       parser.formatHelpWith(helpFormatter);
-      parser.printHelpOn(System.out);
+      parser.printHelpOn(System.err);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

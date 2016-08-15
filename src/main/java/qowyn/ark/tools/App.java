@@ -72,21 +72,24 @@ public class App {
     }
 
     if (!oh.hasCommand() || !COMMAND_NAME_MAP.containsKey(oh.getCommand())) {
-      System.out.println("Usage: ark-tools command [OPTIONS]");
-      System.out.println();
+      if (oh.hasCommand()) {
+        System.err.println("Unknown Command: " + oh.getCommand());
+      }
+      System.err.println("Usage: ark-tools command [OPTIONS]");
+      System.err.println();
 
       List<String> sortedCategories = new ArrayList<>(COMMAND_CATEGORY_MAP.keySet());
       sortedCategories.sort(String::compareTo);
       for (String category : sortedCategories) {
-        System.out.println(category);
+        System.err.println(category);
 
         List<Command> commands = COMMAND_CATEGORY_MAP.get(category);
         int maxLength = commands.stream().mapToInt(c -> c.getNames().length()).max().getAsInt();
 
         for (Command command : commands) {
-          System.out.println("\t" + String.format("%-" + maxLength + "s", command.getNames()) + " - " + command.getDescription());
+          System.err.println("\t" + String.format("%-" + maxLength + "s", command.getNames()) + " - " + command.getDescription());
         }
-        System.out.println();
+        System.err.println();
       }
       oh.printHelp();
       System.exit(1);
