@@ -10,14 +10,17 @@ public class Command {
 
   private final String description;
 
-  private final String options;
+  private final String optionSummary;
+
+  private final String[] options;
 
   private final Consumer<OptionHandler> action;
 
-  public Command(String names, String category, String description, String options, Consumer<OptionHandler> action) {
+  public Command(String names, String category, String description, String optionSummary, String[] options, Consumer<OptionHandler> action) {
     this.names = names;
     this.category = category;
     this.description = description;
+    this.optionSummary = optionSummary;
     this.options = options;
     this.action = action;
   }
@@ -34,7 +37,11 @@ public class Command {
     return description;
   }
 
-  public String getOptions() {
+  public String getOptionSummary() {
+    return optionSummary;
+  }
+
+  public String[] getOptions() {
     return options;
   }
 

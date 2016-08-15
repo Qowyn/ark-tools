@@ -158,8 +158,20 @@ public class OptionHandler {
 
   public void printCommandHelp() {
     try {
+      if (!wantsHelp()) {
+        int paramCount = getParams(reparse()).size();
+
+        if (paramCount > commandObject.getOptions().length) {
+          System.err.println("Too many arguments.");
+        } else if (paramCount == commandObject.getOptions().length) {
+          // Should never happen
+          throw new RuntimeException("Derp.");
+        } else {
+          System.err.println("Missing argument " + commandObject.getOptions()[paramCount] + ".");
+        }
+      }
       System.err.println(commandObject.getDescription());
-      System.err.println("Usage: ark-tools " + getCommand() + " " + commandObject.getOptions());
+      System.err.println("Usage: ark-tools " + getCommand() + (commandObject.getOptionSummary().isEmpty() ? "" : " " + commandObject.getOptionSummary()) + " [OPTIONS]");
       System.err.println();
       parser.formatHelpWith(helpFormatter);
       parser.printHelpOn(System.err);

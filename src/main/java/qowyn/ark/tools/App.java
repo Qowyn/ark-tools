@@ -15,9 +15,14 @@ public class App {
 
   private static final Map<String, List<Command>> COMMAND_CATEGORY_MAP = new HashMap<>();
 
-  private static void addCommand(String category, String description, String options, Consumer<OptionHandler> action, String... names) {
+  private static String[] list(String... list) {
+    return list;
+  }
+
+  private static void addCommand(String[] names, String category, String[] options, String description, Consumer<OptionHandler> action) {
     String namesString = String.join(", ", names);
-    Command command = new Command(namesString, category, description, options, action);
+    String optionSummary = String.join(" ", options);
+    Command command = new Command(namesString, category, description, optionSummary, options, action);
 
     for (String name : names) {
       COMMAND_NAME_MAP.put(name, command);
@@ -27,38 +32,38 @@ public class App {
   }
 
   static {
-    addCommand("Creatures", "Writes lists of all creatures in SAVE to the specified DIRECTORY.", "SAVE DIRECTORY [OPTIONS]", CreatureListCommands::creatures, "creatures");
-    addCommand("Creatures", "Writes lists of tamed creatures in SAVE to the specified DIRECTORY.", "SAVE DIRECTORY [OPTIONS]", CreatureListCommands::tamed, "tamed");
-    addCommand("Creatures", "Writes lists of wild creatures in SAVE to the specified DIRECTORY.", "SAVE DIRECTORY [OPTIONS]", CreatureListCommands::wild, "wild");
+    addCommand(list("creatures"), "Creatures", list("SAVE", "DIRECTORY"), "Writes lists of all creatures in SAVE to the specified DIRECTORY.", CreatureListCommands::creatures);
+    addCommand(list("tamed"), "Creatures", list("SAVE", "DIRECTORY"), "Writes lists of tamed creatures in SAVE to the specified DIRECTORY.", CreatureListCommands::tamed);
+    addCommand(list("wild"), "Creatures", list("SAVE", "DIRECTORY"), "Writes lists of wild creatures in SAVE to the specified DIRECTORY.", CreatureListCommands::wild);
 
-    addCommand("Converting", "Converts from .ark to .json", "ARK JSON [OPTIONS]", ConvertingCommands::mapToJson, "m2j", "mapToJson");
-    addCommand("Converting", "Converts from .arkprofile to .json", "PROFILE JSON [OPTIONS]", ConvertingCommands::profileToJson, "p2j", "profileToJson");
-    addCommand("Converting", "Converts from .arktribe to .json", "TRIBE JSON [OPTIONS]", ConvertingCommands::tribeToJson, "t2j", "tribeToJson");
+    addCommand(list("m2j", "mapToJson"), "Converting", list("ARK", "JSON"), "Converts from .ark to .json", ConvertingCommands::mapToJson);
+    addCommand(list("p2j", "profileToJson"), "Converting", list("PROFILE", "JSON"), "Converts from .arkprofile to .json", ConvertingCommands::profileToJson);
+    addCommand(list("t2j", "tribeToJson"), "Converting", list("TRIBE", "JSON"), "Converts from .arktribe to .json", ConvertingCommands::tribeToJson);
 
-    addCommand("Converting", "Converts from .json to .ark", "ARK JSON [OPTIONS]", ConvertingCommands::jsonToMap, "j2m", "jsonToMap");
-    addCommand("Converting", "Converts from .json to .arkprofile", "PROFILE JSON [OPTIONS]", ConvertingCommands::jsonToProfile, "j2p", "jsonToProfile");
-    addCommand("Converting", "Converts from .json to .arktribe", "TRIBE JSON [OPTIONS]", ConvertingCommands::jsonToTribe, "j2t", "jsonToTribe");
+    addCommand(list("j2m", "jsonToMap"), "Converting", list("JSON", "ARK"), "Converts from .json to .ark", ConvertingCommands::jsonToMap);
+    addCommand(list("j2p", "jsonToProfile"), "Converting", list("JSON", "PROFILE"), "Converts from .json to .arkprofile", ConvertingCommands::jsonToProfile);
+    addCommand(list("j2t", "jsonToTribe"), "Converting", list("JSON", "TRIBE"), "Converts from .json to .arktribe", ConvertingCommands::jsonToTribe);
 
-    addCommand("Debug", "Dumps a list of all classes with count of objects to stdout or OUT_FILE.", "SAVE [OUT_FILE] [OPTIONS]", DebugCommands::classes, "classes");
-    addCommand("Debug", "Dumps all objects of given CLASS_NAME to stdout or OUT_FILE.", "SAVE CLASS_NAME [OUT_FILE] [OPTIONS]", DebugCommands::dump, "dump");
-    addCommand("Debug", "Dumps className and size in bytes of all objects to stdout or OUT_FILE.", "SAVE [OUT_FILE] [OPTIONS]", DebugCommands::sizes, "sizes");
+    addCommand(list("classes"), "Debug", list("SAVE", "[OUT_FILE]"), "Dumps a list of all classes with count of objects to stdout or OUT_FILE.", DebugCommands::classes);
+    addCommand(list("dump"), "Debug", list("SAVE", "CLASS_NAME", "[OUT_FILE]"), "Dumps all objects of given CLASS_NAME to stdout or OUT_FILE.", DebugCommands::dump);
+    addCommand(list("sizes"), "Debug", list("SAVE", "[OUT_FILE]"), "Dumps className and size in bytes of all objects to stdout or OUT_FILE.", DebugCommands::sizes);
 
-    addCommand("Editing",
+    addCommand(list("feed"), "Editing", list("SAVE", "NEW_SAVE"),
         "Sets food of all tamed creatures to max and brings them into the present. "
             + "Mainly useful if you left your server running with no players online.",
-        "SAVE NEW_SAVE [OPTIONS]", EditingCommands::feed, "feed");
-    addCommand("Editing",
+        EditingCommands::feed);
+    addCommand(list("export"), "Editing", list("SAVE", "JSON"),
         "Export a specified object/dino and everything attached to it. "
             + "Can be used to 'revive' dinos from backups or to import bases from another save file. "
             + "Or to do whatever else you want. "
             + "Manually editing exported file might be required.",
-        "SAVE JSON [OPTIONS]", EditingCommands::exportThing, "export");
-    addCommand("Editing", "Imports all objects from JSON into SAVE.", "SAVE JSON NEW_SAVE [OPTIONS]", EditingCommands::importThing, "import");
+        EditingCommands::exportThing);
+    addCommand(list("import"), "Editing", list("SAVE", "JSON", "NEW_SAVE"), "Imports all objects from JSON into SAVE.", EditingCommands::importThing);
 
-    addCommand("Players", "Writes lists of all players in SAVE to the specified DIRECTORY.", "SAVE DIRECTORY [OPTIONS]", PlayerListCommands::players, "players");
-    addCommand("Players", "Writes lists of all tribes in SAVE to the specified DIRECTORY.", "SAVE DIRECTORY [OPTIONS]", PlayerListCommands::tribes, "tribes");
+    addCommand(list("players"), "Players", list("SAVE", "DIRECTORY"), "Writes lists of all players in SAVE to the specified DIRECTORY.", PlayerListCommands::players);
+    addCommand(list("tribes"), "Players", list("SAVE", "DIRECTORY"), "Writes lists of all tribes in SAVE to the specified DIRECTORY.", PlayerListCommands::tribes);
 
-    addCommand("Settings", "Exports internal LatLonCalculator data to latLonCalculator.json in the current working directory", "[OPTIONS]", SettingsCommands::latlon, "latlon");
+    addCommand(list("latlon"), "Settings", list(), "Exports internal LatLonCalculator data to latLonCalculator.json in the current working directory", SettingsCommands::latlon);
   }
 
   public static void main(String[] args) throws Exception {
