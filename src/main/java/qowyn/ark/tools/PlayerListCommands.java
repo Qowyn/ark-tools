@@ -60,6 +60,8 @@ public class PlayerListCommands {
     }
 
     try {
+      Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
+
       Path saveGame = Paths.get(params.get(0)).toAbsolutePath();
       Path outputDirectory = Paths.get(params.get(1)).toAbsolutePath();
       Path saveDir = saveGame.getParent();
@@ -83,6 +85,8 @@ public class PlayerListCommands {
           }
         }
       }
+
+      stopwatch.stop("Loading tribes");
 
       Filter<Path> profileFilter = path -> PROFILE_PATTERN.matcher(path.getFileName().toString()).matches();
 
@@ -195,6 +199,9 @@ public class PlayerListCommands {
           }
         }
       }
+
+      stopwatch.stop("Loading profiles and writing info");
+      stopwatch.print();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -221,6 +228,8 @@ public class PlayerListCommands {
     }
 
     try {
+      Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
+
       boolean mapNeeded = options.has(itemsSpec) || options.has(tamedSpec) || options.has(structuresSpec);
       if (!oh.isQuiet() && mapNeeded) {
         System.out.println("Need to load map, this may take some time...");
@@ -235,6 +244,7 @@ public class PlayerListCommands {
 
       if (mapNeeded) {
         save = new ArkSavegame(saveGame.toString(), oh.readingOptions());
+        stopwatch.stop("Loading map data");
         if (options.has(basesSpec)) {
           baseMap = new HashMap<>();
           for (GameObject object : save.getObjects()) {
@@ -262,6 +272,7 @@ public class PlayerListCommands {
               }
             }
           }
+          stopwatch.stop("Collecting bases");
         } else {
           baseMap = null;
         }
@@ -557,6 +568,9 @@ public class PlayerListCommands {
           }
         }
       }
+
+      stopwatch.stop("Loading tribes and writing info");
+      stopwatch.print();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
