@@ -69,10 +69,18 @@ public class PlayerListCommands {
 
       try (DirectoryStream<Path> stream = Files.newDirectoryStream(saveDir, tribeFilter)) {
         for (Path path : stream) {
-          ArkTribe tribe = new ArkTribe(path.toString());
-          StructPropertyList tribeData = tribe.getPropertyValue("TribeData", StructPropertyList.class);
-          Number tribeId = tribeData.getPropertyValue("TribeID", Number.class);
-          tribes.put(tribeId.intValue(), tribeData);
+          try {
+            ArkTribe tribe = new ArkTribe(path.toString());
+            StructPropertyList tribeData = tribe.getPropertyValue("TribeData", StructPropertyList.class);
+            Number tribeId = tribeData.getPropertyValue("TribeID", Number.class);
+            tribes.put(tribeId.intValue(), tribeData);
+          } catch (UnsupportedOperationException | NullPointerException ex) {
+            // Either the header didn't match or one of the properties is missing
+            System.err.println("Found potentially corrupt ArkTribe: " + path.toString());
+            if (oh.isVerbose()) {
+              ex.printStackTrace();
+            }
+          }
         }
       }
 
@@ -80,103 +88,111 @@ public class PlayerListCommands {
 
       try (DirectoryStream<Path> stream = Files.newDirectoryStream(saveDir, profileFilter)) {
         for (Path path : stream) {
-          ArkProfile profile = new ArkProfile(path.toString());
-          StructPropertyList myData = profile.getPropertyValue("MyData", StructPropertyList.class);
+          try {
+            ArkProfile profile = new ArkProfile(path.toString());
 
-          int playerId = myData.getPropertyValue("PlayerDataID", Number.class).intValue();
+            StructPropertyList myData = profile.getPropertyValue("MyData", StructPropertyList.class);
 
-          String playerFileName;
-          if (naming.equals("steamid")) {
-            playerFileName = myData.getPropertyValue("UniqueID", StructUniqueNetIdRepl.class).getNetId() + ".json";
-          } else if (naming.equals("playerid")) {
-            playerFileName = Integer.toString(playerId) + ".json";
-          } else {
-            throw new Error();
-          }
+            int playerId = myData.getPropertyValue("PlayerDataID", Number.class).intValue();
 
-          Path playerPath = outputDirectory.resolve(playerFileName);
-
-          CommonFunctions.writeJson(playerPath.toString(), generator -> {
-            generator.writeStartObject();
-
-            // Player data
-
-            generator.write("id", playerId);
-            generator.write("playerName", myData.getPropertyValue("PlayerName", String.class));
-
-            if (options.has(noPrivacySpec)) {
-              generator.write("steamId", myData.getPropertyValue("UniqueID", StructUniqueNetIdRepl.class).getNetId());
-              generator.write("lastIp", myData.getPropertyValue("SavedNetworkAddress", String.class));
+            String playerFileName;
+            if (naming.equals("steamid")) {
+              playerFileName = myData.getPropertyValue("UniqueID", StructUniqueNetIdRepl.class).getNetId() + ".json";
+            } else if (naming.equals("playerid")) {
+              playerFileName = Integer.toString(playerId) + ".json";
+            } else {
+              throw new Error();
             }
 
-            StructPropertyList characterConfig = myData.getPropertyValue("MyPlayerCharacterConfig", StructPropertyList.class);
-            StructPropertyList characterStats = myData.getPropertyValue("MyPersistentCharacterStats", StructPropertyList.class);
+            Path playerPath = outputDirectory.resolve(playerFileName);
 
-            // Character data
+            CommonFunctions.writeJson(playerPath.toString(), generator -> {
+              generator.writeStartObject();
 
-            generator.write("name", characterConfig.getPropertyValue("PlayerCharacterName", String.class));
-            Number extraLevel = characterStats.getPropertyValue("CharacterStatusComponent_ExtraCharacterLevel", Number.class);
-            generator.write("level", extraLevel != null ? extraLevel.intValue() + 1 : 1);
-            generator.write("experience", characterStats.getPropertyValue("CharacterStatusComponent_ExperiencePoints", Number.class).floatValue());
+              // Player data
 
-            // Engrams
+              generator.write("id", playerId);
+              generator.write("playerName", myData.getPropertyValue("PlayerName", String.class));
 
-            List<ObjectReference> learnedEngrams = characterStats.getPropertyValue("PlayerState_EngramBlueprints", ArkArrayObjectReference.class);
+              if (options.has(noPrivacySpec)) {
+                generator.write("steamId", myData.getPropertyValue("UniqueID", StructUniqueNetIdRepl.class).getNetId());
+                generator.write("lastIp", myData.getPropertyValue("SavedNetworkAddress", String.class));
+              }
 
-            if (learnedEngrams != null && !learnedEngrams.isEmpty()) {
-              generator.writeStartArray("engrams");
-              for (ObjectReference reference : learnedEngrams) {
-                String engram = reference.getObjectString().toString();
+              StructPropertyList characterConfig = myData.getPropertyValue("MyPlayerCharacterConfig", StructPropertyList.class);
+              StructPropertyList characterStats = myData.getPropertyValue("MyPersistentCharacterStats", StructPropertyList.class);
 
-                if (DataManager.hasItemByBGC(engram)) {
-                  engram = DataManager.getItemByBGC(engram).getName();
+              // Character data
+
+              generator.write("name", characterConfig.getPropertyValue("PlayerCharacterName", String.class));
+              Number extraLevel = characterStats.getPropertyValue("CharacterStatusComponent_ExtraCharacterLevel", Number.class);
+              generator.write("level", extraLevel != null ? extraLevel.intValue() + 1 : 1);
+              generator.write("experience", characterStats.getPropertyValue("CharacterStatusComponent_ExperiencePoints", Number.class).floatValue());
+
+              // Engrams
+
+              List<ObjectReference> learnedEngrams = characterStats.getPropertyValue("PlayerState_EngramBlueprints", ArkArrayObjectReference.class);
+
+              if (learnedEngrams != null && !learnedEngrams.isEmpty()) {
+                generator.writeStartArray("engrams");
+                for (ObjectReference reference : learnedEngrams) {
+                  String engram = reference.getObjectString().toString();
+
+                  if (DataManager.hasItemByBGC(engram)) {
+                    engram = DataManager.getItemByBGC(engram).getName();
+                  }
+
+                  generator.write(engram);
                 }
+                generator.writeEnd();
+              }
 
-                generator.write(engram);
+              // Attributes
+
+              generator.writeStartObject("attributes");
+              for (Property<?> property : characterStats.getProperties()) {
+                if (property instanceof PropertyByte && property.getNameString().equals("CharacterStatusComponent_NumberOfLevelUpPointsApplied")) {
+                  PropertyByte attribute = (PropertyByte) property;
+
+                  String name = AttributeNames.get(attribute.getIndex());
+                  if (name == null) {
+                    generator.write(Integer.toString(attribute.getIndex()), attribute.getValue().getByteValue());
+                  } else {
+                    generator.write(name, attribute.getValue().getByteValue());
+                  }
+                }
               }
               generator.writeEnd();
-            }
 
-            // Attributes
+              // Tribe
 
-            generator.writeStartObject("attributes");
-            for (Property<?> property : characterStats.getProperties()) {
-              if (property instanceof PropertyByte && property.getNameString().equals("CharacterStatusComponent_NumberOfLevelUpPointsApplied")) {
-                PropertyByte attribute = (PropertyByte) property;
+              Number tribeId = myData.getPropertyValue("TribeID", Number.class);
+              if (tribeId != null) {
+                generator.write("tribeId", tribeId.intValue());
+                StructPropertyList tribe = tribes.get(tribeId.intValue());
+                if (tribe != null) {
+                  generator.write("tribeName", tribe.getPropertyValue("TribeName", String.class));
 
-                String name = AttributeNames.get(attribute.getIndex());
-                if (name == null) {
-                  generator.write(Integer.toString(attribute.getIndex()), attribute.getValue().getByteValue());
-                } else {
-                  generator.write(name, attribute.getValue().getByteValue());
+                  Number tribeOwnerId = tribe.getPropertyValue("OwnerPlayerDataID", Number.class);
+                  if (tribeOwnerId != null && tribeOwnerId.intValue() == playerId) {
+                    generator.write("tribeOwner", true);
+                  }
+
+                  List<Integer> tribeAdmins = tribe.getPropertyValue("TribeAdmins", ArkArrayInteger.class);
+                  if (tribeAdmins != null && tribeAdmins.contains(playerId)) {
+                    generator.write("tribeAdmin", true);
+                  }
                 }
               }
+
+              generator.writeEnd();
+            }, oh);
+          } catch (UnsupportedOperationException | NullPointerException ex) {
+            System.err.println("Found potentially corrupt ArkProfile: " + path.toString());
+            if (oh.isVerbose()) {
+              ex.printStackTrace();
             }
-            generator.writeEnd();
-
-            // Tribe
-
-            Number tribeId = myData.getPropertyValue("TribeID", Number.class);
-            if (tribeId != null) {
-              generator.write("tribeId", tribeId.intValue());
-              StructPropertyList tribe = tribes.get(tribeId.intValue());
-              if (tribe != null) {
-                generator.write("tribeName", tribe.getPropertyValue("TribeName", String.class));
-
-                Number tribeOwnerId = tribe.getPropertyValue("OwnerPlayerDataID", Number.class);
-                if (tribeOwnerId != null && tribeOwnerId.intValue() == playerId) {
-                  generator.write("tribeOwner", true);
-                }
-
-                List<Integer> tribeAdmins = tribe.getPropertyValue("TribeAdmins", ArkArrayInteger.class);
-                if (tribeAdmins != null && tribeAdmins.contains(playerId)) {
-                  generator.write("tribeAdmin", true);
-                }
-              }
-            }
-
-            generator.writeEnd();
-          }, oh);
+          }
         }
       }
     } catch (IOException e) {
