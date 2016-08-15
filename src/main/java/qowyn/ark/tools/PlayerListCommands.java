@@ -274,280 +274,287 @@ public class PlayerListCommands {
 
       try (DirectoryStream<Path> stream = Files.newDirectoryStream(saveDir, tribeFilter)) {
         for (Path path : stream) {
-          ArkTribe tribe = new ArkTribe(path.toString());
-          StructPropertyList tribeData = tribe.getPropertyValue("TribeData", StructPropertyList.class);
+          try {
+            ArkTribe tribe = new ArkTribe(path.toString());
+            StructPropertyList tribeData = tribe.getPropertyValue("TribeData", StructPropertyList.class);
 
-          int tribeId = tribeData.getPropertyValue("TribeID", Number.class).intValue();
+            int tribeId = tribeData.getPropertyValue("TribeID", Number.class).intValue();
 
-          String tribeFileName = tribeData.getPropertyValue("TribeID", Number.class).toString() + ".json";
+            String tribeFileName = tribeData.getPropertyValue("TribeID", Number.class).toString() + ".json";
 
-          Path tribePath = outputDirectory.resolve(tribeFileName);
+            Path tribePath = outputDirectory.resolve(tribeFileName);
 
-          CommonFunctions.writeJson(tribePath.toString(), generator -> {
-            generator.writeStartObject();
+            CommonFunctions.writeJson(tribePath.toString(), generator -> {
+              generator.writeStartObject();
 
-            generator.write("name", tribeData.getPropertyValue("TribeName", String.class));
+              generator.write("name", tribeData.getPropertyValue("TribeName", String.class));
 
-            // TODO check what happens to abandoned tribes
-            int ownerId = tribeData.getPropertyValue("OwnerPlayerDataID", Number.class).intValue();
-            List<String> memberNames = tribeData.getPropertyValue("MembersPlayerName", ArkArrayString.class);
-            List<Integer> memberIds = tribeData.getPropertyValue("MembersPlayerDataID", ArkArrayInteger.class);
-            List<Integer> adminIds = tribeData.getPropertyValue("TribeAdmins", ArkArrayInteger.class);
+              // TODO check what happens to abandoned tribes
+              int ownerId = tribeData.getPropertyValue("OwnerPlayerDataID", Number.class).intValue();
+              List<String> memberNames = tribeData.getPropertyValue("MembersPlayerName", ArkArrayString.class);
+              List<Integer> memberIds = tribeData.getPropertyValue("MembersPlayerDataID", ArkArrayInteger.class);
+              List<Integer> adminIds = tribeData.getPropertyValue("TribeAdmins", ArkArrayInteger.class);
 
-            if (!memberNames.isEmpty()) {
-              generator.writeStartArray("members");
+              if (!memberNames.isEmpty()) {
+                generator.writeStartArray("members");
 
-              memberNames.forEach(generator::write);
+                memberNames.forEach(generator::write);
 
-              generator.writeEnd();
-            }
-
-            if (adminIds != null && !adminIds.isEmpty()) {
-              generator.writeStartArray("admins");
-
-              for (Integer adminId : adminIds) {
-                int index = memberIds.indexOf(adminId);
-                if (index > -1) {
-                  generator.write(memberNames.get(index));
-                }
+                generator.writeEnd();
               }
 
-              generator.writeEnd();
-            }
+              if (adminIds != null && !adminIds.isEmpty()) {
+                generator.writeStartArray("admins");
 
-            int ownerIndex = memberIds.indexOf(ownerId);
-            if (ownerIndex > -1) {
-              generator.write("owner", memberNames.get(ownerIndex));
-            }
-
-            List<String> tribeLog = tribeData.getPropertyValue("TribeLog", ArkArrayString.class);
-
-            if (tribeLog != null && !tribeLog.isEmpty()) {
-              generator.writeStartArray("tribeLog");
-
-              tribeLog.forEach(generator::write);
-
-              generator.writeEnd();
-            }
-
-            if (mapNeeded) {
-              Map<ArkName, Integer> structures = new HashMap<>();
-              Map<ArkName, Integer> creatures = new HashMap<>();
-              Map<ArkName, Integer> items = new HashMap<>();
-              Map<ArkName, Integer> blueprints = new HashMap<>();
-              // Apparently there is or was a bug in ARK causing certain structures to exist twice
-              // within a save
-              Set<ArkName> processedList = new HashSet<>();
-              // Bases
-              Set<TribeBase> bases = options.has(basesSpec) ? baseMap.get(tribeId) : null;
-
-              for (GameObject object : save.getObjects()) {
-                if (object.isItem()) {
-                  continue;
-                }
-
-                Number targetingTeam = object.getPropertyValue("TargetingTeam", Number.class);
-                if (targetingTeam == null || targetingTeam.intValue() != tribeId) {
-                  continue;
-                }
-
-                // Determine base if we have bases
-                final TribeBase base;
-                if (bases != null && object.getLocation() != null) {
-                  TribeBase matchedBase = null;
-                  for (TribeBase potentialBase : bases) {
-                    if (potentialBase.insideBounds(object.getLocation())) {
-                      matchedBase = potentialBase;
-                      break;
-                    }
+                for (Integer adminId : adminIds) {
+                  int index = memberIds.indexOf(adminId);
+                  if (index > -1) {
+                    generator.write(memberNames.get(index));
                   }
-                  base = matchedBase;
-                } else {
-                  base = null;
                 }
 
-                if (object.getClassString().contains("_Character_")) {
-                  if (!processedList.contains(object.getNames().get(0))) {
-                    if (base != null) {
-                      base.getCreatures().merge(object.getClassName(), 1, Integer::sum);
+                generator.writeEnd();
+              }
+
+              int ownerIndex = memberIds.indexOf(ownerId);
+              if (ownerIndex > -1) {
+                generator.write("owner", memberNames.get(ownerIndex));
+              }
+
+              List<String> tribeLog = tribeData.getPropertyValue("TribeLog", ArkArrayString.class);
+
+              if (tribeLog != null && !tribeLog.isEmpty()) {
+                generator.writeStartArray("tribeLog");
+
+                tribeLog.forEach(generator::write);
+
+                generator.writeEnd();
+              }
+
+              if (mapNeeded) {
+                Map<ArkName, Integer> structures = new HashMap<>();
+                Map<ArkName, Integer> creatures = new HashMap<>();
+                Map<ArkName, Integer> items = new HashMap<>();
+                Map<ArkName, Integer> blueprints = new HashMap<>();
+                // Apparently there is or was a bug in ARK causing certain structures to exist twice
+                // within a save
+                Set<ArkName> processedList = new HashSet<>();
+                // Bases
+                Set<TribeBase> bases = options.has(basesSpec) ? baseMap.get(tribeId) : null;
+
+                for (GameObject object : save.getObjects()) {
+                  if (object.isItem()) {
+                    continue;
+                  }
+
+                  Number targetingTeam = object.getPropertyValue("TargetingTeam", Number.class);
+                  if (targetingTeam == null || targetingTeam.intValue() != tribeId) {
+                    continue;
+                  }
+
+                  // Determine base if we have bases
+                  final TribeBase base;
+                  if (bases != null && object.getLocation() != null) {
+                    TribeBase matchedBase = null;
+                    for (TribeBase potentialBase : bases) {
+                      if (potentialBase.insideBounds(object.getLocation())) {
+                        matchedBase = potentialBase;
+                        break;
+                      }
+                    }
+                    base = matchedBase;
+                  } else {
+                    base = null;
+                  }
+
+                  if (object.getClassString().contains("_Character_")) {
+                    if (!processedList.contains(object.getNames().get(0))) {
+                      if (base != null) {
+                        base.getCreatures().merge(object.getClassName(), 1, Integer::sum);
+                      } else {
+                        creatures.merge(object.getClassName(), 1, Integer::sum);
+                      }
+                      processedList.add(object.getNames().get(0));
                     } else {
-                      creatures.merge(object.getClassName(), 1, Integer::sum);
+                      // Duped Creature
+                      continue;
                     }
-                    processedList.add(object.getNames().get(0));
-                  } else {
-                    // Duped Creature
-                    continue;
-                  }
-                } else if (!object.hasAnyProperty("LinkedPlayerDataID")) {
-                  // Players ain't structures
-                  if (!processedList.contains(object.getNames().get(0))) {
-                    if (base != null) {
-                      base.getStructures().merge(object.getClassName(), 1, Integer::sum);
+                  } else if (!object.hasAnyProperty("LinkedPlayerDataID")) {
+                    // Players ain't structures
+                    if (!processedList.contains(object.getNames().get(0))) {
+                      if (base != null) {
+                        base.getStructures().merge(object.getClassName(), 1, Integer::sum);
+                      } else {
+                        structures.merge(object.getClassName(), 1, Integer::sum);
+                      }
+                      processedList.add(object.getNames().get(0));
                     } else {
-                      structures.merge(object.getClassName(), 1, Integer::sum);
+                      // Duped Structure
+                      continue;
                     }
-                    processedList.add(object.getNames().get(0));
                   } else {
-                    // Duped Structure
-                    continue;
+                    if (!processedList.contains(object.getNames().get(0))) {
+                      processedList.add(object.getNames().get(0));
+                    } else {
+                      // Duped Player
+                      continue;
+                    }
                   }
-                } else {
-                  if (!processedList.contains(object.getNames().get(0))) {
-                    processedList.add(object.getNames().get(0));
-                  } else {
-                    // Duped Player
-                    continue;
-                  }
-                }
 
-                ObjectReference inventoryReference = object.getPropertyValue("MyInventoryComponent", ObjectReference.class);
-                GameObject inventory = inventoryReference != null ? inventoryReference.getObject(save) : null;
+                  ObjectReference inventoryReference = object.getPropertyValue("MyInventoryComponent", ObjectReference.class);
+                  GameObject inventory = inventoryReference != null ? inventoryReference.getObject(save) : null;
 
-                if (inventory != null) {
-                  List<ObjectReference> inventoryItems = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
-                  List<ObjectReference> slotItems = inventory.getPropertyValue("ItemSlots", ArkArrayObjectReference.class);
+                  if (inventory != null) {
+                    List<ObjectReference> inventoryItems = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
+                    List<ObjectReference> slotItems = inventory.getPropertyValue("ItemSlots", ArkArrayObjectReference.class);
 
-                  Consumer<List<ObjectReference>> itemListHandler = list -> {
-                    if (list != null) {
-                      for (ObjectReference itemReference : list) {
-                        GameObject item = itemReference.getObject(save);
-                        if (item != null) {
-                          if (item.hasAnyProperty("bIsEngram") || item.hasAnyProperty("bHideFromInventoryDisplay")) {
-                            continue;
-                          }
-
-                          Number itemQuantity = item.getPropertyValue("ItemQuantity", Number.class);
-                          int amount = itemQuantity != null ? itemQuantity.intValue() : 1;
-
-                          if (processedList.contains(item.getNames().get(0))) {
-                            // happens for players having items in their quick bar
-                            continue;
-                          }
-                          processedList.add(item.getNames().get(0));
-
-                          if (item.hasAnyProperty("bIsBlueprint")) {
-                            if (base != null) {
-                              base.getBlueprints().merge(item.getClassName(), amount, Integer::sum);
-                            } else {
-                              blueprints.merge(item.getClassName(), amount, Integer::sum);
+                    Consumer<List<ObjectReference>> itemListHandler = list -> {
+                      if (list != null) {
+                        for (ObjectReference itemReference : list) {
+                          GameObject item = itemReference.getObject(save);
+                          if (item != null) {
+                            if (item.hasAnyProperty("bIsEngram") || item.hasAnyProperty("bHideFromInventoryDisplay")) {
+                              continue;
                             }
-                          } else {
-                            if (base != null) {
-                              base.getItems().merge(item.getClassName(), amount, Integer::sum);
+
+                            Number itemQuantity = item.getPropertyValue("ItemQuantity", Number.class);
+                            int amount = itemQuantity != null ? itemQuantity.intValue() : 1;
+
+                            if (processedList.contains(item.getNames().get(0))) {
+                              // happens for players having items in their quick bar
+                              continue;
+                            }
+                            processedList.add(item.getNames().get(0));
+
+                            if (item.hasAnyProperty("bIsBlueprint")) {
+                              if (base != null) {
+                                base.getBlueprints().merge(item.getClassName(), amount, Integer::sum);
+                              } else {
+                                blueprints.merge(item.getClassName(), amount, Integer::sum);
+                              }
                             } else {
-                              items.merge(item.getClassName(), amount, Integer::sum);
+                              if (base != null) {
+                                base.getItems().merge(item.getClassName(), amount, Integer::sum);
+                              } else {
+                                items.merge(item.getClassName(), amount, Integer::sum);
+                              }
                             }
                           }
                         }
                       }
-                    }
-                  };
+                    };
 
-                  itemListHandler.accept(inventoryItems);
-                  itemListHandler.accept(slotItems);
+                    itemListHandler.accept(inventoryItems);
+                    itemListHandler.accept(slotItems);
+                  }
                 }
-              }
 
-              Consumer<Map<ArkName, Integer>> writeStructures = structMap -> {
-                if (options.has(structuresSpec)) {
-                  generator.writeStartArray("structures");
+                Consumer<Map<ArkName, Integer>> writeStructures = structMap -> {
+                  if (options.has(structuresSpec)) {
+                    generator.writeStartArray("structures");
 
-                  structMap.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
-                    generator.writeStartObject();
+                    structMap.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
+                      generator.writeStartObject();
 
-                    generator.write("name", e.getKey().toString());
-                    generator.write("count", e.getValue());
+                      generator.write("name", e.getKey().toString());
+                      generator.write("count", e.getValue());
+
+                      generator.writeEnd();
+                    });
 
                     generator.writeEnd();
-                  });
+                  }
+                };
 
-                  generator.writeEnd();
-                }
-              };
+                Consumer<Map<ArkName, Integer>> writeCreatures = creaMap -> {
+                  if (options.has(tamedSpec)) {
+                    generator.writeStartArray("tamed");
 
-              Consumer<Map<ArkName, Integer>> writeCreatures = creaMap -> {
-                if (options.has(tamedSpec)) {
-                  generator.writeStartArray("tamed");
+                    creaMap.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
+                      generator.writeStartObject();
 
-                  creaMap.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
-                    generator.writeStartObject();
+                      String name = e.getKey().toString();
+                      if (DataManager.hasCreature(name)) {
+                        name = DataManager.getCreature(name).getName();
+                      }
 
-                    String name = e.getKey().toString();
-                    if (DataManager.hasCreature(name)) {
-                      name = DataManager.getCreature(name).getName();
-                    }
+                      generator.write("name", name);
+                      generator.write("count", e.getValue());
 
-                    generator.write("name", name);
-                    generator.write("count", e.getValue());
-
-                    generator.writeEnd();
-                  });
-
-                  generator.writeEnd();
-                }
-              };
-
-              BiConsumer<Map<ArkName, Integer>, String> writeItems = (itemMap, mapName) -> {
-                if (options.has(itemsSpec)) {
-                  generator.writeStartArray(mapName);
-
-                  itemMap.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
-                    generator.writeStartObject();
-
-                    String name = e.getKey().toString();
-                    if (DataManager.hasItem(name)) {
-                      name = DataManager.getItem(name).getName();
-                    }
-
-                    generator.write("name", name);
-                    generator.write("count", e.getValue());
+                      generator.writeEnd();
+                    });
 
                     generator.writeEnd();
-                  });
+                  }
+                };
 
-                  generator.writeEnd();
-                }
-              };
+                BiConsumer<Map<ArkName, Integer>, String> writeItems = (itemMap, mapName) -> {
+                  if (options.has(itemsSpec)) {
+                    generator.writeStartArray(mapName);
 
-              if (options.has(basesSpec) && bases != null) {
+                    itemMap.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
+                      generator.writeStartObject();
 
-                generator.writeStartArray("bases");
+                      String name = e.getKey().toString();
+                      if (DataManager.hasItem(name)) {
+                        name = DataManager.getItem(name).getName();
+                      }
 
-                for (TribeBase base : bases) {
+                      generator.write("name", name);
+                      generator.write("count", e.getValue());
+
+                      generator.writeEnd();
+                    });
+
+                    generator.writeEnd();
+                  }
+                };
+
+                if (options.has(basesSpec) && bases != null) {
+
+                  generator.writeStartArray("bases");
+
+                  for (TribeBase base : bases) {
+                    generator.writeStartObject();
+
+                    generator.write("name", base.getName());
+                    writeCreatures.accept(base.getCreatures());
+                    writeStructures.accept(base.getStructures());
+                    writeItems.accept(base.getItems(), "items");
+                    writeItems.accept(base.getBlueprints(), "blueprints");
+
+                    generator.writeEnd();
+                  }
+
                   generator.writeStartObject();
 
-                  generator.write("name", base.getName());
-                  writeCreatures.accept(base.getCreatures());
-                  writeStructures.accept(base.getStructures());
-                  writeItems.accept(base.getItems(), "items");
-                  writeItems.accept(base.getBlueprints(), "blueprints");
+                  writeCreatures.accept(creatures);
+                  writeStructures.accept(structures);
+                  writeItems.accept(items, "items");
+                  writeItems.accept(blueprints, "blueprints");
 
                   generator.writeEnd();
+
+                  generator.writeEnd();
+
+                } else {
+
+                  writeCreatures.accept(creatures);
+                  writeStructures.accept(structures);
+                  writeItems.accept(items, "items");
+                  writeItems.accept(blueprints, "blueprints");
+
                 }
-
-                generator.writeStartObject();
-
-                writeCreatures.accept(creatures);
-                writeStructures.accept(structures);
-                writeItems.accept(items, "items");
-                writeItems.accept(blueprints, "blueprints");
-
-                generator.writeEnd();
-
-                generator.writeEnd();
-
-              } else {
-
-                writeCreatures.accept(creatures);
-                writeStructures.accept(structures);
-                writeItems.accept(items, "items");
-                writeItems.accept(blueprints, "blueprints");
-
               }
-            }
 
-            generator.writeEnd();
-          }, oh);
+              generator.writeEnd();
+            }, oh);
+          } catch (UnsupportedOperationException | NullPointerException ex) {
+            System.err.println("Found potentially corrupt ArkTribe: " + path.toString());
+            if (oh.isVerbose()) {
+              ex.printStackTrace();
+            }
+          }
         }
       }
     } catch (IOException e) {
