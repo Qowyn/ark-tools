@@ -41,7 +41,7 @@ public class PlayerListCommands {
 
   private static final Pattern TRIBE_PATTERN = Pattern.compile("\\d+\\.arktribe");
 
-  private static final Pattern BASE_PATTERN = Pattern.compile("Base: (.+)<br>Size: (\\d+)");
+  private static final Pattern BASE_PATTERN = Pattern.compile("\\s*Base:\\s*(.+)\\s*<br>Size:\\s*(\\d+)\\s*", Pattern.CASE_INSENSITIVE);
 
   public static void players(OptionHandler oh) {
     OptionSpec<Void> noPrivacySpec = oh.accepts("no-privacy", "Include privacy related data (SteamID, IP).");
