@@ -1,8 +1,11 @@
 package qowyn.ark.tools;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -10,14 +13,22 @@ import java.util.stream.Collectors;
 
 import javax.json.stream.JsonGenerator;
 
+import joptsimple.OptionSet;
+import joptsimple.OptionSpec;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
 import qowyn.ark.ReadingOptions;
+import qowyn.ark.types.ArkName;
 
 public class DebugCommands {
 
   public static void classes(OptionHandler oh) {
-    List<String> params = oh.getParams();
+    OptionSpec<Void> withoutDupesSpec = oh.accepts("without-dupes", "Removes duplicate objects");
+    OptionSpec<Void> withNames = oh.accepts("with-names", "Write common name instead of class name where known.");
+
+    OptionSet options = oh.reparse();
+
+    List<String> params = oh.getParams(options);
     if (params.size() < 1 || params.size() > 2 || oh.wantsHelp()) {
       System.out.println("This command is primarily meant for debugging.");
       oh.printCommandHelp();
@@ -35,17 +46,49 @@ public class DebugCommands {
 
       stopwatch.stop("Loading");
 
-      ConcurrentMap<String, List<GameObject>> map = savegame.getObjects().parallelStream().collect(Collectors.groupingByConcurrent(GameObject::getClassString));
+      List<GameObject> objects;
+
+      if (options.has(withoutDupesSpec)) {
+        Set<ArkName> nameSet = new HashSet<>();
+        objects = new ArrayList<>();
+
+        for (GameObject object : savegame.getObjects()) {
+          if (object.getNames().size() != 1) {
+            objects.add(object);
+          } else if (!nameSet.contains(object.getNames().get(0))) {
+            objects.add(object);
+            nameSet.add(object.getNames().get(0));
+          }
+        }
+      } else {
+        objects = savegame.getObjects();
+      }
+
+      ConcurrentMap<String, List<GameObject>> map = objects.parallelStream().collect(Collectors.groupingByConcurrent(GameObject::getClassString));
 
       stopwatch.stop("Grouping");
 
       Consumer<JsonGenerator> writer = g -> {
         g.writeStartObject();
 
-        g.write("_count", savegame.getObjects().size());
+        g.write("_count", objects.size());
 
         map.entrySet().stream().sorted(Comparator.comparing(e -> e.getValue().size(), Comparator.reverseOrder())).forEach(e -> {
-          g.write(e.getKey(), e.getValue().size());
+          String name = e.getKey();
+
+          if (options.has(withNames)) {
+            if (e.getValue().get(0).isItem()) {
+              if (DataManager.hasItem(name)) {
+                name = DataManager.getItem(name).getName();
+              }
+            } else {
+              if (DataManager.hasCreature(name)) {
+                name = DataManager.getCreature(name).getName();
+              }
+            }
+          }
+
+          g.write(name, e.getValue().size());
         });
 
         g.writeEnd();
