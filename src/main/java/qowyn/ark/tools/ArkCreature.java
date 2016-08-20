@@ -3,11 +3,11 @@ package qowyn.ark.tools;
 public class ArkCreature {
 
   private final String name;
-  
+
   private final String id;
-  
+
   private final String blueprint;
-  
+
   private final String category;
 
   public ArkCreature(String name, String id, String blueprint, String category) {
@@ -54,7 +54,7 @@ public class ArkCreature {
       return false;
     return true;
   }
-  
+
   @Override
   public String toString() {
     return "ArkCreature [name=" + name + ", id=" + id + ", blueprint=" + blueprint + ", category=" + category + "]";

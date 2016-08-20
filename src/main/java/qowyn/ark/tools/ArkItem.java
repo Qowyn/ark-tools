@@ -1,15 +1,15 @@
 package qowyn.ark.tools;
 
 public class ArkItem {
-  
+
   private final String name;
-  
+
   private final String blueprint;
-  
+
   private final String blueprintGeneratedClass;
-  
+
   private final String category;
-  
+
   public ArkItem(String name, String blueprint, String blueprintGeneratedClass, String category) {
     this.name = name;
     this.blueprint = blueprint;
@@ -24,7 +24,7 @@ public class ArkItem {
   public String getBlueprint() {
     return blueprint;
   }
-  
+
   public String getBlueprintGeneratedClass() {
     return blueprintGeneratedClass;
   }
