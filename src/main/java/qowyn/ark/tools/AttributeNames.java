@@ -11,9 +11,11 @@ public class AttributeNames {
   static {
     ATTRIBUTE_NAME_MAP.put(0, "health");
     ATTRIBUTE_NAME_MAP.put(1, "stamina");
+    ATTRIBUTE_NAME_MAP.put(2, "torpor");
     ATTRIBUTE_NAME_MAP.put(3, "oxygen");
     ATTRIBUTE_NAME_MAP.put(4, "food");
     ATTRIBUTE_NAME_MAP.put(5, "water");
+    ATTRIBUTE_NAME_MAP.put(6, "temperature");
     ATTRIBUTE_NAME_MAP.put(7, "weight");
     ATTRIBUTE_NAME_MAP.put(8, "melee");
     ATTRIBUTE_NAME_MAP.put(9, "speed");
