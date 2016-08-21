@@ -390,8 +390,10 @@ public class PlayerListCommands {
                       // Duped Creature
                       continue;
                     }
-                  } else if (!object.hasAnyProperty("LinkedPlayerDataID")) {
-                    // Players ain't structures
+                  } else if (!object.hasAnyProperty("LinkedPlayerDataID") && !object.hasAnyProperty("AssociatedPrimalItem") && !object.hasAnyProperty("MyItem")) {
+                    // LinkedPlayerDataID: Players ain't structures
+                    // AssociatedPrimalItem: Items equipped by sleeping players
+                    // MyItem: dropped item
                     if (!processedList.contains(object.getNames().get(0))) {
                       if (base != null) {
                         base.getStructures().merge(object.getClassName(), 1, Integer::sum);
@@ -415,6 +417,38 @@ public class PlayerListCommands {
                   ObjectReference inventoryReference = object.getPropertyValue("MyInventoryComponent", ObjectReference.class);
                   GameObject inventory = inventoryReference != null ? inventoryReference.getObject(save) : null;
 
+                  Consumer<ObjectReference> itemHandler = itemReference -> {
+                    GameObject item = itemReference.getObject(save);
+                    if (item != null) {
+                      if (item.hasAnyProperty("bIsEngram") || item.hasAnyProperty("bHideFromInventoryDisplay")) {
+                        return;
+                      }
+
+                      Number itemQuantity = item.getPropertyValue("ItemQuantity", Number.class);
+                      int amount = itemQuantity != null ? itemQuantity.intValue() : 1;
+
+                      if (processedList.contains(item.getNames().get(0))) {
+                        // happens for players having items in their quick bar
+                        return;
+                      }
+                      processedList.add(item.getNames().get(0));
+
+                      if (item.hasAnyProperty("bIsBlueprint")) {
+                        if (base != null) {
+                          base.getBlueprints().merge(item.getClassName(), amount, Integer::sum);
+                        } else {
+                          blueprints.merge(item.getClassName(), amount, Integer::sum);
+                        }
+                      } else {
+                        if (base != null) {
+                          base.getItems().merge(item.getClassName(), amount, Integer::sum);
+                        } else {
+                          items.merge(item.getClassName(), amount, Integer::sum);
+                        }
+                      }
+                    }
+                  };
+
                   if (inventory != null) {
                     List<ObjectReference> inventoryItems = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
                     List<ObjectReference> slotItems = inventory.getPropertyValue("ItemSlots", ArkArrayObjectReference.class);
@@ -422,41 +456,19 @@ public class PlayerListCommands {
                     Consumer<List<ObjectReference>> itemListHandler = list -> {
                       if (list != null) {
                         for (ObjectReference itemReference : list) {
-                          GameObject item = itemReference.getObject(save);
-                          if (item != null) {
-                            if (item.hasAnyProperty("bIsEngram") || item.hasAnyProperty("bHideFromInventoryDisplay")) {
-                              continue;
-                            }
-
-                            Number itemQuantity = item.getPropertyValue("ItemQuantity", Number.class);
-                            int amount = itemQuantity != null ? itemQuantity.intValue() : 1;
-
-                            if (processedList.contains(item.getNames().get(0))) {
-                              // happens for players having items in their quick bar
-                              continue;
-                            }
-                            processedList.add(item.getNames().get(0));
-
-                            if (item.hasAnyProperty("bIsBlueprint")) {
-                              if (base != null) {
-                                base.getBlueprints().merge(item.getClassName(), amount, Integer::sum);
-                              } else {
-                                blueprints.merge(item.getClassName(), amount, Integer::sum);
-                              }
-                            } else {
-                              if (base != null) {
-                                base.getItems().merge(item.getClassName(), amount, Integer::sum);
-                              } else {
-                                items.merge(item.getClassName(), amount, Integer::sum);
-                              }
-                            }
-                          }
+                          itemHandler.accept(itemReference);
                         }
                       }
                     };
 
                     itemListHandler.accept(inventoryItems);
                     itemListHandler.accept(slotItems);
+                  }
+
+                  ObjectReference myItem = object.getPropertyValue("MyItem", ObjectReference.class);
+
+                  if (myItem != null) {
+                    itemHandler.accept(myItem);
                   }
                 }
 
