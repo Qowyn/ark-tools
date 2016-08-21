@@ -84,6 +84,8 @@ public class DebugCommands {
             } else {
               if (DataManager.hasCreature(name)) {
                 name = DataManager.getCreature(name).getName();
+              } else if (DataManager.hasStructure(name)) {
+                name = DataManager.getStructure(name).getName();
               }
             }
           }

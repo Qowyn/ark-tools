@@ -467,7 +467,12 @@ public class PlayerListCommands {
                     structMap.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
                       generator.writeStartObject();
 
-                      generator.write("name", e.getKey().toString());
+                      String name = e.getKey().toString();
+                      if (DataManager.hasStructure(name)) {
+                        name = DataManager.getStructure(name).getName();
+                      }
+
+                      generator.write("name", name);
                       generator.write("count", e.getValue());
 
                       generator.writeEnd();
