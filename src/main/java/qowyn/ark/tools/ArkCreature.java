@@ -4,16 +4,19 @@ public class ArkCreature {
 
   private final String name;
 
-  private final String id;
+  private final String className;
 
   private final String blueprint;
 
+  private final String packagePath;
+
   private final String category;
 
-  public ArkCreature(String name, String id, String blueprint, String category) {
+  public ArkCreature(String name, String className, String blueprint, String packagePath, String category) {
     this.name = name;
-    this.id = id;
+    this.className = className;
     this.blueprint = blueprint;
+    this.packagePath = packagePath;
     this.category = category;
   }
 
@@ -21,12 +24,16 @@ public class ArkCreature {
     return name;
   }
 
-  public String getId() {
-    return id;
+  public String getClassName() {
+    return className;
   }
 
   public String getBlueprint() {
     return blueprint;
+  }
+
+  public String getPackagePath() {
+    return packagePath;
   }
 
   public String getCategory() {
@@ -35,7 +42,7 @@ public class ArkCreature {
 
   @Override
   public int hashCode() {
-    return (id == null) ? 0 : id.hashCode();
+    return (className == null) ? 0 : className.hashCode();
   }
 
   @Override
@@ -47,17 +54,17 @@ public class ArkCreature {
     if (getClass() != obj.getClass())
       return false;
     ArkCreature other = (ArkCreature) obj;
-    if (id == null) {
-      if (other.id != null)
+    if (className == null) {
+      if (other.className != null)
         return false;
-    } else if (!id.equals(other.id))
+    } else if (!className.equals(other.className))
       return false;
     return true;
   }
 
   @Override
   public String toString() {
-    return "ArkCreature [name=" + name + ", id=" + id + ", blueprint=" + blueprint + ", category=" + category + "]";
+    return "ArkCreature [name=" + name + ", id=" + className + ", blueprint=" + blueprint + ", category=" + category + "]";
   }
 
 }

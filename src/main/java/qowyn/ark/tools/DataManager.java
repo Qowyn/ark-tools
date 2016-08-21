@@ -3,21 +3,13 @@ package qowyn.ark.tools;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 
 public class DataManager {
 
-  private static final String CREATURE_FILE_NAME = "entity_ids_creatures.json";
-
-  private static final String ITEM_FILE_NAME = "entity_ids_items.json";
-
-  private static final Pattern ITEM_CLASS_PATTERN = Pattern.compile("[^.]+\\.(.+)'\"");
-
-  private static final Pattern BLUEPRINT_PATTERN = Pattern.compile("\"Blueprint'([^']+)'\"");
+  private static final String DATA_FILE_NAME = "ark_data.json";
 
   private static final Map<String, ArkCreature> CREATURE_DATA = new HashMap<>();
 
@@ -25,81 +17,56 @@ public class DataManager {
 
   private static final Map<String, ArkItem> ITEM_DATA_BY_BGC = new HashMap<>();
 
+  private static final Map<String, ArkCreature> STRUCTURES_DATA = new HashMap<>();
+
   static {
-    loadCreatureData();
-    loadItemData();
+    loadData();
   }
 
-  private static void loadCreatureData() {
-    CREATURE_DATA.clear();
+  private static void loadData() {
     try {
-      JsonObject data = (JsonObject) CommonFunctions.readJson(CREATURE_FILE_NAME);
+      JsonObject data = (JsonObject) CommonFunctions.readJson(DATA_FILE_NAME);
       JsonArray creatures = data.getJsonArray("creatures");
 
       for (JsonObject entry : creatures.getValuesAs(JsonObject.class)) {
-        String id = entry.getString("id").trim();
-
-        if (id.isEmpty()) {
-          continue;
-        }
-
+        String packagePath = entry.getString("package");
+        String blueprint = entry.getString("blueprint");
+        String clazz = entry.getString("class");
         String name = entry.getString("name");
-        String blueprintString = entry.getString("path", null);
-        String category = entry.getString("category");
+        String category = entry.getString("category", null);
 
-        if (blueprintString == null) {
-          continue;
-        }
-
-        Matcher matcher = BLUEPRINT_PATTERN.matcher(blueprintString);
-
-        if (!matcher.matches() || matcher.groupCount() != 1) {
-          continue;
-        }
-
-        String blueprint = matcher.group(1);
-
-        CREATURE_DATA.put(id, new ArkCreature(name, id, blueprint, category));
+        CREATURE_DATA.put(clazz, new ArkCreature(name, clazz, blueprint, packagePath, category));
       }
-    } catch (IOException e) {
-      System.err.println("Warning: Cannot load creature data.");
-      e.printStackTrace();
-    }
-  }
 
-  private static void loadItemData() {
-    ITEM_DATA.clear();
-    try {
-      JsonObject data = (JsonObject) CommonFunctions.readJson(ITEM_FILE_NAME);
       JsonArray items = data.getJsonArray("items");
 
       for (JsonObject entry : items.getValuesAs(JsonObject.class)) {
+        String packagePath = entry.getString("package");
+        String blueprint = entry.getString("blueprint");
+        String clazz = entry.getString("class");
         String name = entry.getString("name");
-        String blueprintString = entry.getString("path");
-        String category = entry.getString("category");
+        String category = entry.getString("category", null);
 
-        Matcher matcher = ITEM_CLASS_PATTERN.matcher(blueprintString);
-        if (!matcher.matches()) {
-          continue;
-        }
-
-        String clazz = matcher.group(1) + "_C";
-
-        Matcher blueprintMatcher = BLUEPRINT_PATTERN.matcher(blueprintString);
-
-        if (!blueprintMatcher.matches()) {
-          continue;
-        }
-
-        String blueprint = blueprintMatcher.group(1);
-        String blueprintGeneratedClass = "BlueprintGeneratedClass " + blueprint + "_C";
+        String blueprintGeneratedClass = "BlueprintGeneratedClass " + packagePath + "." + clazz;
 
         ArkItem item = new ArkItem(name, blueprint, blueprintGeneratedClass, category);
         ITEM_DATA.put(clazz, item);
         ITEM_DATA_BY_BGC.put(blueprintGeneratedClass, item);
       }
+
+      JsonArray structures = data.getJsonArray("structures");
+
+      for (JsonObject entry : structures.getValuesAs(JsonObject.class)) {
+        String packagePath = entry.getString("package");
+        String blueprint = entry.getString("blueprint");
+        String clazz = entry.getString("class");
+        String name = entry.getString("name");
+        String category = entry.getString("category", null);
+
+        STRUCTURES_DATA.put(clazz, new ArkCreature(name, clazz, blueprint, packagePath, category));
+      }
     } catch (IOException e) {
-      System.err.println("Warning: Cannot load item data.");
+      System.err.println("Warning: Cannot load data.");
       e.printStackTrace();
     }
   }
@@ -110,6 +77,14 @@ public class DataManager {
 
   public static ArkCreature getCreature(String clazz) {
     return CREATURE_DATA.get(clazz);
+  }
+
+  public static boolean hasStructure(String clazz) {
+    return STRUCTURES_DATA.containsKey(clazz);
+  }
+
+  public static ArkCreature getStructure(String clazz) {
+    return STRUCTURES_DATA.get(clazz);
   }
 
   public static boolean hasItem(String clazz) {
