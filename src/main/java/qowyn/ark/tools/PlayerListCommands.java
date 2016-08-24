@@ -59,6 +59,8 @@ public class PlayerListCommands {
       return;
     }
 
+    DataManager.loadData(oh.lang());
+
     try {
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
 
@@ -243,6 +245,8 @@ public class PlayerListCommands {
       final Map<Integer, Set<TribeBase>> baseMap;
 
       if (mapNeeded) {
+        DataManager.loadData(oh.lang());
+
         save = new ArkSavegame(saveGame.toString(), oh.readingOptions());
         stopwatch.stop("Loading map data");
         if (options.has(basesSpec)) {

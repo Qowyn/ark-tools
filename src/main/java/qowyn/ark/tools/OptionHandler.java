@@ -22,6 +22,8 @@ public class OptionHandler {
   private final OptionSpec<Integer> asyncSizeSpec;
 
   private final OptionSpec<Boolean> asyncSpec;
+  
+  private final OptionSpec<String> langSpec;
 
   private final OptionSpec<Void> mmapSpec;
 
@@ -60,6 +62,8 @@ public class OptionHandler {
 
     asyncSpec = parser.acceptsAll(Arrays.asList("async", "a"), "Wether asynchronous I/O should be used.")
         .withRequiredArg().withValuesConvertedBy(new BooleanValueConverter()).defaultsTo(options.isAsynchronous());
+    
+    langSpec = parser.accepts("lang", "Load data for specified language, needs appropriate ark_data_lang.json.").withRequiredArg();
 
     mmapSpec = parser.acceptsAll(Arrays.asList("mmap", "m"), "If set memory mapping will be used. Efficency depends on available RAM and OS.");
 
@@ -117,6 +121,10 @@ public class OptionHandler {
 
   public boolean useAsync() {
     return initialOptions.valueOf(asyncSpec);
+  }
+  
+  public String lang() {
+    return initialOptions.valueOf(langSpec);
   }
 
   public boolean useMmap() {

@@ -9,7 +9,9 @@ import javax.json.JsonObject;
 
 public class DataManager {
 
-  private static final String DATA_FILE_NAME = "ark_data.json";
+  private static final String DATA_FILE_NAME = "ark_data";
+
+  private static final String DATA_FILE_EXT = ".json";
 
   private static final Map<String, ArkCreature> CREATURE_DATA = new HashMap<>();
 
@@ -19,13 +21,16 @@ public class DataManager {
 
   private static final Map<String, ArkCreature> STRUCTURES_DATA = new HashMap<>();
 
-  static {
-    loadData();
-  }
-
-  private static void loadData() {
+  public static void loadData(String language) {
     try {
-      JsonObject data = (JsonObject) CommonFunctions.readJson(DATA_FILE_NAME);
+      String fileName;
+      if (language != null) {
+        fileName = DATA_FILE_NAME + "_" + language + DATA_FILE_EXT;
+      } else {
+        fileName = DATA_FILE_NAME + DATA_FILE_EXT;
+      }
+
+      JsonObject data = (JsonObject) CommonFunctions.readJson(fileName);
       JsonArray creatures = data.getJsonArray("creatures");
 
       for (JsonObject entry : creatures.getValuesAs(JsonObject.class)) {

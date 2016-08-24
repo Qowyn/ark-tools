@@ -88,6 +88,8 @@ public class CreatureListCommands {
         return;
       }
 
+      DataManager.loadData(oh.lang());
+
       String savePath = params.get(0);
       outputDirectory = params.get(1);
 

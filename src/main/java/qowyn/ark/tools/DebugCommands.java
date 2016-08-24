@@ -36,6 +36,10 @@ public class DebugCommands {
       return;
     }
 
+    if (options.has(withNames)) {
+      DataManager.loadData(oh.lang());
+    }
+
     try {
       String savePath = params.get(0);
 
