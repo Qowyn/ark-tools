@@ -42,11 +42,13 @@ public class ObjectCollector {
           }
         } else if (property instanceof PropertyArray) {
           PropertyArray pa = (PropertyArray) property;
-          ArkArray<PropertyContainer> propertyContainerList = pa.getTypedValue(PropertyContainer.class);
+          ArkArray<Struct> structList = pa.getTypedValue(Struct.class);
           ArkArray<ObjectReference> objectReferenceList = pa.getTypedValue(ObjectReference.class);
-          if (propertyContainerList != null) {
-            for (PropertyContainer container : propertyContainerList) {
-              toVisit.push(container);
+          if (structList != null) {
+            for (Struct struct : structList) {
+              if (struct instanceof PropertyContainer) {
+                toVisit.push((PropertyContainer) struct);
+              }
             }
           } else if (objectReferenceList != null) {
             for (ObjectReference reference : objectReferenceList) {
@@ -126,11 +128,13 @@ public class ObjectCollector {
           }
         } else if (property instanceof PropertyArray) {
           PropertyArray pa = (PropertyArray) property;
-          ArkArray<PropertyContainer> propertyContainerList = pa.getTypedValue(PropertyContainer.class);
+          ArkArray<Struct> structList = pa.getTypedValue(Struct.class);
           ArkArray<ObjectReference> objectReferenceList = pa.getTypedValue(ObjectReference.class);
-          if (propertyContainerList != null) {
-            for (PropertyContainer container : propertyContainerList) {
-              toVisit.push(container);
+          if (structList != null) {
+            for (Struct struct : structList) {
+              if (struct instanceof PropertyContainer) {
+                toVisit.push((PropertyContainer) struct);
+              }
             }
           } else if (objectReferenceList != null) {
             for (ObjectReference reference : objectReferenceList) {
