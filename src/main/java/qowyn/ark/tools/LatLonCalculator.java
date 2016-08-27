@@ -34,7 +34,9 @@ public final class LatLonCalculator {
     if (!importList()) {
       knownMaps.clear();
       knownMaps.put("TheIsland", defaultCalculator);
-      knownMaps.put("TheCenter", new LatLonCalculator(30.2922997f, 9584.0f, 55.054167f, 9600.0f));
+      knownMaps.put("TheCenter", new LatLonCalculator(30.34223747253418f, 9584.0f, 55.10416793823242f, 9600.0f));
+      knownMaps.put("Valhalla", new LatLonCalculator(48.813560485839844f, 14750.0f, 48.813560485839844f, 14750.0f));
+      knownMaps.put("MortemTupiu", new LatLonCalculator(32.479148864746094f, 20000.0f, 40.59893798828125f, 16000.0f));
     }
   }
 
