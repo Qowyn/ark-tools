@@ -70,6 +70,16 @@ public class ObjectCollector {
     }
   }
 
+  /**
+   * Grab all objects from save
+   * @param saveFile
+   */
+  public ObjectCollector(ArkSavegame saveFile) {
+    for (GameObject obj: saveFile.getObjects()) {
+      mappedObjects.put(obj.getId(), obj);
+    }
+  }
+
   public Map<Integer, GameObject> getMappedObjects() {
     return mappedObjects;
   }

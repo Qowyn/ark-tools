@@ -188,7 +188,7 @@ public class EditingCommands {
       ArkSavegame jsonFile = new ArkSavegame((JsonObject) CommonFunctions.readJson(params.get(1)), oh.readingOptions());
       stopwatch.stop("Reading import container");
 
-      ObjectCollector collector = new ObjectCollector(jsonFile, jsonFile.getObjects().get(0));
+      ObjectCollector collector = new ObjectCollector(jsonFile);
 
       int startIndex = savegame.getObjects().size();
 
