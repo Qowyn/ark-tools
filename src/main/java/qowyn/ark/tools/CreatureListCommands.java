@@ -63,15 +63,15 @@ public class CreatureListCommands {
   }
 
   protected static boolean neededClasses(GameObject object) {
-    return object.getClassString().contains("_Character_") || object.getClassString().startsWith("DinoCharacterStatusComponent_");
+    return object.getClassString().contains("_Character_") || object.getClassString().startsWith("DinoCharacterStatusComponent_") || object.getClassString().equals("Raft_BP_C");
   }
 
   protected static boolean onlyTameable(GameObject object) {
-    return !object.hasAnyProperty("bForceDisablingTaming") || !object.getPropertyValue("bForceDisablingTaming", Boolean.class);
+    return (!object.hasAnyProperty("bForceDisablingTaming") || !object.getPropertyValue("bForceDisablingTaming", Boolean.class)) || object.getClassString().equals("Raft_BP_C");
   }
 
   protected static boolean onlyCreatures(GameObject object) {
-    return object.getClassString().contains("_Character_");
+    return object.getClassString().contains("_Character_") || object.getClassString().equals("Raft_BP_C");
   }
 
   protected void listImpl(Predicate<GameObject> filter) {
