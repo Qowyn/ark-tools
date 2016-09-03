@@ -28,6 +28,7 @@ import joptsimple.OptionSpec;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
 import qowyn.ark.ReadingOptions;
+import qowyn.ark.properties.PropertyInt32;
 import qowyn.ark.properties.PropertyObject;
 import qowyn.ark.types.ArkByteValue;
 import qowyn.ark.types.LocationData;
@@ -211,10 +212,10 @@ public class CreatureListCommands {
           generator.writeStartArray();
         }
 
-        for (GameObject i : filteredClasses) {
+        for (GameObject creature : filteredClasses) {
           generator.writeStartObject();
 
-          LocationData ld = i.getLocation();
+          LocationData ld = creature.getLocation();
           if (ld != null) {
             generator.write("x", ld.getX());
             generator.write("y", ld.getY());
@@ -222,37 +223,46 @@ public class CreatureListCommands {
             generator.write("lat", Math.round(latLongCalculator.calculateLat(ld.getY()) * 10.0) / 10.0);
             generator.write("lon", Math.round(latLongCalculator.calculateLon(ld.getX()) * 10.0) / 10.0);
           }
+          
+          PropertyInt32 dinoID1 = creature.getTypedProperty("DinoID1", PropertyInt32.class);
+          if (dinoID1 != null) {
+            PropertyInt32 dinoID2 = creature.getTypedProperty("DinoID2", PropertyInt32.class);
+            if (dinoID2 != null) {
+              long id = (long) dinoID1.getValue() << Integer.SIZE | (dinoID2.getValue() & 0xFFFFFFFFL);
+              generator.write("id", id);
+            }
+          }
 
-          if (i.hasAnyProperty("bIsFemale")) {
+          if (creature.hasAnyProperty("bIsFemale")) {
             generator.write("female", true);
           }
 
-          if (i.hasAnyProperty("TamedAtTime")) {
+          if (creature.hasAnyProperty("TamedAtTime")) {
             generator.write("tamed", true);
-            generator.write("tamedTime", saveFile.getGameTime() - i.getPropertyValue("TamedAtTime", Double.class));
+            generator.write("tamedTime", saveFile.getGameTime() - creature.getPropertyValue("TamedAtTime", Double.class));
           }
 
-          String tribeName = i.getPropertyValue("TribeName", String.class);
+          String tribeName = creature.getPropertyValue("TribeName", String.class);
           if (tribeName != null) {
             generator.write("tribe", tribeName);
           }
 
-          String tamerName = i.getPropertyValue("TamerString", String.class);
+          String tamerName = creature.getPropertyValue("TamerString", String.class);
           if (tamerName != null) {
             generator.write("tamer", tamerName);
           }
 
-          String name = i.getPropertyValue("TamedName", String.class);
+          String name = creature.getPropertyValue("TamedName", String.class);
           if (name != null) {
             generator.write("name", name);
           }
 
-          String imprinter = i.getPropertyValue("ImprinterName", String.class);
+          String imprinter = creature.getPropertyValue("ImprinterName", String.class);
           if (imprinter != null) {
             generator.write("imprinter", imprinter);
           }
 
-          PropertyObject statusComp = i.getTypedProperty("MyCharacterStatusComponent", PropertyObject.class);
+          PropertyObject statusComp = creature.getTypedProperty("MyCharacterStatusComponent", PropertyObject.class);
           GameObject status;
           if (statusComp != null) {
             status = statusComp.getValue().getObject(saveFile);
