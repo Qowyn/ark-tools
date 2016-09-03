@@ -243,11 +243,13 @@ public class PlayerListCommands {
 
       final ArkSavegame save;
       final Map<Integer, Set<TribeBase>> baseMap;
+      final LatLonCalculator latLonCalculator;
 
       if (mapNeeded) {
         DataManager.loadData(oh.lang());
 
         save = new ArkSavegame(saveGame.toString(), oh.readingOptions());
+        latLonCalculator = LatLonCalculator.forSave(save);
         stopwatch.stop("Loading map data");
         if (options.has(basesSpec)) {
           baseMap = new HashMap<>();
@@ -283,6 +285,7 @@ public class PlayerListCommands {
       } else {
         save = null;
         baseMap = null;
+        latLonCalculator = null;
       }
 
       Filter<Path> tribeFilter = path -> TRIBE_PATTERN.matcher(path.getFileName().toString()).matches();
@@ -382,7 +385,7 @@ public class PlayerListCommands {
                     base = null;
                   }
 
-                  if (object.getClassString().contains("_Character_")) {
+                  if (object.getClassString().contains("_Character_") || object.getClassString().equals("Raft_BP_C")) {
                     if (!processedList.contains(object.getNames().get(0))) {
                       if (base != null) {
                         base.getCreatures().merge(object.getClassName(), 1, Integer::sum);
@@ -550,6 +553,12 @@ public class PlayerListCommands {
                     generator.writeStartObject();
 
                     generator.write("name", base.getName());
+                    generator.write("x", base.getX());
+                    generator.write("y", base.getY());
+                    generator.write("z", base.getZ());
+                    generator.write("lat", latLonCalculator.calculateLat(base.getY()));
+                    generator.write("lon", latLonCalculator.calculateLon(base.getX()));
+                    generator.write("radius", base.getSize());
                     writeCreatures.accept(base.getCreatures());
                     writeStructures.accept(base.getStructures());
                     writeItems.accept(base.getItems(), "items");
