@@ -223,7 +223,7 @@ public class CreatureListCommands {
             generator.write("lat", Math.round(latLongCalculator.calculateLat(ld.getY()) * 10.0) / 10.0);
             generator.write("lon", Math.round(latLongCalculator.calculateLon(ld.getX()) * 10.0) / 10.0);
           }
-          
+
           PropertyInt32 dinoID1 = creature.getTypedProperty("DinoID1", PropertyInt32.class);
           if (dinoID1 != null) {
             PropertyInt32 dinoID2 = creature.getTypedProperty("DinoID2", PropertyInt32.class);
@@ -271,12 +271,10 @@ public class CreatureListCommands {
           }
 
           if (status != null && status.getClassString().startsWith("DinoCharacterStatusComponent_")) {
-            Integer baseLevel = status.getPropertyValue("BaseCharacterLevel", Integer.class);
-            if (baseLevel != null) {
-              generator.write("baseLevel", baseLevel);
-            }
+            int baseLevel = status.findPropertyValue("BaseCharacterLevel", Integer.class).orElse(1);
+            generator.write("baseLevel", baseLevel);
 
-            if (baseLevel != null && baseLevel > 1) {
+            if (baseLevel > 1) {
               generator.writeStartObject("wildLevels");
               AttributeNames.forEach((index, attrName) -> {
                 ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsApplied", ArkByteValue.class, index);
@@ -287,8 +285,8 @@ public class CreatureListCommands {
               generator.writeEnd();
             }
 
-            Short extraLevel = status.getPropertyValue("ExtraCharacterLevel", Short.class);
-            if (baseLevel != null && extraLevel != null) {
+            short extraLevel = status.findPropertyValue("ExtraCharacterLevel", Short.class).orElse((short) 0);
+            if (extraLevel != 0) {
               generator.write("fullLevel", extraLevel + baseLevel);
             }
 
