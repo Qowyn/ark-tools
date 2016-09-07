@@ -72,10 +72,11 @@ public class ObjectCollector {
 
   /**
    * Grab all objects from save
+   * 
    * @param saveFile
    */
   public ObjectCollector(ArkSavegame saveFile) {
-    for (GameObject obj: saveFile.getObjects()) {
+    for (GameObject obj : saveFile.getObjects()) {
       mappedObjects.put(obj.getId(), obj);
     }
   }
@@ -103,7 +104,7 @@ public class ObjectCollector {
   }
 
   protected void applyOrderRules(List<GameObject> remappedList) {
-    for (GameObject object : remappedList) {
+    for (GameObject object : mappedObjects.values()) {
       if (object.getClassString().contains("_Character_")) {
         // Dinos need to be defined before their components, might be related to GameObject#names
         remappedList.add(object);
