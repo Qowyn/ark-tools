@@ -47,6 +47,7 @@ public class PlayerListCommands {
     OptionSpec<Void> noPrivacySpec = oh.accepts("no-privacy", "Include privacy related data (SteamID, IP).");
     OptionSpec<String> namingSpec = oh.accepts("naming", "Decides how to name the resulting files.")
         .withRequiredArg().describedAs("steamid|playerid").defaultsTo("steamid");
+    OptionSpec<Void> inventorySpec = oh.accepts("inventory", "Include inventory of players.");
 
     OptionSet options = oh.reparse();
 
@@ -64,9 +65,23 @@ public class PlayerListCommands {
     try {
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
 
+      boolean mapNeeded = options.has(inventorySpec);
+      if (!oh.isQuiet() && mapNeeded) {
+        System.out.println("Need to load map, this may take some time...");
+      }
+
       Path saveGame = Paths.get(params.get(0)).toAbsolutePath();
       Path outputDirectory = Paths.get(params.get(1)).toAbsolutePath();
       Path saveDir = saveGame.getParent();
+
+      final ArkSavegame save;
+
+      if (mapNeeded) {
+        save = new ArkSavegame(saveGame.toString(), oh.readingOptions());
+        stopwatch.stop("Loading map data");
+      } else {
+        save = null;
+      }
 
       Map<Integer, StructPropertyList> tribes = new HashMap<>();
       Filter<Path> tribeFilter = path -> TRIBE_PATTERN.matcher(path.getFileName().toString()).matches();
@@ -99,13 +114,13 @@ public class PlayerListCommands {
 
             StructPropertyList myData = profile.getPropertyValue("MyData", StructPropertyList.class);
 
-            int playerId = myData.getPropertyValue("PlayerDataID", Number.class).intValue();
+            long playerId = myData.getPropertyValue("PlayerDataID", Number.class).longValue();
 
             String playerFileName;
             if (naming.equals("steamid")) {
               playerFileName = myData.getPropertyValue("UniqueID", StructUniqueNetIdRepl.class).getNetId() + ".json";
             } else if (naming.equals("playerid")) {
-              playerFileName = Integer.toString(playerId) + ".json";
+              playerFileName = Long.toString(playerId) + ".json";
             } else {
               throw new Error();
             }
@@ -169,6 +184,56 @@ public class PlayerListCommands {
                 }
               }
               generator.writeEnd();
+
+              // Inventory
+
+              if (options.has(inventorySpec)) {
+                for (GameObject object : save.getObjects()) {
+                  Long playerDataId = object.getPropertyValue("LinkedPlayerDataID", Long.class);
+                  if (playerDataId != null && playerDataId == playerId) {
+                    ObjectReference inventoryReference = object.getPropertyValue("MyInventoryComponent", ObjectReference.class);
+                    GameObject inventory = save.getObject(inventoryReference);
+
+                    if (inventory != null) {
+                      Map<ArkName, Integer> items = new HashMap<>();
+
+                      ArkArrayObjectReference itemList = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
+                      for (ObjectReference itemReference : itemList) {
+                        GameObject item = save.getObject(itemReference);
+                        if (item != null) {
+                          if (item.hasAnyProperty("bIsEngram") || item.hasAnyProperty("bHideFromInventoryDisplay")) {
+                            continue;
+                          }
+                          
+                          Number itemQuantity = item.getPropertyValue("ItemQuantity", Number.class);
+                          int amount = itemQuantity != null ? itemQuantity.intValue() : 1;
+                          items.merge(item.getClassName(), amount, Integer::sum);
+                        }
+                      }
+
+                      generator.writeStartArray("inventory");
+
+                      items.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
+                        generator.writeStartObject();
+
+                        String name = e.getKey().toString();
+                        if (DataManager.hasItem(name)) {
+                          name = DataManager.getItem(name).getName();
+                        }
+
+                        generator.write("name", name);
+                        generator.write("count", e.getValue());
+
+                        generator.writeEnd();
+                      });
+
+                      generator.writeEnd();
+                    }
+
+                    break;
+                  }
+                }
+              }
 
               // Tribe
 
