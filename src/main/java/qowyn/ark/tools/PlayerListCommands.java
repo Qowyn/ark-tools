@@ -8,15 +8,17 @@ import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.json.stream.JsonGenerator;
 
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -31,6 +33,7 @@ import qowyn.ark.properties.Property;
 import qowyn.ark.properties.PropertyByte;
 import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.structs.StructUniqueNetIdRepl;
+import qowyn.ark.types.ArkByteValue;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.LocationData;
 import qowyn.ark.types.ObjectReference;
@@ -47,7 +50,7 @@ public class PlayerListCommands {
     OptionSpec<Void> noPrivacySpec = oh.accepts("no-privacy", "Include privacy related data (SteamID, IP).");
     OptionSpec<String> namingSpec = oh.accepts("naming", "Decides how to name the resulting files.")
         .withRequiredArg().describedAs("steamid|playerid").defaultsTo("steamid");
-    OptionSpec<Void> inventorySpec = oh.accepts("inventory", "Include inventory of players.");
+    OptionSpec<String> inventorySpec = oh.accepts("inventory", "Include inventory of players.").withOptionalArg().describedAs("summary|long").defaultsTo("summary");
 
     OptionSet options = oh.reparse();
 
@@ -59,6 +62,8 @@ public class PlayerListCommands {
       System.exit(1);
       return;
     }
+
+    boolean inventoryLong = options.valueOf(inventorySpec).equals("long");
 
     DataManager.loadData(oh.lang());
 
@@ -195,39 +200,26 @@ public class PlayerListCommands {
                     GameObject inventory = save.getObject(inventoryReference);
 
                     if (inventory != null) {
-                      Map<ArkName, Integer> items = new HashMap<>();
-
+                      List<GameObject> items = new ArrayList<>();
                       ArkArrayObjectReference itemList = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
                       for (ObjectReference itemReference : itemList) {
                         GameObject item = save.getObject(itemReference);
                         if (item != null) {
-                          if (item.hasAnyProperty("bIsEngram") || item.hasAnyProperty("bHideFromInventoryDisplay")) {
+                          boolean isEngram = item.findPropertyValue("bIsEngram", Boolean.class).orElse(false);
+                          boolean isHidden = item.findPropertyValue("bHideFromInventoryDisplay", Boolean.class).orElse(false);
+                          if (isEngram || isHidden) {
                             continue;
                           }
-                          
-                          Number itemQuantity = item.getPropertyValue("ItemQuantity", Number.class);
-                          int amount = itemQuantity != null ? itemQuantity.intValue() : 1;
-                          items.merge(item.getClassName(), amount, Integer::sum);
+
+                          items.add(item);
                         }
                       }
 
-                      generator.writeStartArray("inventory");
-
-                      items.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
-                        generator.writeStartObject();
-
-                        String name = e.getKey().toString();
-                        if (DataManager.hasItem(name)) {
-                          name = DataManager.getItem(name).getName();
-                        }
-
-                        generator.write("name", name);
-                        generator.write("count", e.getValue());
-
-                        generator.writeEnd();
-                      });
-
-                      generator.writeEnd();
+                      if (inventoryLong) {
+                        handleInventoryLong(generator, save, items, "inventory");
+                      } else {
+                        handleInventorySummary(generator, save, items, "inventory");
+                      }
                     }
 
                     break;
@@ -275,10 +267,101 @@ public class PlayerListCommands {
 
   }
 
+  private static void handleInventorySummary(JsonGenerator generator, ArkSavegame save, List<GameObject> items, String objName) {
+    Map<ArkName, Integer> itemMap = new HashMap<>();
+
+    for (GameObject item : items) {
+      int amount = item.findPropertyValue("ItemQuantity", Number.class).map(Number::intValue).orElse(1);
+      itemMap.merge(item.getClassName(), amount, Integer::sum);
+    }
+
+    generator.writeStartArray(objName);
+
+    itemMap.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
+      generator.writeStartObject();
+
+      String name = e.getKey().toString();
+      if (DataManager.hasItem(name)) {
+        name = DataManager.getItem(name).getName();
+      }
+
+      generator.write("name", name);
+      generator.write("count", e.getValue());
+
+      generator.writeEnd();
+    });
+
+    generator.writeEnd();
+  }
+
+  private static void handleInventoryLong(JsonGenerator generator, ArkSavegame save, List<GameObject> items, String objName) {
+    generator.writeStartArray(objName);
+
+    for (GameObject item : items) {
+      boolean isEngram = item.findPropertyValue("bIsEngram", Boolean.class).orElse(false);
+      boolean isHidden = item.findPropertyValue("bHideFromInventoryDisplay", Boolean.class).orElse(false);
+      if (isEngram || isHidden) {
+        continue;
+      }
+
+      boolean isBlueprint = item.findPropertyValue("bIsBlueprint", Boolean.class).orElse(false);
+
+      generator.writeStartObject();
+
+      String name = item.getClassString();
+      if (DataManager.hasItem(name)) {
+        name = DataManager.getItem(name).getName();
+      }
+
+      generator.write("name", name);
+
+      int amount = item.findPropertyValue("ItemQuantity", Number.class).map(Number::intValue).orElse(1);
+
+      generator.write("quantity", amount);
+
+      item.findPropertyValue("CustomItemDescription", String.class).ifPresent(description -> {
+        generator.write("description", description);
+      });
+
+      if (!isBlueprint) {
+        item.findPropertyValue("SavedDurability", Float.class).ifPresent(durability -> {
+          generator.write("durability", durability);
+        });
+      }
+
+      item.findPropertyValue("ItemQualityIndex", ArkByteValue.class).ifPresent(qualityIndex -> {
+        generator.write("quality", qualityIndex.getByteValue());
+      });
+
+      item.findPropertyValue("ItemStatValues", Short.class, 1).ifPresent(armorValue -> {
+        generator.write("armorMultiplier", 1.0f + ((float) armorValue) * 0.20f * 0.001f);
+      });
+
+      item.findPropertyValue("ItemStatValues", Short.class, 2).ifPresent(durabilityValue -> {
+        generator.write("durabilityMultiplier", 1.0f + ((float) durabilityValue) * 0.25f * 0.001f);
+      });
+
+      item.findPropertyValue("ItemStatValues", Short.class, 3).ifPresent(damageValue -> {
+        generator.write("damageMultiplier", 1.0f + ((float) damageValue) * 0.1f * 0.001f);
+      });
+
+      item.findPropertyValue("ItemStatValues", Short.class, 5).ifPresent(hypoInsulation -> {
+        generator.write("hypoMultiplier", 1.0f + ((float) hypoInsulation) * 0.20f * 0.001f);
+      });
+
+      item.findPropertyValue("ItemStatValues", Short.class, 7).ifPresent(hyperInsulation -> {
+        generator.write("hyperMultiplier", 1.0f + ((float) hyperInsulation) * 0.20f * 0.001f);
+      });
+
+      generator.writeEnd();
+    }
+    generator.writeEnd();
+  }
+
   public static void tribes(OptionHandler oh) {
     // OptionSpec<Void> noPrivacySpec = oh.accepts("no-privacy", "Include privacy related data
     // (SteamID, IP).");
-    OptionSpec<Void> itemsSpec = oh.accepts("items", "Include a list of all items belonging to the tribe.");
+    OptionSpec<String> itemsSpec = oh.accepts("items", "Include a list of all items belonging to the tribe.").withOptionalArg().describedAs("summary|long").defaultsTo("summary");
     OptionSpec<Void> tamedSpec = oh.accepts("creatures", "Include a list of all tamed dinos of the tribe.");
     OptionSpec<Void> structuresSpec = oh.accepts("structures", "Include a list of all structures belonging to the tribe.");
     OptionSpec<Void> basesSpec = oh.accepts("bases", "Allows tribes to create 'bases', groups creatures etc by base.");
@@ -293,6 +376,8 @@ public class PlayerListCommands {
       System.exit(1);
       return;
     }
+
+    boolean itemsLong = options.valueOf(itemsSpec).equals("long");
 
     try {
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
@@ -417,8 +502,8 @@ public class PlayerListCommands {
               if (mapNeeded) {
                 Map<ArkName, Integer> structures = new HashMap<>();
                 Map<ArkName, Integer> creatures = new HashMap<>();
-                Map<ArkName, Integer> items = new HashMap<>();
-                Map<ArkName, Integer> blueprints = new HashMap<>();
+                List<GameObject> items = new ArrayList<>();
+                List<GameObject> blueprints = new ArrayList<>();
                 // Apparently there is or was a bug in ARK causing certain structures to exist twice
                 // within a save
                 Set<ArkName> processedList = new HashSet<>();
@@ -496,9 +581,6 @@ public class PlayerListCommands {
                         return;
                       }
 
-                      Number itemQuantity = item.getPropertyValue("ItemQuantity", Number.class);
-                      int amount = itemQuantity != null ? itemQuantity.intValue() : 1;
-
                       if (processedList.contains(item.getNames().get(0))) {
                         // happens for players having items in their quick bar
                         return;
@@ -507,15 +589,15 @@ public class PlayerListCommands {
 
                       if (item.hasAnyProperty("bIsBlueprint")) {
                         if (base != null) {
-                          base.getBlueprints().merge(item.getClassName(), amount, Integer::sum);
+                          base.getBlueprints().add(item);
                         } else {
-                          blueprints.merge(item.getClassName(), amount, Integer::sum);
+                          blueprints.add(item);
                         }
                       } else {
                         if (base != null) {
-                          base.getItems().merge(item.getClassName(), amount, Integer::sum);
+                          base.getItems().add(item);
                         } else {
-                          items.merge(item.getClassName(), amount, Integer::sum);
+                          items.add(item);
                         }
                       }
                     }
@@ -588,28 +670,6 @@ public class PlayerListCommands {
                   }
                 };
 
-                BiConsumer<Map<ArkName, Integer>, String> writeItems = (itemMap, mapName) -> {
-                  if (options.has(itemsSpec)) {
-                    generator.writeStartArray(mapName);
-
-                    itemMap.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
-                      generator.writeStartObject();
-
-                      String name = e.getKey().toString();
-                      if (DataManager.hasItem(name)) {
-                        name = DataManager.getItem(name).getName();
-                      }
-
-                      generator.write("name", name);
-                      generator.write("count", e.getValue());
-
-                      generator.writeEnd();
-                    });
-
-                    generator.writeEnd();
-                  }
-                };
-
                 if (options.has(basesSpec) && bases != null) {
 
                   generator.writeStartArray("bases");
@@ -626,8 +686,13 @@ public class PlayerListCommands {
                     generator.write("radius", base.getSize());
                     writeCreatures.accept(base.getCreatures());
                     writeStructures.accept(base.getStructures());
-                    writeItems.accept(base.getItems(), "items");
-                    writeItems.accept(base.getBlueprints(), "blueprints");
+                    if (itemsLong) {
+                      handleInventoryLong(generator, save, base.getItems(), "items");
+                      handleInventoryLong(generator, save, base.getBlueprints(), "blueprints");
+                    } else {
+                      handleInventorySummary(generator, save, base.getItems(), "items");
+                      handleInventorySummary(generator, save, base.getBlueprints(), "blueprints");
+                    }
 
                     generator.writeEnd();
                   }
@@ -636,8 +701,13 @@ public class PlayerListCommands {
 
                   writeCreatures.accept(creatures);
                   writeStructures.accept(structures);
-                  writeItems.accept(items, "items");
-                  writeItems.accept(blueprints, "blueprints");
+                  if (itemsLong) {
+                    handleInventoryLong(generator, save, items, "items");
+                    handleInventoryLong(generator, save, blueprints, "blueprints");
+                  } else {
+                    handleInventorySummary(generator, save, items, "items");
+                    handleInventorySummary(generator, save, blueprints, "blueprints");
+                  }
 
                   generator.writeEnd();
 
@@ -647,8 +717,13 @@ public class PlayerListCommands {
 
                   writeCreatures.accept(creatures);
                   writeStructures.accept(structures);
-                  writeItems.accept(items, "items");
-                  writeItems.accept(blueprints, "blueprints");
+                  if (itemsLong) {
+                    handleInventoryLong(generator, save, items, "items");
+                    handleInventoryLong(generator, save, blueprints, "blueprints");
+                  } else {
+                    handleInventorySummary(generator, save, items, "items");
+                    handleInventorySummary(generator, save, blueprints, "blueprints");
+                  }
 
                 }
               }

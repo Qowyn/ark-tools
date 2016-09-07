@@ -1,8 +1,11 @@
 package qowyn.ark.tools;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import qowyn.ark.GameObject;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.LocationData;
 
@@ -22,9 +25,9 @@ public class TribeBase {
 
   private final Map<ArkName, Integer> creatures = new HashMap<>();
 
-  private final Map<ArkName, Integer> items = new HashMap<>();
+  private final List<GameObject> items = new ArrayList<>();
 
-  private final Map<ArkName, Integer> blueprints = new HashMap<>();
+  private final List<GameObject> blueprints = new ArrayList<>();
 
   public TribeBase(String name, float x, float y, float z, float size) {
     this.name = name;
@@ -62,11 +65,11 @@ public class TribeBase {
     return creatures;
   }
 
-  public Map<ArkName, Integer> getItems() {
+  public List<GameObject> getItems() {
     return items;
   }
 
-  public Map<ArkName, Integer> getBlueprints() {
+  public List<GameObject> getBlueprints() {
     return blueprints;
   }
 
