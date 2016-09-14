@@ -33,11 +33,11 @@ import qowyn.ark.types.ObjectReference;
 public class CommonFunctions {
 
   public static boolean onlyTamed(GameObject animal) {
-    return animal.hasAnyProperty("TamedAtTime");
+    return animal.hasAnyProperty("TamerString");
   }
 
   public static boolean onlyWild(GameObject animal) {
-    return !animal.hasAnyProperty("TamedAtTime");
+    return !animal.hasAnyProperty("TamerString");
   }
 
   public static int getBaseLevel(GameObject animal, ArkSavegame saveFile) {
