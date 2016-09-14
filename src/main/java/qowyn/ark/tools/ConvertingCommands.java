@@ -5,6 +5,7 @@ import java.util.List;
 
 import javax.json.JsonObject;
 
+import qowyn.ark.ArkCloudInventory;
 import qowyn.ark.ArkProfile;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.ArkTribe;
@@ -161,6 +162,56 @@ public class ConvertingCommands {
       ArkTribe tribe = new ArkTribe(object);
       stopwatch.stop("Loading");
       tribe.writeBinary(outPath, oh.writingOptions());
+      stopwatch.stop("Writing");
+
+      stopwatch.print();
+    } catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
+  public static void cloudToJson(OptionHandler oh) {
+    List<String> params = oh.getParams();
+    if (params.size() != 2 || oh.wantsHelp()) {
+      oh.printCommandHelp();
+      System.exit(1);
+      return;
+    }
+
+    try {
+      String cloudPath = params.get(0);
+      String outPath = params.get(1);
+
+      Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
+      ArkCloudInventory cloudInventory = new ArkCloudInventory(cloudPath);
+      stopwatch.stop("Reading");
+      CommonFunctions.writeJson(outPath, cloudInventory.toJson(), oh);
+      stopwatch.stop("Dumping");
+
+      stopwatch.print();
+    } catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
+  public static void jsonToCloud(OptionHandler oh) {
+    List<String> params = oh.getParams();
+    if (params.size() != 2 || oh.wantsHelp()) {
+      oh.printCommandHelp();
+      System.exit(1);
+      return;
+    }
+
+    try {
+      String jsonPath = params.get(0);
+      String outPath = params.get(1);
+
+      Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
+      JsonObject object = (JsonObject) CommonFunctions.readJson(jsonPath);
+      stopwatch.stop("Parsing");
+      ArkCloudInventory cloudInventory = new ArkCloudInventory(object);
+      stopwatch.stop("Loading");
+      cloudInventory.writeBinary(outPath, oh.writingOptions());
       stopwatch.stop("Writing");
 
       stopwatch.print();
