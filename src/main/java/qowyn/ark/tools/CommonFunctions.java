@@ -142,6 +142,12 @@ public class CommonFunctions {
     }
   }
 
+  public static JsonStructure readJsonRelative(String inFile) throws IOException {
+    try (InputStream stream = CommonFunctions.class.getResourceAsStream(inFile)) {
+      return readJson(stream);
+    }
+  }
+
   public static void readJson(InputStream stream, Consumer<JsonParser> parseJson) throws IOException {
     try (JsonParser parser = Json.createParser(stream)) {
       parseJson.accept(parser);

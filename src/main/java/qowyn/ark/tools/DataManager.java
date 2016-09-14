@@ -9,7 +9,7 @@ import javax.json.JsonObject;
 
 public class DataManager {
 
-  private static final String DATA_FILE_NAME = "ark_data";
+  private static final String DATA_FILE_NAME = "/ark_data";
 
   private static final String DATA_FILE_EXT = ".json";
 
@@ -30,7 +30,7 @@ public class DataManager {
         fileName = DATA_FILE_NAME + DATA_FILE_EXT;
       }
 
-      JsonObject data = (JsonObject) CommonFunctions.readJson(fileName);
+      JsonObject data = (JsonObject) CommonFunctions.readJsonRelative(fileName);
       JsonArray creatures = data.getJsonArray("creatures");
 
       for (JsonObject entry : creatures.getValuesAs(JsonObject.class)) {
