@@ -1,6 +1,5 @@
 package qowyn.ark.tools;
 
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,6 +36,7 @@ public final class LatLonCalculator {
       knownMaps.put("TheCenter", new LatLonCalculator(30.34223747253418f, 9584.0f, 55.10416793823242f, 9600.0f));
       knownMaps.put("Valhalla", new LatLonCalculator(48.813560485839844f, 14750.0f, 48.813560485839844f, 14750.0f));
       knownMaps.put("MortemTupiu", new LatLonCalculator(32.479148864746094f, 20000.0f, 40.59893798828125f, 16000.0f));
+      knownMaps.put("ShigoIslands", new LatLonCalculator(50.0f, 8128.0f, 50.0f, 8128.0f));
     }
   }
 
@@ -64,7 +64,7 @@ public final class LatLonCalculator {
    * @return true if latLonCalculator.json could be found and import was successful
    */
   private static boolean importList() {
-    try (InputStream stream = new FileInputStream("latLonCalculator.json")) {
+    try (InputStream stream = LatLonCalculator.class.getResourceAsStream("/latLonCalculator.json")) {
       importList((JsonObject) CommonFunctions.readJson(stream));
       return true;
     } catch (FileNotFoundException e) {
