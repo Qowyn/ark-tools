@@ -65,6 +65,9 @@ public final class LatLonCalculator {
    */
   private static boolean importList() {
     try (InputStream stream = LatLonCalculator.class.getResourceAsStream("/latLonCalculator.json")) {
+      if (stream == null) {
+        return false;
+      }
       importList((JsonObject) CommonFunctions.readJson(stream));
       return true;
     } catch (FileNotFoundException e) {
