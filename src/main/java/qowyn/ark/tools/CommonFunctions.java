@@ -32,58 +32,34 @@ import qowyn.ark.types.ObjectReference;
 
 public class CommonFunctions {
 
-  public static boolean onlyTamed(GameObject animal) {
-    return animal.hasAnyProperty("TamerString");
+  public static boolean onlyTamed(GameObject animal, ArkSavegame saveFile) {
+    return animal.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).map(a -> a.hasAnyProperty("ExperiencePoints")).orElse(false);
   }
 
-  public static boolean onlyWild(GameObject animal) {
-    return !animal.hasAnyProperty("TamerString");
+  public static boolean onlyWild(GameObject animal, ArkSavegame saveFile) {
+    return !animal.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).map(a -> a.hasAnyProperty("ExperiencePoints")).orElse(false);
   }
 
   public static int getBaseLevel(GameObject animal, ArkSavegame saveFile) {
-    ObjectReference statusComponentReference = animal.getPropertyValue("MyCharacterStatusComponent", ObjectReference.class);
-
-    if (statusComponentReference == null) {
-      return 0;
-    }
-
-    GameObject statusComponent = statusComponentReference.getObject(saveFile);
+    GameObject statusComponent = animal.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).orElse(null);
 
     if (statusComponent == null) {
       return 0;
     }
 
-    Integer baseLevel = statusComponent.getPropertyValue("BaseCharacterLevel", Integer.class);
-
-    return baseLevel != null ? baseLevel : 0;
+    return statusComponent.findPropertyValue("BaseCharacterLevel", Integer.class).orElse(0);
   }
 
   public static int getFullLevel(GameObject animal, ArkSavegame saveFile) {
-    ObjectReference statusComponentReference = animal.getPropertyValue("MyCharacterStatusComponent", ObjectReference.class);
-
-    if (statusComponentReference == null) {
-      return 0;
-    }
-
-    GameObject statusComponent = statusComponentReference.getObject(saveFile);
+    GameObject statusComponent = animal.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).orElse(null);
 
     if (statusComponent == null) {
-      return 0;
+      return 1;
     }
-
-    Integer baseLevel = statusComponent.getPropertyValue("BaseCharacterLevel", Integer.class);
-    Short extraLevel = statusComponent.getPropertyValue("ExtraCharacterLevel", Short.class);
-
-    int level = 0;
-
-    if (baseLevel != null) {
-      level += baseLevel;
-    }
-    if (extraLevel != null) {
-      level += extraLevel;
-    }
-
-    return level;
+    
+    int baseLevel = statusComponent.findPropertyValue("BaseCharacterLevel", Integer.class).orElse(1);
+    short extraLevel = statusComponent.findPropertyValue("ExtraCharacterLevel", Short.class).orElse((short) 0);
+    return baseLevel + extraLevel;
   }
 
   public static void writeJson(OutputStream out, JsonStructure structure, OptionHandler oh) throws IOException {

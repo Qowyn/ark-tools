@@ -49,7 +49,7 @@ public class EditingCommands {
 
       stopwatch.stop("Reading");
 
-      savegame.getObjects().parallelStream().filter(CommonFunctions::onlyTamed).forEach(object -> {
+      savegame.getObjects().parallelStream().filter(c -> CommonFunctions.onlyTamed(c, savegame)).forEach(object -> {
         ObjectReference statusComponentReference = object.getPropertyValue("MyCharacterStatusComponent", ObjectReference.class);
 
         if (statusComponentReference != null) {

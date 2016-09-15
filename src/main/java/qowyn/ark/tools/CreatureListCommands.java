@@ -11,9 +11,9 @@ import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -75,7 +75,7 @@ public class CreatureListCommands {
     return object.getClassString().contains("_Character_") || object.getClassString().equals("Raft_BP_C");
   }
 
-  protected void listImpl(Predicate<GameObject> filter) {
+  protected void listImpl(BiPredicate<GameObject, ArkSavegame> filter) {
     try {
       untameableSpec = oh.accepts("include-untameable", "Include untameable high-level dinos.");
       statisticsSpec = oh.accepts("statistics", "Wrap list of dinos in statistics block.");
@@ -109,11 +109,11 @@ public class CreatureListCommands {
     }
   }
 
-  public void writeAnimalLists(Predicate<GameObject> filter) {
+  public void writeAnimalLists(BiPredicate<GameObject, ArkSavegame> filter) {
     Stream<GameObject> objectStream = saveFile.getObjects().parallelStream().filter(CreatureListCommands::onlyCreatures);
 
     if (filter != null) {
-      objectStream = objectStream.filter(filter);
+      objectStream = objectStream.filter(object -> filter.test(object, saveFile));
     }
 
     if (!options.has(untameableSpec)) {
@@ -186,21 +186,24 @@ public class CreatureListCommands {
 
           generator.write("count", filteredClasses.size());
 
-          IntSummaryStatistics statistics = filteredClasses.stream().filter(CommonFunctions::onlyWild).mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
+          IntSummaryStatistics statistics =
+              filteredClasses.stream().filter(a -> CommonFunctions.onlyWild(a, saveFile)).mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
           if (statistics.getCount() > 0) {
             generator.write("wildMin", statistics.getMin());
             generator.write("wildMax", statistics.getMax());
             generator.write("wildAverage", statistics.getAverage());
           }
 
-          IntSummaryStatistics tamedBaseStatistics = filteredClasses.stream().filter(CommonFunctions::onlyTamed).mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
+          IntSummaryStatistics tamedBaseStatistics =
+              filteredClasses.stream().filter(a -> CommonFunctions.onlyTamed(a, saveFile)).mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
           if (tamedBaseStatistics.getCount() > 0) {
             generator.write("tamedBaseMin", tamedBaseStatistics.getMin());
             generator.write("tamedBaseMax", tamedBaseStatistics.getMax());
             generator.write("tamedBaseAverage", tamedBaseStatistics.getAverage());
           }
 
-          IntSummaryStatistics tamedFullStatistics = filteredClasses.stream().filter(CommonFunctions::onlyTamed).mapToInt(a -> CommonFunctions.getFullLevel(a, saveFile)).summaryStatistics();
+          IntSummaryStatistics tamedFullStatistics =
+              filteredClasses.stream().filter(a -> CommonFunctions.onlyTamed(a, saveFile)).mapToInt(a -> CommonFunctions.getFullLevel(a, saveFile)).summaryStatistics();
           if (tamedFullStatistics.getCount() > 0) {
             generator.write("tamedFullMin", tamedFullStatistics.getMin());
             generator.write("tamedFullMax", tamedFullStatistics.getMax());
