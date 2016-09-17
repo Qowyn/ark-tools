@@ -30,10 +30,9 @@ import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
 import qowyn.ark.GameObjectContainer;
 import qowyn.ark.ReadingOptions;
-import qowyn.ark.properties.PropertyInt32;
-import qowyn.ark.properties.PropertyObject;
 import qowyn.ark.types.ArkByteValue;
 import qowyn.ark.types.LocationData;
+import qowyn.ark.types.ObjectReference;
 
 public class CreatureListCommands {
 
@@ -280,11 +279,11 @@ public class CreatureListCommands {
       generator.write("lon", Math.round(latLongCalculator.calculateLon(ld.getX()) * 10.0) / 10.0);
     }
 
-    PropertyInt32 dinoID1 = creature.getTypedProperty("DinoID1", PropertyInt32.class);
+    Integer dinoID1 = creature.getPropertyValue("DinoID1", Integer.class);
     if (dinoID1 != null) {
-      PropertyInt32 dinoID2 = creature.getTypedProperty("DinoID2", PropertyInt32.class);
+      Integer dinoID2 = creature.getPropertyValue("DinoID2", Integer.class);
       if (dinoID2 != null) {
-        long id = (long) dinoID1.getValue() << Integer.SIZE | (dinoID2.getValue() & 0xFFFFFFFFL);
+        long id = (long) dinoID1 << Integer.SIZE | (dinoID2 & 0xFFFFFFFFL);
         generator.write("id", id);
       }
     }
@@ -293,9 +292,19 @@ public class CreatureListCommands {
       generator.write("female", true);
     }
 
-    if (creature.hasAnyProperty("TamedAtTime") && saveFile instanceof ArkSavegame) {
-      generator.write("tamedTime", ((ArkSavegame) saveFile).getGameTime() - creature.getPropertyValue("TamedAtTime", Double.class));
+    for (int i = 0; i < 6; i++) {
+      ArkByteValue color = creature.getPropertyValue("ColorSetIndices", ArkByteValue.class, i);
+      if (color != null) {
+        generator.write("color" + i, color.getByteValue());
+      }
     }
+
+    creature.findPropertyValue("TamedAtTime", Double.class).ifPresent(tamedAtTime -> {
+      generator.write("tamedAtTime", tamedAtTime);
+      if (saveFile instanceof ArkSavegame) {
+        generator.write("tamedTime", ((ArkSavegame) saveFile).getGameTime() - tamedAtTime);
+      }
+    });
 
     String tribeName = creature.getPropertyValue("TribeName", String.class);
     if (tribeName != null) {
@@ -317,13 +326,7 @@ public class CreatureListCommands {
       generator.write("imprinter", imprinter);
     }
 
-    PropertyObject statusComp = creature.getTypedProperty("MyCharacterStatusComponent", PropertyObject.class);
-    GameObject status;
-    if (statusComp != null) {
-      status = statusComp.getValue().getObject(saveFile);
-    } else {
-      status = null;
-    }
+    GameObject status = creature.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).orElse(null);
 
     if (status != null && status.getClassString().startsWith("DinoCharacterStatusComponent_")) {
       int baseLevel = status.findPropertyValue("BaseCharacterLevel", Integer.class).orElse(1);
