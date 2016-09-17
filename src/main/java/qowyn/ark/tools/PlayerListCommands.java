@@ -702,7 +702,6 @@ public class PlayerListCommands {
 
             ArkArrayStruct arkItems = arkData.getPropertyValue("ArkItems", ArkArrayStruct.class);
             if (arkItems != null) {
-
               List<GameObject> items = new ArrayList<>();
               for (Struct itemStruct : arkItems) {
                 PropertyContainer item = (PropertyContainer) itemStruct;

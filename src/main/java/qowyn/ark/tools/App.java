@@ -63,6 +63,7 @@ public class App {
             + "Manually editing exported file might be required.",
         EditingCommands::exportThing);
     addCommand(list("import"), "Editing", list("SAVE", "JSON", "NEW_SAVE"), "Imports all objects from JSON into SAVE.", EditingCommands::importThing);
+    addCommand(list("modify"), "Editing", list("INPUT", "MODIFICATION", "OUTPUT"), "Applies the actions defined in MODIFICATION to the specified INPUT file.", EditingCommands::modify);
 
     addCommand(list("players"), "Players", list("SAVE", "DIRECTORY"), "Writes lists of all players in SAVE to the specified DIRECTORY.", PlayerListCommands::players);
     addCommand(list("tribes"), "Players", list("SAVE", "DIRECTORY"), "Writes lists of all tribes in SAVE to the specified DIRECTORY.", PlayerListCommands::tribes);

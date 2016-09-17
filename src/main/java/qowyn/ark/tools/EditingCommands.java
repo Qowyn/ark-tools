@@ -9,16 +9,26 @@ import java.util.Random;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.json.JsonObject;
+import javax.json.JsonStructure;
+import javax.json.JsonValue;
 
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
+import qowyn.ark.ArkCloudInventory;
+import qowyn.ark.ArkLocalProfile;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
+import qowyn.ark.PropertyContainer;
+import qowyn.ark.arrays.ArkArrayStruct;
 import qowyn.ark.properties.PropertyDouble;
 import qowyn.ark.properties.PropertyFloat;
 import qowyn.ark.properties.PropertyInt32;
+import qowyn.ark.properties.PropertyStr;
+import qowyn.ark.structs.Struct;
 import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.ObjectReference;
@@ -174,7 +184,7 @@ public class EditingCommands {
     Path fileToWrite = Paths.get(params.get(2)).toAbsolutePath();
 
     if (fileToRead.equals(fileToWrite)) {
-      System.out.println("save and outfile need to be different paths");
+      System.err.println("save and outfile need to be different paths");
       System.exit(2);
       return;
     }
@@ -336,6 +346,116 @@ public class EditingCommands {
         object.getNames().set(0, newName);
       }
     }
+  }
+
+  public static void modify(OptionHandler oh) {
+    List<String> params = oh.getParams();
+    if (params.size() != 3 || oh.wantsHelp()) {
+      oh.printCommandHelp();
+      System.exit(1);
+      return;
+    }
+
+    Path fileToRead = Paths.get(params.get(0)).toAbsolutePath();
+    Path modificationPath = Paths.get(params.get(1)).toAbsolutePath();
+    Path fileToWrite = Paths.get(params.get(2)).toAbsolutePath();
+
+    if (fileToRead.equals(fileToWrite)) {
+      System.err.println("save and outfile need to be different paths");
+      System.exit(2);
+      return;
+    }
+
+    try {
+      JsonStructure structure = CommonFunctions.readJson(modificationPath.toString());
+
+      if (structure.getValueType() != JsonValue.ValueType.OBJECT) {
+        System.err.println("Expected object in " + modificationPath + " but found " + structure.getValueType());
+        System.exit(2);
+        return;
+      }
+
+      ModificationFile modificationFile = new ModificationFile();
+      modificationFile.readJson((JsonObject) structure);
+
+      FileFormat fileFormat = FileFormat.fromExtension(fileToRead);
+
+      if (fileFormat == FileFormat.CLUSTER) {
+        ArkCloudInventory cloudInventory = new ArkCloudInventory(fileToRead.toString(), oh.readingOptions());
+
+        int modifications = modifyClusterData(cloudInventory, modificationFile);
+        if (!oh.isQuiet()) {
+          System.out.println("Modifications done: " + modifications);
+        }
+
+        cloudInventory.writeBinary(fileToWrite.toString(), oh.writingOptions());
+      } else if (fileFormat == FileFormat.LOCALPROFILE) {
+        ArkLocalProfile localInventory = new ArkLocalProfile(fileToRead.toString(), oh.readingOptions());
+
+        int modifications = modifyClusterData(localInventory, modificationFile);
+        if (!oh.isQuiet()) {
+          System.out.println("Modifications done: " + modifications);
+        }
+
+        localInventory.writeBinary(fileToWrite.toString(), oh.writingOptions());
+      } else {
+        System.err.println("Modifying " + fileFormat + " is not yet implemented.");
+        System.exit(1);
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static final Pattern BLUEPRINT_PATTERN = Pattern.compile("Blueprint'([^']+)'");
+
+  private static int modifyClusterData(PropertyContainer container, ModificationFile modificationFile) {
+
+    PropertyContainer arkData = container.getPropertyValue("MyArkData", PropertyContainer.class);
+
+    int modifications = 0;
+
+    ArkArrayStruct tamedDinosData = arkData.getPropertyValue("ArkTamedDinosData", ArkArrayStruct.class);
+    if (tamedDinosData != null) {
+      for (Struct dinoStruct : tamedDinosData) {
+        PropertyContainer dino = (PropertyContainer) dinoStruct;
+
+        String dinoClassName = dino.getPropertyValue("DinoClassName", String.class);
+        String replacementName = modificationFile.remapDinoClassName.get(dinoClassName);
+
+        if (replacementName != null) {
+          modifications++;
+          dino.getTypedProperty("DinoClassName", PropertyStr.class).setValue(replacementName);
+
+          // Guess the correct name
+          Matcher matcher = BLUEPRINT_PATTERN.matcher(replacementName);
+          if (matcher.matches()) {
+            String blueprintGeneratedClass = matcher.group(1);
+            ObjectReference dinoClass = dino.getPropertyValue("DinoClass", ObjectReference.class);
+            dinoClass.setObjectType(ObjectReference.TYPE_PATH);
+            dinoClass.setObjectString(new ArkName("BlueprintGeneratedClass " + blueprintGeneratedClass + "_C"));
+          }
+        }
+      }
+    }
+
+    ArkArrayStruct arkItems = arkData.getPropertyValue("ArkItems", ArkArrayStruct.class);
+    if (arkItems != null) {
+      for (Struct itemStruct : arkItems) {
+        PropertyContainer item = (PropertyContainer) itemStruct;
+        PropertyContainer netItem = item.getPropertyValue("ArkTributeItem", PropertyContainer.class);
+
+        ObjectReference archetypeReference = netItem.getPropertyValue("ItemArchetype", ObjectReference.class);
+        ArkName newArchetype = modificationFile.remapItemArchetype.get(archetypeReference.getObjectString());
+
+        if (newArchetype != null) {
+          modifications++;
+          archetypeReference.setObjectString(newArchetype);
+        }
+      }
+    }
+
+    return modifications;
   }
 
 }
