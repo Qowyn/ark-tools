@@ -51,7 +51,7 @@ public class CreatureListCommands {
   private static OptionSpec<Void> cleanFolderSpec;
 
   private static OptionSet options;
-  
+
   private static Consumer<JsonGenerator> writerFunction;
 
   public static void creatures(OptionHandler optionHandler) {
@@ -128,10 +128,10 @@ public class CreatureListCommands {
     if (!options.has(untameableSpec)) {
       objectStream = objectStream.filter(CreatureListCommands::onlyTameable);
     }
-    
+
     if (options.has(cleanFolderSpec)) {
       try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(outputDirectory, "*.json")) {
-        for (Path path: directoryStream) {
+        for (Path path : directoryStream) {
           Files.delete(path);
         }
       } catch (IOException e) {
@@ -148,7 +148,7 @@ public class CreatureListCommands {
       dinoLists.keySet().forEach(dinoClass -> classNames.computeIfAbsent(dinoClass, fetchName));
 
       writeClassNames(classNames);
-      
+
       if (options.has(statisticsSpec)) {
         writerFunction = g -> g.writeStartObject().write("count", 0).writeStartArray("dinos").writeEnd().writeEnd();
       } else {
@@ -243,106 +243,7 @@ public class CreatureListCommands {
         }
 
         for (GameObject creature : filteredClasses) {
-          generator.writeStartObject();
-
-          LocationData ld = creature.getLocation();
-          if (ld != null) {
-            generator.write("x", ld.getX());
-            generator.write("y", ld.getY());
-            generator.write("z", ld.getZ());
-            generator.write("lat", Math.round(latLongCalculator.calculateLat(ld.getY()) * 10.0) / 10.0);
-            generator.write("lon", Math.round(latLongCalculator.calculateLon(ld.getX()) * 10.0) / 10.0);
-          }
-
-          PropertyInt32 dinoID1 = creature.getTypedProperty("DinoID1", PropertyInt32.class);
-          if (dinoID1 != null) {
-            PropertyInt32 dinoID2 = creature.getTypedProperty("DinoID2", PropertyInt32.class);
-            if (dinoID2 != null) {
-              long id = (long) dinoID1.getValue() << Integer.SIZE | (dinoID2.getValue() & 0xFFFFFFFFL);
-              generator.write("id", id);
-            }
-          }
-
-          if (creature.hasAnyProperty("bIsFemale")) {
-            generator.write("female", true);
-          }
-
-          if (creature.hasAnyProperty("TamedAtTime")) {
-            generator.write("tamed", true);
-            generator.write("tamedTime", saveFile.getGameTime() - creature.getPropertyValue("TamedAtTime", Double.class));
-          }
-
-          String tribeName = creature.getPropertyValue("TribeName", String.class);
-          if (tribeName != null) {
-            generator.write("tribe", tribeName);
-          }
-
-          String tamerName = creature.getPropertyValue("TamerString", String.class);
-          if (tamerName != null) {
-            generator.write("tamer", tamerName);
-          }
-
-          String name = creature.getPropertyValue("TamedName", String.class);
-          if (name != null) {
-            generator.write("name", name);
-          }
-
-          String imprinter = creature.getPropertyValue("ImprinterName", String.class);
-          if (imprinter != null) {
-            generator.write("imprinter", imprinter);
-          }
-
-          PropertyObject statusComp = creature.getTypedProperty("MyCharacterStatusComponent", PropertyObject.class);
-          GameObject status;
-          if (statusComp != null) {
-            status = statusComp.getValue().getObject(saveFile);
-          } else {
-            status = null;
-          }
-
-          if (status != null && status.getClassString().startsWith("DinoCharacterStatusComponent_")) {
-            int baseLevel = status.findPropertyValue("BaseCharacterLevel", Integer.class).orElse(1);
-            generator.write("baseLevel", baseLevel);
-
-            if (baseLevel > 1) {
-              generator.writeStartObject("wildLevels");
-              AttributeNames.forEach((index, attrName) -> {
-                ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsApplied", ArkByteValue.class, index);
-                if (attrProp != null) {
-                  generator.write(attrName, attrProp.getByteValue());
-                }
-              });
-              generator.writeEnd();
-            }
-
-            short extraLevel = status.findPropertyValue("ExtraCharacterLevel", Short.class).orElse((short) 0);
-            if (extraLevel != 0) {
-              generator.write("fullLevel", extraLevel + baseLevel);
-            }
-
-            if (status.hasAnyProperty("NumberOfLevelUpPointsAppliedTamed")) {
-              generator.writeStartObject("tamedLevels");
-              AttributeNames.forEach((index, attrName) -> {
-                ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsAppliedTamed", ArkByteValue.class, index);
-                if (attrProp != null) {
-                  generator.write(attrName, attrProp.getByteValue());
-                }
-              });
-              generator.writeEnd();
-            }
-
-            Float experience = status.getPropertyValue("ExperiencePoints", Float.class);
-            if (experience != null) {
-              generator.write("experience", experience);
-            }
-
-            Float imprintingQuality = status.getPropertyValue("DinoImprintingQuality", Float.class);
-            if (imprintingQuality != null) {
-              generator.write("imprintingQuality", imprintingQuality);
-            }
-          }
-
-          generator.writeEnd();
+          writeCreatureInfo(generator, creature, latLongCalculator, saveFile);
         }
 
         generator.writeEnd(); // Array
@@ -364,6 +265,109 @@ public class CreatureListCommands {
     } catch (IOException e) {
       e.printStackTrace();
     }
+  }
+
+  public static void writeCreatureInfo(JsonGenerator generator, GameObject creature, LatLonCalculator latLongCalculator, ArkSavegame saveFile) {
+    generator.writeStartObject();
+
+    LocationData ld = creature.getLocation();
+    if (ld != null) {
+      generator.write("x", ld.getX());
+      generator.write("y", ld.getY());
+      generator.write("z", ld.getZ());
+      generator.write("lat", Math.round(latLongCalculator.calculateLat(ld.getY()) * 10.0) / 10.0);
+      generator.write("lon", Math.round(latLongCalculator.calculateLon(ld.getX()) * 10.0) / 10.0);
+    }
+
+    PropertyInt32 dinoID1 = creature.getTypedProperty("DinoID1", PropertyInt32.class);
+    if (dinoID1 != null) {
+      PropertyInt32 dinoID2 = creature.getTypedProperty("DinoID2", PropertyInt32.class);
+      if (dinoID2 != null) {
+        long id = (long) dinoID1.getValue() << Integer.SIZE | (dinoID2.getValue() & 0xFFFFFFFFL);
+        generator.write("id", id);
+      }
+    }
+
+    if (creature.hasAnyProperty("bIsFemale")) {
+      generator.write("female", true);
+    }
+
+    if (creature.hasAnyProperty("TamedAtTime")) {
+      generator.write("tamed", true);
+      generator.write("tamedTime", saveFile.getGameTime() - creature.getPropertyValue("TamedAtTime", Double.class));
+    }
+
+    String tribeName = creature.getPropertyValue("TribeName", String.class);
+    if (tribeName != null) {
+      generator.write("tribe", tribeName);
+    }
+
+    String tamerName = creature.getPropertyValue("TamerString", String.class);
+    if (tamerName != null) {
+      generator.write("tamer", tamerName);
+    }
+
+    String name = creature.getPropertyValue("TamedName", String.class);
+    if (name != null) {
+      generator.write("name", name);
+    }
+
+    String imprinter = creature.getPropertyValue("ImprinterName", String.class);
+    if (imprinter != null) {
+      generator.write("imprinter", imprinter);
+    }
+
+    PropertyObject statusComp = creature.getTypedProperty("MyCharacterStatusComponent", PropertyObject.class);
+    GameObject status;
+    if (statusComp != null) {
+      status = statusComp.getValue().getObject(saveFile);
+    } else {
+      status = null;
+    }
+
+    if (status != null && status.getClassString().startsWith("DinoCharacterStatusComponent_")) {
+      int baseLevel = status.findPropertyValue("BaseCharacterLevel", Integer.class).orElse(1);
+      generator.write("baseLevel", baseLevel);
+
+      if (baseLevel > 1) {
+        generator.writeStartObject("wildLevels");
+        AttributeNames.forEach((index, attrName) -> {
+          ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsApplied", ArkByteValue.class, index);
+          if (attrProp != null) {
+            generator.write(attrName, attrProp.getByteValue());
+          }
+        });
+        generator.writeEnd();
+      }
+
+      short extraLevel = status.findPropertyValue("ExtraCharacterLevel", Short.class).orElse((short) 0);
+      if (extraLevel != 0) {
+        generator.write("fullLevel", extraLevel + baseLevel);
+      }
+
+      if (status.hasAnyProperty("NumberOfLevelUpPointsAppliedTamed")) {
+        generator.writeStartObject("tamedLevels");
+        AttributeNames.forEach((index, attrName) -> {
+          ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsAppliedTamed", ArkByteValue.class, index);
+          if (attrProp != null) {
+            generator.write(attrName, attrProp.getByteValue());
+          }
+        });
+        generator.writeEnd();
+      }
+
+      Float experience = status.getPropertyValue("ExperiencePoints", Float.class);
+      if (experience != null) {
+        generator.write("experience", experience);
+      }
+
+      Float imprintingQuality = status.getPropertyValue("DinoImprintingQuality", Float.class);
+      if (imprintingQuality != null) {
+        generator.write("imprintingQuality", imprintingQuality);
+      }
+    }
+
+    generator.writeEnd();
   }
 
 }
