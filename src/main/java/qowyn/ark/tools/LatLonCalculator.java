@@ -27,12 +27,12 @@ public final class LatLonCalculator {
   /**
    * Default based on TheIsland
    */
-  public static final LatLonCalculator defaultCalculator = new LatLonCalculator(50.0f, 8000.0f, 50.0f, 8000.0f);
+  public static final LatLonCalculator DEFAULT = new LatLonCalculator(50.0f, 8000.0f, 50.0f, 8000.0f);
 
   static {
     if (!importList()) {
       knownMaps.clear();
-      knownMaps.put("TheIsland", defaultCalculator);
+      knownMaps.put("TheIsland", DEFAULT);
       knownMaps.put("TheCenter", new LatLonCalculator(30.34223747253418f, 9584.0f, 55.10416793823242f, 9600.0f));
       knownMaps.put("Valhalla", new LatLonCalculator(48.813560485839844f, 14750.0f, 48.813560485839844f, 14750.0f));
       knownMaps.put("MortemTupiu", new LatLonCalculator(32.479148864746094f, 20000.0f, 40.59893798828125f, 16000.0f));
@@ -113,12 +113,12 @@ public final class LatLonCalculator {
    * Tries to find the best match for the given {@code savegame}
    * 
    * @param savegame The savegame to find a LatLonCalculator for
-   * @return a LatLonCalculator for the given {@code savegame} or {@link #defaultCalculator}
+   * @return a LatLonCalculator for the given {@code savegame} or {@link #DEFAULT}
    */
   public static LatLonCalculator forSave(ArkSavegame savegame) {
     String mapName = savegame.getDataFiles().get(0);
 
-    return knownMaps.getOrDefault(mapName, defaultCalculator);
+    return knownMaps.getOrDefault(mapName, DEFAULT);
   }
 
   private final float latShift;

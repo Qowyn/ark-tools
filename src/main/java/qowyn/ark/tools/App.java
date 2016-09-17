@@ -64,6 +64,7 @@ public class App {
 
     addCommand(list("players"), "Players", list("SAVE", "DIRECTORY"), "Writes lists of all players in SAVE to the specified DIRECTORY.", PlayerListCommands::players);
     addCommand(list("tribes"), "Players", list("SAVE", "DIRECTORY"), "Writes lists of all tribes in SAVE to the specified DIRECTORY.", PlayerListCommands::tribes);
+    addCommand(list("cluster"), "Players", list("CLUSTER_DIRECTORY", "OUTPUT_DIRECTORY"), "Writes lists of all things which players have uploaded into the cluster.", PlayerListCommands::cluster);
 
     addCommand(list("latlon"), "Settings", list(), "Exports internal LatLonCalculator data to latLonCalculator.json in the current working directory", SettingsCommands::latlon);
   }

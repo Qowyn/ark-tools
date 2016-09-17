@@ -1,6 +1,7 @@
 package qowyn.ark.tools;
 
-import static java.util.Comparator.*;
+import static java.util.Comparator.comparing;
+import static java.util.Comparator.reverseOrder;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -22,15 +23,21 @@ import javax.json.stream.JsonGenerator;
 
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
+import qowyn.ark.ArkCloudInventory;
+import qowyn.ark.ArkContainer;
 import qowyn.ark.ArkProfile;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.ArkTribe;
 import qowyn.ark.GameObject;
+import qowyn.ark.PropertyContainer;
+import qowyn.ark.arrays.ArkArrayByte;
 import qowyn.ark.arrays.ArkArrayInteger;
 import qowyn.ark.arrays.ArkArrayObjectReference;
 import qowyn.ark.arrays.ArkArrayString;
+import qowyn.ark.arrays.ArkArrayStruct;
 import qowyn.ark.properties.Property;
 import qowyn.ark.properties.PropertyByte;
+import qowyn.ark.structs.Struct;
 import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.structs.StructUniqueNetIdRepl;
 import qowyn.ark.types.ArkByteValue;
@@ -746,4 +753,60 @@ public class PlayerListCommands {
     }
   }
 
+  public static void cluster(OptionHandler oh) {
+    List<String> params = oh.getParams();
+    if (params.size() != 2 || oh.wantsHelp()) {
+      oh.printCommandHelp();
+      System.exit(1);
+      return;
+    }
+
+    Path clusterDirectory = Paths.get(params.get(0)).toAbsolutePath();
+    Path outputDirectory = Paths.get(params.get(1)).toAbsolutePath();
+
+    DataManager.loadData(oh.lang());
+
+    try (DirectoryStream<Path> stream = Files.newDirectoryStream(clusterDirectory)) {
+      for (Path path : stream) {
+        if (!Files.isRegularFile(path)) {
+          continue;
+        }
+        try {
+          ArkCloudInventory cloudInventory = new ArkCloudInventory(path.toString(), oh.readingOptions());
+
+          PropertyContainer arkData = cloudInventory.getInventoryData().getPropertyValue("MyArkData", PropertyContainer.class);
+
+          CommonFunctions.writeJson(outputDirectory.resolve(path.getFileName().toString() + ".json").toString(), generator -> {
+            
+            generator.writeStartObject();
+
+            ArkArrayStruct tamedDinosData = arkData.getPropertyValue("ArkTamedDinosData", ArkArrayStruct.class);
+            if (tamedDinosData != null && !tamedDinosData.isEmpty()) {
+              generator.writeStartArray("creatures");
+              for (Struct dinoStruct: tamedDinosData) {
+                PropertyContainer dino = (PropertyContainer) dinoStruct;
+                ArkArrayByte byteData = dino.getPropertyValue("DinoData", ArkArrayByte.class);
+
+                ArkContainer container = new ArkContainer(byteData);
+
+                CreatureListCommands.writeCreatureInfo(generator, container.getObjects().get(0), LatLonCalculator.DEFAULT, container);
+              }
+              generator.writeEnd();
+            }
+            
+            generator.writeEnd();
+
+          }, oh);
+
+        } catch (UnsupportedOperationException | NullPointerException ex) {
+          System.err.println("Found potentially corrupt cluster data: " + path.toString());
+          if (oh.isVerbose()) {
+            ex.printStackTrace();
+          }
+        }
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
 }

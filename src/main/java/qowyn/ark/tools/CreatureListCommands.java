@@ -28,6 +28,7 @@ import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
+import qowyn.ark.GameObjectContainer;
 import qowyn.ark.ReadingOptions;
 import qowyn.ark.properties.PropertyInt32;
 import qowyn.ark.properties.PropertyObject;
@@ -267,7 +268,7 @@ public class CreatureListCommands {
     }
   }
 
-  public static void writeCreatureInfo(JsonGenerator generator, GameObject creature, LatLonCalculator latLongCalculator, ArkSavegame saveFile) {
+  public static void writeCreatureInfo(JsonGenerator generator, GameObject creature, LatLonCalculator latLongCalculator, GameObjectContainer saveFile) {
     generator.writeStartObject();
 
     LocationData ld = creature.getLocation();
@@ -292,9 +293,8 @@ public class CreatureListCommands {
       generator.write("female", true);
     }
 
-    if (creature.hasAnyProperty("TamedAtTime")) {
-      generator.write("tamed", true);
-      generator.write("tamedTime", saveFile.getGameTime() - creature.getPropertyValue("TamedAtTime", Double.class));
+    if (creature.hasAnyProperty("TamedAtTime") && saveFile instanceof ArkSavegame) {
+      generator.write("tamedTime", ((ArkSavegame) saveFile).getGameTime() - creature.getPropertyValue("TamedAtTime", Double.class));
     }
 
     String tribeName = creature.getPropertyValue("TribeName", String.class);
@@ -358,6 +358,7 @@ public class CreatureListCommands {
 
       Float experience = status.getPropertyValue("ExperiencePoints", Float.class);
       if (experience != null) {
+        generator.write("tamed", true);
         generator.write("experience", experience);
       }
 
