@@ -19,8 +19,6 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.json.stream.JsonGenerator;
-
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import qowyn.ark.ArkCloudInventory;
@@ -40,7 +38,6 @@ import qowyn.ark.properties.PropertyByte;
 import qowyn.ark.structs.Struct;
 import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.structs.StructUniqueNetIdRepl;
-import qowyn.ark.types.ArkByteValue;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.LocationData;
 import qowyn.ark.types.ObjectReference;
@@ -223,9 +220,9 @@ public class PlayerListCommands {
                       }
 
                       if (inventoryLong) {
-                        handleInventoryLong(generator, save, items, "inventory");
+                        SharedWriters.writeInventoryLong(generator, items, "inventory");
                       } else {
-                        handleInventorySummary(generator, save, items, "inventory");
+                        SharedWriters.writeInventorySummary(generator, items, "inventory");
                       }
                     }
 
@@ -272,97 +269,6 @@ public class PlayerListCommands {
       throw new RuntimeException(e);
     }
 
-  }
-
-  private static void handleInventorySummary(JsonGenerator generator, ArkSavegame save, List<GameObject> items, String objName) {
-    Map<ArkName, Integer> itemMap = new HashMap<>();
-
-    for (GameObject item : items) {
-      int amount = item.findPropertyValue("ItemQuantity", Number.class).map(Number::intValue).orElse(1);
-      itemMap.merge(item.getClassName(), amount, Integer::sum);
-    }
-
-    generator.writeStartArray(objName);
-
-    itemMap.entrySet().stream().sorted(comparing(Map.Entry::getValue, reverseOrder())).forEach(e -> {
-      generator.writeStartObject();
-
-      String name = e.getKey().toString();
-      if (DataManager.hasItem(name)) {
-        name = DataManager.getItem(name).getName();
-      }
-
-      generator.write("name", name);
-      generator.write("count", e.getValue());
-
-      generator.writeEnd();
-    });
-
-    generator.writeEnd();
-  }
-
-  private static void handleInventoryLong(JsonGenerator generator, ArkSavegame save, List<GameObject> items, String objName) {
-    generator.writeStartArray(objName);
-
-    for (GameObject item : items) {
-      boolean isEngram = item.findPropertyValue("bIsEngram", Boolean.class).orElse(false);
-      boolean isHidden = item.findPropertyValue("bHideFromInventoryDisplay", Boolean.class).orElse(false);
-      if (isEngram || isHidden) {
-        continue;
-      }
-
-      boolean isBlueprint = item.findPropertyValue("bIsBlueprint", Boolean.class).orElse(false);
-
-      generator.writeStartObject();
-
-      String name = item.getClassString();
-      if (DataManager.hasItem(name)) {
-        name = DataManager.getItem(name).getName();
-      }
-
-      generator.write("name", name);
-
-      int amount = item.findPropertyValue("ItemQuantity", Number.class).map(Number::intValue).orElse(1);
-
-      generator.write("quantity", amount);
-
-      item.findPropertyValue("CustomItemDescription", String.class).ifPresent(description -> {
-        generator.write("description", description);
-      });
-
-      if (!isBlueprint) {
-        item.findPropertyValue("SavedDurability", Float.class).ifPresent(durability -> {
-          generator.write("durability", durability);
-        });
-      }
-
-      item.findPropertyValue("ItemQualityIndex", ArkByteValue.class).ifPresent(qualityIndex -> {
-        generator.write("quality", qualityIndex.getByteValue());
-      });
-
-      item.findPropertyValue("ItemStatValues", Short.class, 1).ifPresent(armorValue -> {
-        generator.write("armorMultiplier", 1.0f + ((float) armorValue) * 0.20f * 0.001f);
-      });
-
-      item.findPropertyValue("ItemStatValues", Short.class, 2).ifPresent(durabilityValue -> {
-        generator.write("durabilityMultiplier", 1.0f + ((float) durabilityValue) * 0.25f * 0.001f);
-      });
-
-      item.findPropertyValue("ItemStatValues", Short.class, 3).ifPresent(damageValue -> {
-        generator.write("damageMultiplier", 1.0f + ((float) damageValue) * 0.1f * 0.001f);
-      });
-
-      item.findPropertyValue("ItemStatValues", Short.class, 5).ifPresent(hypoInsulation -> {
-        generator.write("hypoMultiplier", 1.0f + ((float) hypoInsulation) * 0.20f * 0.001f);
-      });
-
-      item.findPropertyValue("ItemStatValues", Short.class, 7).ifPresent(hyperInsulation -> {
-        generator.write("hyperMultiplier", 1.0f + ((float) hyperInsulation) * 0.20f * 0.001f);
-      });
-
-      generator.writeEnd();
-    }
-    generator.writeEnd();
   }
 
   public static void tribes(OptionHandler oh) {
@@ -694,11 +600,11 @@ public class PlayerListCommands {
                     writeCreatures.accept(base.getCreatures());
                     writeStructures.accept(base.getStructures());
                     if (itemsLong) {
-                      handleInventoryLong(generator, save, base.getItems(), "items");
-                      handleInventoryLong(generator, save, base.getBlueprints(), "blueprints");
+                      SharedWriters.writeInventoryLong(generator, base.getItems(), "items");
+                      SharedWriters.writeInventoryLong(generator, base.getBlueprints(), "blueprints");
                     } else {
-                      handleInventorySummary(generator, save, base.getItems(), "items");
-                      handleInventorySummary(generator, save, base.getBlueprints(), "blueprints");
+                      SharedWriters.writeInventorySummary(generator, base.getItems(), "items");
+                      SharedWriters.writeInventorySummary(generator, base.getBlueprints(), "blueprints");
                     }
 
                     generator.writeEnd();
@@ -709,11 +615,11 @@ public class PlayerListCommands {
                   writeCreatures.accept(creatures);
                   writeStructures.accept(structures);
                   if (itemsLong) {
-                    handleInventoryLong(generator, save, items, "items");
-                    handleInventoryLong(generator, save, blueprints, "blueprints");
+                    SharedWriters.writeInventoryLong(generator, items, "items");
+                    SharedWriters.writeInventoryLong(generator, blueprints, "blueprints");
                   } else {
-                    handleInventorySummary(generator, save, items, "items");
-                    handleInventorySummary(generator, save, blueprints, "blueprints");
+                    SharedWriters.writeInventorySummary(generator, items, "items");
+                    SharedWriters.writeInventorySummary(generator, blueprints, "blueprints");
                   }
 
                   generator.writeEnd();
@@ -725,11 +631,11 @@ public class PlayerListCommands {
                   writeCreatures.accept(creatures);
                   writeStructures.accept(structures);
                   if (itemsLong) {
-                    handleInventoryLong(generator, save, items, "items");
-                    handleInventoryLong(generator, save, blueprints, "blueprints");
+                    SharedWriters.writeInventoryLong(generator, items, "items");
+                    SharedWriters.writeInventoryLong(generator, blueprints, "blueprints");
                   } else {
-                    handleInventorySummary(generator, save, items, "items");
-                    handleInventorySummary(generator, save, blueprints, "blueprints");
+                    SharedWriters.writeInventorySummary(generator, items, "items");
+                    SharedWriters.writeInventorySummary(generator, blueprints, "blueprints");
                   }
 
                 }
@@ -777,23 +683,46 @@ public class PlayerListCommands {
           PropertyContainer arkData = cloudInventory.getInventoryData().getPropertyValue("MyArkData", PropertyContainer.class);
 
           CommonFunctions.writeJson(outputDirectory.resolve(path.getFileName().toString() + ".json").toString(), generator -> {
-            
+
             generator.writeStartObject();
 
             ArkArrayStruct tamedDinosData = arkData.getPropertyValue("ArkTamedDinosData", ArkArrayStruct.class);
             if (tamedDinosData != null && !tamedDinosData.isEmpty()) {
               generator.writeStartArray("creatures");
-              for (Struct dinoStruct: tamedDinosData) {
+              for (Struct dinoStruct : tamedDinosData) {
                 PropertyContainer dino = (PropertyContainer) dinoStruct;
                 ArkArrayByte byteData = dino.getPropertyValue("DinoData", ArkArrayByte.class);
 
                 ArkContainer container = new ArkContainer(byteData);
 
-                CreatureListCommands.writeCreatureInfo(generator, container.getObjects().get(0), LatLonCalculator.DEFAULT, container);
+                SharedWriters.writeCreatureInfo(generator, container.getObjects().get(0), LatLonCalculator.DEFAULT, container);
               }
               generator.writeEnd();
             }
-            
+
+            ArkArrayStruct arkItems = arkData.getPropertyValue("ArkItems", ArkArrayStruct.class);
+            if (arkItems != null) {
+
+              List<GameObject> items = new ArrayList<>();
+              for (Struct itemStruct : arkItems) {
+                PropertyContainer item = (PropertyContainer) itemStruct;
+                PropertyContainer netItem = item.getPropertyValue("ArkTributeItem", PropertyContainer.class);
+
+                String archetype = netItem.getPropertyValue("ItemArchetype", ObjectReference.class).getObjectString().toString();
+                ArkName itemClass = new ArkName(archetype.substring(archetype.lastIndexOf('.') + 1));
+
+                GameObject itemObject = new GameObject();
+                itemObject.setClassName(itemClass);
+                itemObject.setProperties(netItem.getProperties());
+
+                items.add(itemObject);
+              }
+
+              if (!items.isEmpty()) {
+                SharedWriters.writeInventoryLong(generator, items, "items");
+              }
+            }
+
             generator.writeEnd();
 
           }, oh);
