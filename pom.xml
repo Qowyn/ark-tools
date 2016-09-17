@@ -4,7 +4,7 @@
 
 	<groupId>qowyn.ark</groupId>
 	<artifactId>ark-tools</artifactId>
-	<version>0.2.7</version>
+	<version>0.3.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>ark-tools</name>

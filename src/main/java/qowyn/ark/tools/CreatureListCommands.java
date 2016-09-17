@@ -3,6 +3,7 @@ package qowyn.ark.tools;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -35,32 +36,37 @@ import qowyn.ark.types.LocationData;
 
 public class CreatureListCommands {
 
-  private ArkSavegame saveFile;
+  private static ArkSavegame saveFile;
 
-  private OptionHandler oh;
+  private static OptionHandler optionHandler;
 
-  private String outputDirectory;
+  private static Path outputDirectory;
 
-  private OptionSpec<Void> untameableSpec;
+  private static OptionSpec<Void> untameableSpec;
 
-  private OptionSpec<Void> statisticsSpec;
+  private static OptionSpec<Void> statisticsSpec;
 
-  private OptionSet options;
+  private static OptionSpec<Void> withoutIndexSpec;
 
-  public CreatureListCommands(OptionHandler oh) {
-    this.oh = oh;
+  private static OptionSpec<Void> cleanFolderSpec;
+
+  private static OptionSet options;
+  
+  private static Consumer<JsonGenerator> writerFunction;
+
+  public static void creatures(OptionHandler optionHandler) {
+    CreatureListCommands.optionHandler = optionHandler;
+    listImpl(null);
   }
 
-  public static void creatures(OptionHandler oh) {
-    new CreatureListCommands(oh).listImpl(null);
+  public static void tamed(OptionHandler optionHandler) {
+    CreatureListCommands.optionHandler = optionHandler;
+    listImpl(CommonFunctions::onlyTamed);
   }
 
-  public static void tamed(OptionHandler oh) {
-    new CreatureListCommands(oh).listImpl(CommonFunctions::onlyTamed);
-  }
-
-  public static void wild(OptionHandler oh) {
-    new CreatureListCommands(oh).listImpl(CommonFunctions::onlyWild);
+  public static void wild(OptionHandler optionHandler) {
+    CreatureListCommands.optionHandler = optionHandler;
+    listImpl(CommonFunctions::onlyWild);
   }
 
   protected static boolean neededClasses(GameObject object) {
@@ -75,29 +81,32 @@ public class CreatureListCommands {
     return object.getClassString().contains("_Character_") || object.getClassString().equals("Raft_BP_C");
   }
 
-  protected void listImpl(BiPredicate<GameObject, ArkSavegame> filter) {
+  protected static void listImpl(BiPredicate<GameObject, ArkSavegame> filter) {
     try {
-      untameableSpec = oh.accepts("include-untameable", "Include untameable high-level dinos.");
-      statisticsSpec = oh.accepts("statistics", "Wrap list of dinos in statistics block.");
+      untameableSpec = optionHandler.accepts("include-untameable", "Include untameable high-level dinos.");
+      statisticsSpec = optionHandler.accepts("statistics", "Wrap list of dinos in statistics block.");
+      withoutIndexSpec = optionHandler.accepts("without-index", "Omits reading and writing classes.json");
+      cleanFolderSpec = optionHandler.accepts("clean", "Deletes all .json files in the target directory.");
 
-      options = oh.reparse();
+      options = optionHandler.reparse();
 
-      List<String> params = oh.getParams(options);
-      if (params.size() != 2 || oh.wantsHelp()) {
-        oh.printCommandHelp();
+      List<String> params = optionHandler.getParams(options);
+      if (params.size() != 2 || optionHandler.wantsHelp()) {
+        optionHandler.printCommandHelp();
         System.exit(1);
         return;
       }
 
-      DataManager.loadData(oh.lang());
+      if (!options.has(withoutIndexSpec)) {
+        DataManager.loadData(optionHandler.lang());
+      }
 
       String savePath = params.get(0);
-      outputDirectory = params.get(1);
+      outputDirectory = Paths.get(params.get(1));
 
-      ReadingOptions readingOptions = oh.readingOptions()
-          .withObjectFilter(CreatureListCommands::neededClasses);
+      ReadingOptions readingOptions = optionHandler.readingOptions().withObjectFilter(CreatureListCommands::neededClasses);
 
-      Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
+      Stopwatch stopwatch = new Stopwatch(optionHandler.useStopwatch());
       saveFile = new ArkSavegame(savePath, readingOptions);
       stopwatch.stop("Reading");
       writeAnimalLists(filter);
@@ -109,7 +118,7 @@ public class CreatureListCommands {
     }
   }
 
-  public void writeAnimalLists(BiPredicate<GameObject, ArkSavegame> filter) {
+  public static void writeAnimalLists(BiPredicate<GameObject, ArkSavegame> filter) {
     Stream<GameObject> objectStream = saveFile.getObjects().parallelStream().filter(CreatureListCommands::onlyCreatures);
 
     if (filter != null) {
@@ -119,23 +128,41 @@ public class CreatureListCommands {
     if (!options.has(untameableSpec)) {
       objectStream = objectStream.filter(CreatureListCommands::onlyTameable);
     }
-
-    Map<String, String> classNames = readClassNames();
+    
+    if (options.has(cleanFolderSpec)) {
+      try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(outputDirectory, "*.json")) {
+        for (Path path: directoryStream) {
+          Files.delete(path);
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
 
     ConcurrentMap<String, List<GameObject>> dinoLists = objectStream.collect(Collectors.groupingByConcurrent(GameObject::getClassString));
 
-    Function<String, String> fetchName = key -> DataManager.hasCreature(key) ? DataManager.getCreature(key).getName() : key;
-    dinoLists.keySet().forEach(dinoClass -> classNames.computeIfAbsent(dinoClass, fetchName));
+    if (!options.has(withoutIndexSpec)) {
+      Map<String, String> classNames = readClassNames();
 
-    writeClassNames(classNames);
+      Function<String, String> fetchName = key -> DataManager.hasCreature(key) ? DataManager.getCreature(key).getName() : key;
+      dinoLists.keySet().forEach(dinoClass -> classNames.computeIfAbsent(dinoClass, fetchName));
 
-    dinoLists.entrySet().parallelStream().forEach(this::writeList);
+      writeClassNames(classNames);
+      
+      if (options.has(statisticsSpec)) {
+        writerFunction = g -> g.writeStartObject().write("count", 0).writeStartArray("dinos").writeEnd().writeEnd();
+      } else {
+        writerFunction = g -> g.writeStartArray().writeEnd();
+      }
 
-    classNames.keySet().stream().filter(s -> !dinoLists.containsKey(s)).forEach(this::writeEmpty);
+      classNames.keySet().stream().filter(s -> !dinoLists.containsKey(s)).forEach(CreatureListCommands::writeEmpty);
+    }
+
+    dinoLists.entrySet().parallelStream().forEach(CreatureListCommands::writeList);
   }
 
-  public Map<String, String> readClassNames() {
-    Path classFile = Paths.get(outputDirectory, "classes.json");
+  public static Map<String, String> readClassNames() {
+    Path classFile = outputDirectory.resolve("classes.json");
     Map<String, String> classNames = new HashMap<>();
 
     if (Files.exists(classFile)) {
@@ -157,24 +184,24 @@ public class CreatureListCommands {
     return classNames;
   }
 
-  public void writeClassNames(Map<String, String> classNames) {
-    Path clsFile = Paths.get(outputDirectory, "classes.json");
+  public static void writeClassNames(Map<String, String> classNames) {
+    Path classFile = outputDirectory.resolve("classes.json");
 
-    try (OutputStream clsStream = Files.newOutputStream(clsFile)) {
+    try (OutputStream clsStream = Files.newOutputStream(classFile)) {
       CommonFunctions.writeJson(clsStream, g -> {
         g.writeStartArray();
 
         classNames.forEach((cls, name) -> g.writeStartObject().write("cls", cls).write("name", name).writeEnd());
 
         g.writeEnd();
-      }, oh);
+      }, optionHandler);
     } catch (IOException e) {
       e.printStackTrace();
     }
   }
 
-  public void writeList(Map.Entry<String, List<GameObject>> entry) {
-    Path outputFile = Paths.get(outputDirectory, entry.getKey() + ".json");
+  public static void writeList(Map.Entry<String, List<GameObject>> entry) {
+    Path outputFile = outputDirectory.resolve(entry.getKey() + ".json");
 
     List<? extends GameObject> filteredClasses = entry.getValue();
     LatLonCalculator latLongCalculator = LatLonCalculator.forSave(saveFile);
@@ -323,24 +350,17 @@ public class CreatureListCommands {
         if (options.has(statisticsSpec)) {
           generator.writeEnd(); // Object
         }
-      }, oh);
+      }, optionHandler);
     } catch (Exception e) {
       e.printStackTrace();
     }
   }
 
-  public void writeEmpty(String s) {
-    Path outputFile = Paths.get(outputDirectory, s + ".json");
+  public static void writeEmpty(String s) {
+    Path outputFile = outputDirectory.resolve(s + ".json");
 
     try (OutputStream out = Files.newOutputStream(outputFile)) {
-      Consumer<JsonGenerator> writerFunction;
-      if (options.has(statisticsSpec)) {
-        writerFunction = g -> g.writeStartObject().write("count", 0).writeStartArray("dinos").writeEnd().writeEnd();
-      } else {
-        writerFunction = g -> g.writeStartArray().writeEnd();
-      }
-
-      CommonFunctions.writeJson(out, writerFunction, oh);
+      CommonFunctions.writeJson(out, writerFunction, optionHandler);
     } catch (IOException e) {
       e.printStackTrace();
     }
