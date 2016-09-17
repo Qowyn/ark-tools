@@ -13,13 +13,13 @@ public class DataManager {
 
   private static final String DATA_FILE_EXT = ".json";
 
-  private static final Map<String, ArkCreature> CREATURE_DATA = new HashMap<>();
+  private static final Map<String, CreatureData> CREATURE_DATA = new HashMap<>();
 
-  private static final Map<String, ArkItem> ITEM_DATA = new HashMap<>();
+  private static final Map<String, ItemData> ITEM_DATA = new HashMap<>();
 
-  private static final Map<String, ArkItem> ITEM_DATA_BY_BGC = new HashMap<>();
+  private static final Map<String, ItemData> ITEM_DATA_BY_BGC = new HashMap<>();
 
-  private static final Map<String, ArkCreature> STRUCTURES_DATA = new HashMap<>();
+  private static final Map<String, CreatureData> STRUCTURES_DATA = new HashMap<>();
 
   public static void loadData(String language) {
     try {
@@ -40,7 +40,7 @@ public class DataManager {
         String name = entry.getString("name");
         String category = entry.getString("category", null);
 
-        CREATURE_DATA.put(clazz, new ArkCreature(name, clazz, blueprint, packagePath, category));
+        CREATURE_DATA.put(clazz, new CreatureData(name, clazz, blueprint, packagePath, category));
       }
 
       JsonArray items = data.getJsonArray("items");
@@ -54,7 +54,7 @@ public class DataManager {
 
         String blueprintGeneratedClass = "BlueprintGeneratedClass " + packagePath + "." + clazz;
 
-        ArkItem item = new ArkItem(name, blueprint, blueprintGeneratedClass, category);
+        ItemData item = new ItemData(name, blueprint, blueprintGeneratedClass, category);
         ITEM_DATA.put(clazz, item);
         ITEM_DATA_BY_BGC.put(blueprintGeneratedClass, item);
       }
@@ -68,7 +68,7 @@ public class DataManager {
         String name = entry.getString("name");
         String category = entry.getString("category", null);
 
-        STRUCTURES_DATA.put(clazz, new ArkCreature(name, clazz, blueprint, packagePath, category));
+        STRUCTURES_DATA.put(clazz, new CreatureData(name, clazz, blueprint, packagePath, category));
       }
     } catch (IOException e) {
       System.err.println("Warning: Cannot load data.");
@@ -80,7 +80,7 @@ public class DataManager {
     return CREATURE_DATA.containsKey(clazz);
   }
 
-  public static ArkCreature getCreature(String clazz) {
+  public static CreatureData getCreature(String clazz) {
     return CREATURE_DATA.get(clazz);
   }
 
@@ -88,7 +88,7 @@ public class DataManager {
     return STRUCTURES_DATA.containsKey(clazz);
   }
 
-  public static ArkCreature getStructure(String clazz) {
+  public static CreatureData getStructure(String clazz) {
     return STRUCTURES_DATA.get(clazz);
   }
 
@@ -96,7 +96,7 @@ public class DataManager {
     return ITEM_DATA.containsKey(clazz);
   }
 
-  public static ArkItem getItem(String clazz) {
+  public static ItemData getItem(String clazz) {
     return ITEM_DATA.get(clazz);
   }
 
@@ -104,7 +104,7 @@ public class DataManager {
     return ITEM_DATA_BY_BGC.containsKey(blueprintGeneratedClass);
   }
 
-  public static ArkItem getItemByBGC(String blueprintGeneratedClass) {
+  public static ItemData getItemByBGC(String blueprintGeneratedClass) {
     return ITEM_DATA_BY_BGC.get(blueprintGeneratedClass);
   }
 

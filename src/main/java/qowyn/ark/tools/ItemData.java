@@ -1,6 +1,6 @@
 package qowyn.ark.tools;
 
-public class ArkItem {
+public class ItemData {
 
   private final String name;
 
@@ -10,7 +10,7 @@ public class ArkItem {
 
   private final String category;
 
-  public ArkItem(String name, String blueprint, String blueprintGeneratedClass, String category) {
+  public ItemData(String name, String blueprint, String blueprintGeneratedClass, String category) {
     this.name = name;
     this.blueprint = blueprint;
     this.blueprintGeneratedClass = blueprintGeneratedClass;
@@ -46,7 +46,7 @@ public class ArkItem {
       return false;
     if (getClass() != obj.getClass())
       return false;
-    ArkItem other = (ArkItem) obj;
+    ItemData other = (ItemData) obj;
     if (blueprint == null) {
       if (other.blueprint != null)
         return false;

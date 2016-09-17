@@ -12,6 +12,8 @@ import javax.json.stream.JsonGenerator;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
 import qowyn.ark.GameObjectContainer;
+import qowyn.ark.tools.data.ArkItem;
+import qowyn.ark.tools.data.AttributeNames;
 import qowyn.ark.types.ArkByteValue;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.LocationData;
@@ -128,12 +130,11 @@ public class SharedWriters {
     generator.writeEnd();
   }
 
-  public static void writeInventorySummary(JsonGenerator generator, List<GameObject> items, String objName) {
+  public static void writeInventorySummary(JsonGenerator generator, List<ArkItem> items, String objName) {
     Map<ArkName, Integer> itemMap = new HashMap<>();
 
-    for (GameObject item : items) {
-      int amount = item.findPropertyValue("ItemQuantity", Number.class).map(Number::intValue).orElse(1);
-      itemMap.merge(item.getClassName(), amount, Integer::sum);
+    for (ArkItem item : items) {
+      itemMap.merge(item.className, item.quantity, Integer::sum);
     }
 
     generator.writeStartArray(objName);
@@ -155,74 +156,66 @@ public class SharedWriters {
     generator.writeEnd();
   }
 
-  public static void writeInventoryLong(JsonGenerator generator, List<GameObject> items, String objName) {
+  public static void writeInventoryLong(JsonGenerator generator, List<ArkItem> items, String objName) {
+    writeInventoryLong(generator, items, objName, false);
+  }
+
+  public static void writeInventoryLong(JsonGenerator generator, List<ArkItem> items, String objName, boolean blueprintStatus) {
     generator.writeStartArray(objName);
 
-    for (GameObject item : items) {
-      boolean isEngram = item.findPropertyValue("bIsEngram", Boolean.class).orElse(false);
-      boolean isHidden = item.findPropertyValue("bHideFromInventoryDisplay", Boolean.class).orElse(false);
-      if (isEngram || isHidden) {
-        continue;
-      }
-
-      boolean isBlueprint = item.findPropertyValue("bIsBlueprint", Boolean.class).orElse(false);
-
+    for (ArkItem item : items) {
       generator.writeStartObject();
 
-      String name = item.getClassString();
+      String name = item.className.toString();
       if (DataManager.hasItem(name)) {
         name = DataManager.getItem(name).getName();
       }
 
       generator.write("name", name);
 
-      generator.write("isBlueprint", isBlueprint);
-
-      if (!isBlueprint) {
-        int amount = item.findPropertyValue("ItemQuantity", Number.class).map(Number::intValue).orElse(1);
-
-        generator.write("quantity", amount);
-      } else {
-        generator.write("quantity", 1);
+      if (blueprintStatus) {
+        generator.write("isBlueprint", item.isBlueprint);
       }
 
-      item.findPropertyValue("CustomItemName", String.class).ifPresent(description -> {
-        generator.write("customName", description);
-      });
-
-      item.findPropertyValue("CustomItemDescription", String.class).ifPresent(description -> {
-        generator.write("customDescription", description);
-      });
-
-      if (!isBlueprint) {
-        item.findPropertyValue("SavedDurability", Float.class).ifPresent(durability -> {
-          generator.write("durability", durability);
-        });
+      if (item.quantity > 1) {
+        generator.write("quantity", item.quantity);
       }
 
-      item.findPropertyValue("ItemQualityIndex", ArkByteValue.class).ifPresent(qualityIndex -> {
-        generator.write("quality", qualityIndex.getByteValue());
-      });
+      if (!item.customName.isEmpty()) {
+        generator.write("customName", item.customName);
+      }
 
-      item.findPropertyValue("ItemStatValues", Short.class, 1).ifPresent(armorValue -> {
-        generator.write("armorMultiplier", 1.0f + ((float) armorValue) * 0.20f * 0.001f);
-      });
+      if (!item.customDescription.isEmpty()) {
+        generator.write("customDescription", item.customDescription);
+      }
 
-      item.findPropertyValue("ItemStatValues", Short.class, 2).ifPresent(durabilityValue -> {
-        generator.write("durabilityMultiplier", 1.0f + ((float) durabilityValue) * 0.25f * 0.001f);
-      });
+      if (!item.isBlueprint && item.durability > 0.0f) {
+        generator.write("durability", item.durability);
+      }
 
-      item.findPropertyValue("ItemStatValues", Short.class, 3).ifPresent(damageValue -> {
-        generator.write("damageMultiplier", 1.0f + ((float) damageValue) * 0.1f * 0.001f);
-      });
+      if (item.quality > 0) {
+        generator.write("quality", item.quality);
+      }
 
-      item.findPropertyValue("ItemStatValues", Short.class, 5).ifPresent(hypoInsulation -> {
-        generator.write("hypoMultiplier", 1.0f + ((float) hypoInsulation) * 0.20f * 0.001f);
-      });
+      if (item.itemStatValues[1] > 0) {
+        generator.write("armorMultiplier", 1.0f + ((float) item.itemStatValues[1]) * 0.2f * 0.001f);
+      }
 
-      item.findPropertyValue("ItemStatValues", Short.class, 7).ifPresent(hyperInsulation -> {
-        generator.write("hyperMultiplier", 1.0f + ((float) hyperInsulation) * 0.20f * 0.001f);
-      });
+      if (item.itemStatValues[2] > 0) {
+        generator.write("durabilityMultiplier", 1.0f + ((float) item.itemStatValues[2]) * 0.25f * 0.001f);
+      }
+
+      if (item.itemStatValues[3] > 0) {
+        generator.write("damageMultiplier", 1.0f + ((float) item.itemStatValues[3]) * 0.1f * 0.001f);
+      }
+
+      if (item.itemStatValues[5] > 0) {
+        generator.write("hypoMultiplier", 1.0f + ((float) item.itemStatValues[5]) * 0.2f * 0.001f);
+      }
+
+      if (item.itemStatValues[7] > 0) {
+        generator.write("hyperMultiplier", 1.0f + ((float) item.itemStatValues[7]) * 0.2f * 0.001f);
+      }
 
       generator.writeEnd();
     }

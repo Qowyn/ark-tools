@@ -1,4 +1,4 @@
-package qowyn.ark.tools;
+package qowyn.ark.tools.data;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +29,10 @@ public class AttributeNames {
 
   public static void forEach(BiConsumer<Integer, String> action) {
     ATTRIBUTE_NAME_MAP.forEach(action);
+  }
+  
+  public static int size() {
+    return ATTRIBUTE_NAME_MAP.size();
   }
 
 }

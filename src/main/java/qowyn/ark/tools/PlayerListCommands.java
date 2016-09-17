@@ -38,6 +38,8 @@ import qowyn.ark.properties.PropertyByte;
 import qowyn.ark.structs.Struct;
 import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.structs.StructUniqueNetIdRepl;
+import qowyn.ark.tools.data.ArkItem;
+import qowyn.ark.tools.data.AttributeNames;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.LocationData;
 import qowyn.ark.types.ObjectReference;
@@ -204,7 +206,7 @@ public class PlayerListCommands {
                     GameObject inventory = save.getObject(inventoryReference);
 
                     if (inventory != null) {
-                      List<GameObject> items = new ArrayList<>();
+                      List<ArkItem> items = new ArrayList<>();
                       ArkArrayObjectReference itemList = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
                       for (ObjectReference itemReference : itemList) {
                         GameObject item = save.getObject(itemReference);
@@ -215,7 +217,7 @@ public class PlayerListCommands {
                             continue;
                           }
 
-                          items.add(item);
+                          items.add(new ArkItem(item));
                         }
                       }
 
@@ -415,8 +417,8 @@ public class PlayerListCommands {
               if (mapNeeded) {
                 Map<ArkName, Integer> structures = new HashMap<>();
                 Map<ArkName, Integer> creatures = new HashMap<>();
-                List<GameObject> items = new ArrayList<>();
-                List<GameObject> blueprints = new ArrayList<>();
+                List<ArkItem> items = new ArrayList<>();
+                List<ArkItem> blueprints = new ArrayList<>();
                 // Apparently there is or was a bug in ARK causing certain structures to exist twice
                 // within a save
                 Set<ArkName> processedList = new HashSet<>();
@@ -502,15 +504,15 @@ public class PlayerListCommands {
 
                       if (item.hasAnyProperty("bIsBlueprint")) {
                         if (base != null) {
-                          base.getBlueprints().add(item);
+                          base.getBlueprints().add(new ArkItem(item));
                         } else {
-                          blueprints.add(item);
+                          blueprints.add(new ArkItem(item));
                         }
                       } else {
                         if (base != null) {
-                          base.getItems().add(item);
+                          base.getItems().add(new ArkItem(item));
                         } else {
-                          items.add(item);
+                          items.add(new ArkItem(item));
                         }
                       }
                     }
@@ -702,7 +704,7 @@ public class PlayerListCommands {
 
             ArkArrayStruct arkItems = arkData.getPropertyValue("ArkItems", ArkArrayStruct.class);
             if (arkItems != null) {
-              List<GameObject> items = new ArrayList<>();
+              List<ArkItem> items = new ArrayList<>();
               for (Struct itemStruct : arkItems) {
                 PropertyContainer item = (PropertyContainer) itemStruct;
                 PropertyContainer netItem = item.getPropertyValue("ArkTributeItem", PropertyContainer.class);
@@ -710,15 +712,11 @@ public class PlayerListCommands {
                 String archetype = netItem.getPropertyValue("ItemArchetype", ObjectReference.class).getObjectString().toString();
                 ArkName itemClass = new ArkName(archetype.substring(archetype.lastIndexOf('.') + 1));
 
-                GameObject itemObject = new GameObject();
-                itemObject.setClassName(itemClass);
-                itemObject.setProperties(netItem.getProperties());
-
-                items.add(itemObject);
+                items.add(new ArkItem(netItem, itemClass));
               }
 
               if (!items.isEmpty()) {
-                SharedWriters.writeInventoryLong(generator, items, "items");
+                SharedWriters.writeInventoryLong(generator, items, "items", true);
               }
             }
 
