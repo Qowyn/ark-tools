@@ -3,10 +3,13 @@ package qowyn.ark.tools;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -23,13 +26,16 @@ import qowyn.ark.ArkLocalProfile;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
 import qowyn.ark.PropertyContainer;
+import qowyn.ark.arrays.ArkArrayObjectReference;
 import qowyn.ark.arrays.ArkArrayStruct;
+import qowyn.ark.properties.PropertyArray;
 import qowyn.ark.properties.PropertyDouble;
 import qowyn.ark.properties.PropertyFloat;
 import qowyn.ark.properties.PropertyInt32;
 import qowyn.ark.properties.PropertyStr;
 import qowyn.ark.structs.Struct;
 import qowyn.ark.structs.StructPropertyList;
+import qowyn.ark.tools.data.ArkItem;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.ObjectReference;
 
@@ -398,6 +404,15 @@ public class EditingCommands {
         }
 
         localInventory.writeBinary(fileToWrite.toString(), oh.writingOptions());
+      } else if (fileFormat == FileFormat.MAP) {
+        ArkSavegame savegame = new ArkSavegame(fileToRead.toString(), oh.readingOptions());
+
+        int modifications = modifySavegame(savegame, modificationFile);
+        if (!oh.isQuiet()) {
+          System.out.println("Modifications done: " + modifications);
+        }
+
+        savegame.writeBinary(fileToWrite.toString(), oh.writingOptions());
       } else {
         System.err.println("Modifying " + fileFormat + " is not yet implemented.");
         System.exit(1);
@@ -454,6 +469,186 @@ public class EditingCommands {
         }
       }
     }
+    
+    if (!modificationFile.addItems.isEmpty()) {
+      if (arkItems == null) {
+        arkItems = new ArkArrayStruct();
+        arkData.getProperties().add(new PropertyArray("ArkItems", "ArrayProperty", arkItems, new ArkName("StructProperty")));
+        modifications++;
+      }
+      
+      for (ArkItem item: modificationFile.addItems) {
+        StructPropertyList itemData = item.toClusterData();
+        if (itemData != null) {
+          arkItems.add(itemData);
+          modifications++;
+        }
+      }
+    }
+
+    return modifications;
+  }
+
+  private static int modifySavegame(ArkSavegame savegame, ModificationFile modificationFile) {
+    int modifications = 0;
+    Map<GameObject, List<ArkItem>> replaceDefaultInventories = new HashMap<>();
+    Map<GameObject, List<ArkItem>> replaceInventories = new HashMap<>();
+    Map<GameObject, List<ArkItem>> addDefaultInventories = new HashMap<>();
+    Map<GameObject, List<ArkItem>> addInventories = new HashMap<>();
+    ObjectCollector collector = new ObjectCollector(savegame);
+
+    BiFunction<Map<ArkName, List<ArkItem>>, GameObject, List<ArkItem>> mapChecker = (map, object) -> {
+      if (map.containsKey(object.getClassName())) {
+        return map.get(object.getClassName());
+      }
+      if (object.getClassString().contains("InventoryComponent") && object.getNames().size() == 2 && map.containsKey(object.getNames().get(1))) {
+        return map.get(object.getNames().get(1));
+      }
+      return null;
+    };
+
+    for (GameObject object : savegame.getObjects()) {
+      List<ArkItem> replaceDefault = mapChecker.apply(modificationFile.replaceDefaultInventoriesMap, object);
+      List<ArkItem> addDefault = mapChecker.apply(modificationFile.addDefaultInventoriesMap, object);
+
+      if (replaceDefault != null) {
+        replaceDefaultInventories.put(object, replaceDefault);
+      } else if (addDefault != null) {
+        addDefaultInventories.put(object, addDefault);
+      }
+
+      List<ArkItem> replace = mapChecker.apply(modificationFile.replaceInventoriesMap, object);
+      List<ArkItem> add = mapChecker.apply(modificationFile.addInventoriesMap, object);
+
+      if (replace != null) {
+        replaceInventories.put(object, replace);
+      } else if (add != null) {
+        addInventories.put(object, add);
+      }
+    }
+
+    for (GameObject inventory : replaceDefaultInventories.keySet()) {
+      int defaultItemCount = inventory.findPropertyValue("DisplayDefaultItemInventoryCount", Integer.class).orElse(0);
+      ArkArrayObjectReference inventoryItems = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
+
+      // Broken inventory
+      if (inventoryItems == null && defaultItemCount > 0) {
+        continue;
+      }
+
+      modifications += defaultItemCount;
+      for (int i = 0; i < defaultItemCount; i++) {
+        collector.remove(inventoryItems.get(i).getObjectId());
+      }
+
+      ArkArrayObjectReference newInventoryItems = new ArkArrayObjectReference();
+
+      for (ArkItem newItem : replaceDefaultInventories.get(inventory)) {
+        ObjectReference newItemReference = new ObjectReference();
+        newItemReference.setLength(8);
+        newItemReference.setObjectType(ObjectReference.TYPE_ID);
+        newItemReference.setObjectId(collector.add(newItem.toGameObject(collector.getMappedObjects().values(), inventory.getId())));
+        newInventoryItems.add(newItemReference);
+      }
+
+      int newDefaultItemCount = newInventoryItems.size();
+      modifications += newDefaultItemCount;
+      // Add all non-default items
+      if (defaultItemCount > 0) {
+        newInventoryItems.addAll(inventoryItems.subList(defaultItemCount, inventoryItems.size()));
+      }
+
+      PropertyInt32 displayDefaultItemInventoryCount = inventory.getTypedProperty("DisplayDefaultItemInventoryCount", PropertyInt32.class);
+      if (displayDefaultItemInventoryCount != null) {
+        displayDefaultItemInventoryCount.setValue(newDefaultItemCount);
+      } else {
+        inventory.getProperties().add(new PropertyInt32("DisplayDefaultItemInventoryCount", "IntProperty", newDefaultItemCount));
+      }
+
+      PropertyArray inventoryItemsProperty = inventory.getTypedProperty("InventoryItems", PropertyArray.class);
+      if (inventoryItemsProperty != null) {
+        inventoryItemsProperty.setValue(newInventoryItems);
+      } else {
+        inventory.getProperties().add(new PropertyArray("InventoryItems", "ArrayProperty", newInventoryItems, new ArkName("ObjectProperty")));
+      }
+    }
+
+    for (GameObject inventory : addDefaultInventories.keySet()) {
+      int defaultItemCount = inventory.findPropertyValue("DisplayDefaultItemInventoryCount", Integer.class).orElse(0);
+      ArkArrayObjectReference inventoryItems = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
+
+      if (inventoryItems == null) {
+        inventoryItems = new ArkArrayObjectReference();
+        inventory.getProperties().add(new PropertyArray("InventoryItems", "ArrayProperty", inventoryItems, new ArkName("ObjectProperty")));
+      }
+
+      for (ArkItem newItem : addDefaultInventories.get(inventory)) {
+        ObjectReference newItemReference = new ObjectReference();
+        newItemReference.setLength(8);
+        newItemReference.setObjectType(ObjectReference.TYPE_ID);
+        newItemReference.setObjectId(collector.add(newItem.toGameObject(collector.getMappedObjects().values(), inventory.getId())));
+        inventoryItems.add(defaultItemCount, newItemReference);
+        modifications++;
+        defaultItemCount++;
+      }
+
+      PropertyInt32 displayDefaultItemInventoryCount = inventory.getTypedProperty("DisplayDefaultItemInventoryCount", PropertyInt32.class);
+      if (displayDefaultItemInventoryCount != null) {
+        displayDefaultItemInventoryCount.setValue(defaultItemCount);
+      } else {
+        inventory.getProperties().add(new PropertyInt32("DisplayDefaultItemInventoryCount", "IntProperty", defaultItemCount));
+      }
+    }
+
+    for (GameObject inventory : replaceInventories.keySet()) {
+      int defaultItemCount = inventory.findPropertyValue("DisplayDefaultItemInventoryCount", Integer.class).orElse(0);
+      ArkArrayObjectReference inventoryItems = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
+
+      // Broken inventory
+      if (inventoryItems == null && defaultItemCount > 0) {
+        continue;
+      }
+
+      if (inventoryItems == null) {
+        inventoryItems = new ArkArrayObjectReference();
+        inventory.getProperties().add(new PropertyArray("InventoryItems", "ArrayProperty", inventoryItems, new ArkName("ObjectProperty")));
+      }
+
+      modifications += inventoryItems.size() - defaultItemCount;
+      for (int i = inventoryItems.size() - 1; i >= defaultItemCount; i--) {
+        collector.remove(inventoryItems.get(i).getObjectId());
+        inventoryItems.remove(i);
+      }
+
+      for (ArkItem newItem : replaceInventories.get(inventory)) {
+        ObjectReference newItemReference = new ObjectReference();
+        newItemReference.setLength(8);
+        newItemReference.setObjectType(ObjectReference.TYPE_ID);
+        newItemReference.setObjectId(collector.add(newItem.toGameObject(collector.getMappedObjects().values(), inventory.getId())));
+        inventoryItems.add(newItemReference);
+        modifications++;
+      }
+    }
+
+    for (GameObject inventory : addInventories.keySet()) {
+      ArkArrayObjectReference inventoryItems = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
+
+      if (inventoryItems == null) {
+        inventoryItems = new ArkArrayObjectReference();
+        inventory.getProperties().add(new PropertyArray("InventoryItems", "ArrayProperty", inventoryItems, new ArkName("ObjectProperty")));
+      }
+
+      for (ArkItem newItem : addInventories.get(inventory)) {
+        ObjectReference newItemReference = new ObjectReference();
+        newItemReference.setLength(8);
+        newItemReference.setObjectType(ObjectReference.TYPE_ID);
+        newItemReference.setObjectId(collector.add(newItem.toGameObject(collector.getMappedObjects().values(), inventory.getId())));
+        inventoryItems.add(newItemReference);
+        modifications++;
+      }
+    }
+
+    savegame.setObjects(collector.remap(0));
 
     return modifications;
   }

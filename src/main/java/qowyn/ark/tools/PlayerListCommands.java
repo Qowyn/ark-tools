@@ -709,10 +709,7 @@ public class PlayerListCommands {
                 PropertyContainer item = (PropertyContainer) itemStruct;
                 PropertyContainer netItem = item.getPropertyValue("ArkTributeItem", PropertyContainer.class);
 
-                String archetype = netItem.getPropertyValue("ItemArchetype", ObjectReference.class).getObjectString().toString();
-                ArkName itemClass = new ArkName(archetype.substring(archetype.lastIndexOf('.') + 1));
-
-                items.add(new ArkItem(netItem, itemClass));
+                items.add(new ArkItem(netItem));
               }
 
               if (!items.isEmpty()) {

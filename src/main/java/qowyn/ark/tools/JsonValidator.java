@@ -8,6 +8,10 @@ import javax.json.JsonValue;
 public class JsonValidator {
 
   public static boolean expect(JsonValue value, String fieldName, JsonValue.ValueType valueType) {
+    if (value == null) {
+      return false;
+    }
+
     if (value.getValueType() != valueType) {
       System.err.println("Expected " + fieldName + " to be " + valueType + " but found " + value.getValueType());
       return false;
@@ -16,6 +20,10 @@ public class JsonValidator {
   }
 
   public static boolean expect(JsonValue value, String fieldName, JsonValue.ValueType... valueTypes) {
+    if (value == null) {
+      return false;
+    }
+
     for (JsonValue.ValueType valueType : valueTypes) {
       if (value.getValueType() == valueType) {
         return true;

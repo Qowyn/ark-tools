@@ -2,6 +2,7 @@ package qowyn.ark.tools;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
@@ -21,6 +22,8 @@ import qowyn.ark.types.ObjectReference;
 public class ObjectCollector {
 
   private Map<Integer, GameObject> mappedObjects = new HashMap<>();
+
+  private int insertIndex;
 
   public ObjectCollector(ArkSavegame saveFile, GameObject baseObject) {
     Deque<PropertyContainer> toVisit = new ArrayDeque<>();
@@ -68,6 +71,8 @@ public class ObjectCollector {
         }
       }
     }
+
+    insertIndex = mappedObjects.keySet().stream().max(Integer::compare).orElse(0);
   }
 
   /**
@@ -79,10 +84,21 @@ public class ObjectCollector {
     for (GameObject obj : saveFile.getObjects()) {
       mappedObjects.put(obj.getId(), obj);
     }
+    insertIndex = mappedObjects.size();
   }
 
   public Map<Integer, GameObject> getMappedObjects() {
-    return mappedObjects;
+    return Collections.unmodifiableMap(mappedObjects);
+  }
+
+  public void remove(int index) {
+    mappedObjects.remove(index);
+  }
+
+  public int add(GameObject object) {
+    mappedObjects.put(insertIndex, object);
+
+    return insertIndex++;
   }
 
   public List<GameObject> remap(int startId) {
@@ -105,21 +121,8 @@ public class ObjectCollector {
 
   protected void applyOrderRules(List<GameObject> remappedList) {
     for (GameObject object : mappedObjects.values()) {
-      if (object.getClassString().contains("_Character_")) {
-        // Dinos need to be defined before their components, might be related to GameObject#names
+      if (object.getNames().get(0).getNameIndex() > 0) {
         remappedList.add(object);
-
-        ObjectReference statusReference = object.getPropertyValue("MyCharacterStatusComponent", ObjectReference.class);
-
-        if (statusReference != null) {
-          remappedList.add(mappedObjects.get(statusReference.getObjectId()));
-        }
-
-        ObjectReference inventoryReference = object.getPropertyValue("MyInventoryComponent", ObjectReference.class);
-
-        if (inventoryReference != null) {
-          remappedList.add(mappedObjects.get(inventoryReference.getObjectId()));
-        }
       }
     }
   }
