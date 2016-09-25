@@ -10,6 +10,7 @@ import java.util.Map;
 
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
+import qowyn.ark.GameObjectContainer;
 import qowyn.ark.PropertyContainer;
 import qowyn.ark.arrays.ArkArray;
 import qowyn.ark.properties.Property;
@@ -80,7 +81,7 @@ public class ObjectCollector {
    * 
    * @param saveFile
    */
-  public ObjectCollector(ArkSavegame saveFile) {
+  public ObjectCollector(GameObjectContainer saveFile) {
     for (GameObject obj : saveFile.getObjects()) {
       mappedObjects.put(obj.getId(), obj);
     }

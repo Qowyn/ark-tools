@@ -26,21 +26,21 @@ import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 
-import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
+import qowyn.ark.GameObjectContainer;
 import qowyn.ark.types.ObjectReference;
 
 public class CommonFunctions {
 
-  public static boolean onlyTamed(GameObject animal, ArkSavegame saveFile) {
+  public static boolean onlyTamed(GameObject animal, GameObjectContainer saveFile) {
     return animal.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).map(a -> a.hasAnyProperty("ExperiencePoints")).orElse(false);
   }
 
-  public static boolean onlyWild(GameObject animal, ArkSavegame saveFile) {
+  public static boolean onlyWild(GameObject animal, GameObjectContainer saveFile) {
     return !animal.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).map(a -> a.hasAnyProperty("ExperiencePoints")).orElse(false);
   }
 
-  public static int getBaseLevel(GameObject animal, ArkSavegame saveFile) {
+  public static int getBaseLevel(GameObject animal, GameObjectContainer saveFile) {
     GameObject statusComponent = animal.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).orElse(null);
 
     if (statusComponent == null) {
@@ -50,7 +50,7 @@ public class CommonFunctions {
     return statusComponent.findPropertyValue("BaseCharacterLevel", Integer.class).orElse(0);
   }
 
-  public static int getFullLevel(GameObject animal, ArkSavegame saveFile) {
+  public static int getFullLevel(GameObject animal, GameObjectContainer saveFile) {
     GameObject statusComponent = animal.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).orElse(null);
 
     if (statusComponent == null) {
