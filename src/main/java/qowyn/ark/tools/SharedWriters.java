@@ -21,15 +21,23 @@ import qowyn.ark.types.LocationData;
 import qowyn.ark.types.ObjectReference;
 
 public class SharedWriters {
+  
+  private static void writeFloat(JsonGenerator generator, String name, float value) {
+    if (Float.isFinite(value)) {
+      generator.write(name, value);
+    } else {
+      generator.write(name, Float.toString(value));
+    }
+  }
 
   public static void writeCreatureInfo(JsonGenerator generator, GameObject creature, LatLonCalculator latLongCalculator, GameObjectContainer saveFile) {
     generator.writeStartObject();
 
     LocationData ld = creature.getLocation();
     if (ld != null) {
-      generator.write("x", ld.getX());
-      generator.write("y", ld.getY());
-      generator.write("z", ld.getZ());
+      writeFloat(generator, "x", ld.getX());
+      writeFloat(generator, "y", ld.getY());
+      writeFloat(generator, "z", ld.getZ());
       if (latLongCalculator != null) {
         generator.write("lat", Math.round(latLongCalculator.calculateLat(ld.getY()) * 10.0) / 10.0);
         generator.write("lon", Math.round(latLongCalculator.calculateLon(ld.getX()) * 10.0) / 10.0);
