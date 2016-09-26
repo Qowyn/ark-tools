@@ -9,7 +9,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.function.Function;
 
-import javax.json.Json;
 import javax.json.JsonObject;
 
 import qowyn.ark.GameObject;
@@ -35,6 +34,8 @@ import qowyn.ark.types.ObjectReference;
 public class ArkItem {
 
   private static final int COLOR_SLOT_COUNT = 6;
+  
+  public long itemId;
 
   public boolean canEquip;
 
@@ -45,6 +46,8 @@ public class ArkItem {
   public boolean isBlueprint;
 
   public boolean canRemove;
+
+  public boolean canRemoveFromCluster;
 
   public boolean isHidden;
 
@@ -60,14 +63,27 @@ public class ArkItem {
 
   public float durability;
 
+  public float rating;
+
   public byte quality;
 
   public final short[] itemStatValues = new short[ItemStatDefinitions.size()];
+
+  public final short[] itemColors = new short[COLOR_SLOT_COUNT];
+
+  public final short[] preSkinItemColors = new short[COLOR_SLOT_COUNT];
+
+  public final byte[] eggLevelups = new byte[AttributeNames.size()];
+
+  public final byte[] eggColors = new byte[COLOR_SLOT_COUNT];
+
+  public int uploadOffset;
 
   public ArkItem() {
     canEquip = true;
     canSlot = true;
     canRemove = true;
+    canRemoveFromCluster = true;
     quantity = 1;
     customName = "";
     customDescription = "";
@@ -84,9 +100,10 @@ public class ArkItem {
     isEngram = item.findPropertyValue("bIsEngram", Boolean.class).orElse(false);
     isBlueprint = item.findPropertyValue("bIsBlueprint", Boolean.class).orElse(false);
     canRemove = item.findPropertyValue("bAllowRemovalFromInventory", Boolean.class).orElse(true);
+    canRemoveFromCluster = true;
     isHidden = item.findPropertyValue("bHideFromInventoryDisplay", Boolean.class).orElse(false);
 
-    quantity = item.findPropertyValue("ItemQuantity", Number.class).map(Number::intValue).orElse(1);
+    quantity = Math.max(1, item.findPropertyValue("ItemQuantity", Number.class).map(Number::intValue).orElse(1));
 
     customName = item.findPropertyValue("CustomItemName", String.class).orElse("");
 
@@ -94,10 +111,28 @@ public class ArkItem {
 
     durability = item.findPropertyValue("SavedDurability", Float.class).orElse(0.0f);
 
+    rating = item.findPropertyValue("ItemRating", Float.class).orElse(0.0f);
+
     quality = item.findPropertyValue("ItemQualityIndex", ArkByteValue.class).map(ArkByteValue::getByteValue).orElse((byte) 0);
 
     for (int i = 0; i < ItemStatDefinitions.size(); i++) {
       itemStatValues[i] = item.findPropertyValue("ItemStatValues", Short.class, i).orElse((short) 0);
+    }
+
+    for (int i = 0; i < itemColors.length; i++) {
+      itemColors[i] = item.findPropertyValue("ItemColorID", Short.class, i).orElse((short) 0);
+    }
+
+    for (int i = 0; i < preSkinItemColors.length; i++) {
+      preSkinItemColors[i] = item.findPropertyValue("PreSkinItemColorID", Short.class, i).orElse((short) 0);
+    }
+
+    for (int i = 0; i < eggLevelups.length; i++) {
+      eggLevelups[i] = item.findPropertyValue("EggNumberOfLevelUpPointsApplied", ArkByteValue.class, i).map(ArkByteValue::getByteValue).orElse((byte) 0);
+    }
+
+    for (int i = 0; i < eggColors.length; i++) {
+      eggColors[i] = item.findPropertyValue("EggColorSetIndices", ArkByteValue.class, i).map(ArkByteValue::getByteValue).orElse((byte) 0);
     }
   }
 
@@ -113,9 +148,10 @@ public class ArkItem {
     isEngram = item.findPropertyValue("bIsEngram", Boolean.class).orElse(false);
     isBlueprint = item.findPropertyValue("bIsBlueprint", Boolean.class).orElse(false);
     canRemove = item.findPropertyValue("bAllowRemovalFromInventory", Boolean.class).orElse(true);
+    canRemoveFromCluster = item.findPropertyValue("bAllowRemovalFromSteamInventory", Boolean.class).orElse(true);
     isHidden = item.findPropertyValue("bHideFromInventoryDisplay", Boolean.class).orElse(false);
 
-    quantity = item.findPropertyValue("ItemQuantity", Number.class).map(Number::intValue).orElse(1);
+    quantity = Math.max(1, item.findPropertyValue("ItemQuantity", Number.class).map(Number::intValue).orElse(1));
 
     customName = item.findPropertyValue("CustomItemName", String.class).orElse("");
 
@@ -123,10 +159,28 @@ public class ArkItem {
 
     durability = item.findPropertyValue("ItemDurability", Float.class).orElse(0.0f);
 
+    rating = item.findPropertyValue("ItemRating", Float.class).orElse(0.0f);
+
     quality = item.findPropertyValue("ItemQualityIndex", ArkByteValue.class).map(ArkByteValue::getByteValue).orElse((byte) 0);
 
-    for (int i = 0; i < ItemStatDefinitions.size(); i++) {
+    for (int i = 0; i < itemStatValues.length; i++) {
       itemStatValues[i] = item.findPropertyValue("ItemStatValues", Short.class, i).orElse((short) 0);
+    }
+
+    for (int i = 0; i < itemColors.length; i++) {
+      itemColors[i] = item.findPropertyValue("ItemColorID", Short.class, i).orElse((short) 0);
+    }
+
+    for (int i = 0; i < preSkinItemColors.length; i++) {
+      preSkinItemColors[i] = item.findPropertyValue("PreSkinItemColorID", Short.class, i).orElse((short) 0);
+    }
+
+    for (int i = 0; i < eggLevelups.length; i++) {
+      eggLevelups[i] = item.findPropertyValue("EggNumberOfLevelUpPointsApplied", ArkByteValue.class, i).map(ArkByteValue::getByteValue).orElse((byte) 0);
+    }
+
+    for (int i = 0; i < eggColors.length; i++) {
+      eggColors[i] = item.findPropertyValue("EggColorSetIndices", ArkByteValue.class, i).map(ArkByteValue::getByteValue).orElse((byte) 0);
     }
   }
 
@@ -142,9 +196,10 @@ public class ArkItem {
     isEngram = object.getBoolean("isEngram", false);
     isBlueprint = object.getBoolean("isBlueprint", false);
     canRemove = object.getBoolean("canRemove", true);
+    canRemoveFromCluster = object.getBoolean("canRemoveFromCluster", true);
     isHidden = object.getBoolean("isHidden", false);
 
-    quantity = object.getInt("quantity", 1);
+    quantity = Math.max(1, object.getInt("quantity", 1));
 
     customName = object.getString("customName", "");
 
@@ -152,12 +207,31 @@ public class ArkItem {
 
     // Getting a float with a default value using JSR 353? Eaaaaasy
     durability = Optional.ofNullable(object.getJsonNumber("durability")).map(n -> n.bigDecimalValue().floatValue()).orElse(0.0f);
+    rating = Optional.ofNullable(object.getJsonNumber("rating")).map(n -> n.bigDecimalValue().floatValue()).orElse(0.0f);
 
     quality = (byte) object.getInt("quality", 0);
 
-    for (int i = 0; i < ItemStatDefinitions.size(); i++) {
+    for (int i = 0; i < itemStatValues.length; i++) {
       itemStatValues[i] = (short) object.getInt("itemStatsValue_" + i, 0);
     }
+
+    for (int i = 0; i < itemColors.length; i++) {
+      itemColors[i] = (short) object.getInt("itemColor_" + i, 0);
+    }
+
+    for (int i = 0; i < preSkinItemColors.length; i++) {
+      preSkinItemColors[i] = (short) object.getInt("preSkinItemColor_" + i, 0);
+    }
+
+    for (int i = 0; i < eggLevelups.length; i++) {
+      eggLevelups[i] = (byte) object.getInt("eggLevelup_" + i, 0);
+    }
+
+    for (int i = 0; i < eggColors.length; i++) {
+      eggColors[i] = (byte) object.getInt("eggColor_" + i, 0);
+    }
+
+    uploadOffset = object.getInt("uploadOffset", 0);
   }
 
   public StructPropertyList toClusterData() {
@@ -166,8 +240,8 @@ public class ArkItem {
       return null;
     }
 
-    StructPropertyList result = new StructPropertyList(Json.createArrayBuilder().build(), null);
-    StructPropertyList arkTributeItem = new StructPropertyList(Json.createArrayBuilder().build(), new ArkName("ItemNetInfo"));
+    StructPropertyList result = new StructPropertyList(null);
+    StructPropertyList arkTributeItem = new StructPropertyList(new ArkName("ItemNetInfo"));
 
     result.getProperties().add(new PropertyStruct("ArkTributeItem", "StructProperty", arkTributeItem));
 
@@ -179,7 +253,7 @@ public class ArkItem {
     Random random = new Random();
     long randomId = random.nextLong();
 
-    StructPropertyList struct = new StructPropertyList(Json.createArrayBuilder().build(), new ArkName("ItemNetID"));
+    StructPropertyList struct = new StructPropertyList(new ArkName("ItemNetID"));
 
     struct.getProperties().add(new PropertyInt32("ItemID1", "UInt32Property", (int) (randomId >> 32)));
     struct.getProperties().add(new PropertyInt32("ItemID2", "UInt32Property", (int) randomId));
@@ -192,18 +266,16 @@ public class ArkItem {
     arkTributeItem.getProperties().add(new PropertyBool("bIsFoodRecipe", "BoolProperty", false));
     arkTributeItem.getProperties().add(new PropertyBool("bIsRepairing", "BoolProperty", false));
     arkTributeItem.getProperties().add(new PropertyBool("bAllowRemovalFromInventory", "BoolProperty", canRemove));
-    arkTributeItem.getProperties().add(new PropertyBool("bAllowRemovalFromSteamInventory", "BoolProperty", true));
+    arkTributeItem.getProperties().add(new PropertyBool("bAllowRemovalFromSteamInventory", "BoolProperty", canRemoveFromCluster));
     arkTributeItem.getProperties().add(new PropertyBool("bHideFromInventoryDisplay", "BoolProperty", isHidden));
     arkTributeItem.getProperties().add(new PropertyBool("bFromSteamInventory", "BoolProperty", false));
     arkTributeItem.getProperties().add(new PropertyBool("bIsFromAllClustersInventory", "BoolProperty", false));
     arkTributeItem.getProperties().add(new PropertyBool("bIsEquipped", "BoolProperty", false));
     arkTributeItem.getProperties().add(new PropertyBool("bIsSlot", "BoolProperty", canSlot));
     arkTributeItem.getProperties().add(new PropertyInt32("ExpirationTimeUTC", "UInt32Property", 0));
-    arkTributeItem.getProperties().add(new PropertyInt32("ItemQuantity", "IntProperty", quantity));
-    arkTributeItem.getProperties().add(new PropertyStr("CustomItemName", "StrProperty", customName));
-    arkTributeItem.getProperties().add(new PropertyStr("CustomItemDescription", "StrProperty", customDescription));
+    arkTributeItem.getProperties().add(new PropertyInt32("ItemQuantity", "UInt32Property", quantity - 1));
     arkTributeItem.getProperties().add(new PropertyFloat("ItemDurability", "FloatProperty", durability));
-    arkTributeItem.getProperties().add(new PropertyFloat("ItemRating", "FloatProperty", 0.0f));
+    arkTributeItem.getProperties().add(new PropertyFloat("ItemRating", "FloatProperty", rating));
 
     ArkByteValue qualityValue = new ArkByteValue();
     qualityValue.setByteValue(quality);
@@ -212,6 +284,27 @@ public class ArkItem {
     for (int i = 0; i < itemStatValues.length; i++) {
       arkTributeItem.getProperties().add(new PropertyInt16("ItemStatValues", "UInt16Property", i, itemStatValues[i]));
     }
+
+    for (int i = 0; i < itemColors.length; i++) {
+      arkTributeItem.getProperties().add(new PropertyInt16("ItemColorID", "Int16Property", i, itemColors[i]));
+    }
+
+    ObjectReference itemCustomClass = new ObjectReference();
+    itemCustomClass.setLength(8);
+    itemCustomClass.setObjectId(-1);
+    itemCustomClass.setObjectType(ObjectReference.TYPE_ID);
+    arkTributeItem.getProperties().add(new PropertyObject("ItemCustomClass", "ObjectProperty", itemCustomClass));
+
+    ObjectReference itemSkinTemplate = new ObjectReference();
+    itemSkinTemplate.setLength(8);
+    itemSkinTemplate.setObjectId(-1);
+    itemSkinTemplate.setObjectType(ObjectReference.TYPE_ID);
+    arkTributeItem.getProperties().add(new PropertyObject("ItemSkinTemplate", "ObjectProperty", itemSkinTemplate));
+
+    arkTributeItem.getProperties().add(new PropertyFloat("CraftingSkill", "FloatProperty", 0.0f));
+
+    arkTributeItem.getProperties().add(new PropertyStr("CustomItemName", "StrProperty", customName));
+    arkTributeItem.getProperties().add(new PropertyStr("CustomItemDescription", "StrProperty", customDescription));
 
     // TODO: add other values
 
@@ -225,25 +318,23 @@ public class ArkItem {
     arkTributeItem.getProperties().add(new PropertyObject("LastOwnerPlayer", "ObjectProperty", lastOwnerPlayer));
 
     arkTributeItem.getProperties().add(new PropertyDouble("LastAutoDurabilityDecreaseTime", "DoubleProperty", 0.0));
-    arkTributeItem.getProperties().add(new PropertyStruct("OriginalItemDropLocation", "StructProperty", new StructVector(Json.createObjectBuilder().build(), new ArkName("Vector"))));
+    arkTributeItem.getProperties().add(new PropertyStruct("OriginalItemDropLocation", "StructProperty", new StructVector(new ArkName("Vector"))));
 
-    for (int i = 0; i < COLOR_SLOT_COUNT; i++) {
-      ArkByteValue value = new ArkByteValue();
-      value.setByteValue((byte) 0);
-      arkTributeItem.getProperties().add(new PropertyByte("PreSkinItemColorID", "ByteProperty", i, value));
+    for (int i = 0; i < preSkinItemColors.length; i++) {
+      arkTributeItem.getProperties().add(new PropertyInt16("PreSkinItemColorID", "Int16Property", i, preSkinItemColors[i]));
     }
 
-    for (int i = 0; i < AttributeNames.size(); i++) {
+    for (int i = 0; i < eggLevelups.length; i++) {
       ArkByteValue value = new ArkByteValue();
-      value.setByteValue((byte) 0);
+      value.setByteValue(eggLevelups[i]);
       arkTributeItem.getProperties().add(new PropertyByte("EggNumberOfLevelUpPointsApplied", "ByteProperty", i, value));
     }
 
     arkTributeItem.getProperties().add(new PropertyFloat("EggTamedIneffectivenessModifier", "FloatProperty", 0.0f));
 
-    for (int i = 0; i < COLOR_SLOT_COUNT; i++) {
+    for (int i = 0; i < eggColors.length; i++) {
       ArkByteValue value = new ArkByteValue();
-      value.setByteValue((byte) 0);
+      value.setByteValue(eggColors[i]);
       arkTributeItem.getProperties().add(new PropertyByte("EggColorSetIndices", "ByteProperty", i, value));
     }
 
@@ -254,7 +345,7 @@ public class ArkItem {
     arkTributeItem.getProperties().add(new PropertyArray("SteamUserItemID", "ArrayProperty", new ArkArrayLong(), new ArkName("UInt64Property")));
 
     result.getProperties().add(new PropertyFloat("Version", "FloatProperty", 2.0f));
-    result.getProperties().add(new PropertyInt32("UploadTime", "IntProperty", (int) Instant.now().getEpochSecond()));
+    result.getProperties().add(new PropertyInt32("UploadTime", "IntProperty", (int) Instant.now().plusSeconds(uploadOffset).getEpochSecond()));
 
     return result;
   }
@@ -352,7 +443,7 @@ public class ArkItem {
       randomId = random.nextLong();
     }
 
-    StructPropertyList struct = new StructPropertyList(Json.createArrayBuilder().build(), new ArkName("ItemNetID"));
+    StructPropertyList struct = new StructPropertyList(new ArkName("ItemNetID"));
 
     struct.getProperties().add(new PropertyInt32("ItemID1", "UInt32Property", (int) (randomId >> 32)));
     struct.getProperties().add(new PropertyInt32("ItemID2", "UInt32Property", (int) randomId));

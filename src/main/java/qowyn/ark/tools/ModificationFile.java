@@ -22,7 +22,7 @@ public class ModificationFile {
 
   public final Map<String, String> remapDinoClassName = new HashMap<>();
 
-  public final Map<ArkName, ArkName> remapItemArchetype = new HashMap<>();
+  public final Map<ArkName, ArkName> remapItemArchetypes = new HashMap<>();
 
   public final Set<ArkName> removeItems = new HashSet<>();
 
@@ -37,9 +37,12 @@ public class ModificationFile {
   public final Map<ArkName, List<ArkItem>> addInventoriesMap = new HashMap<>();
 
   public void readJson(JsonObject object) {
-    JsonValue dinoClassNamesValue = object.get("dinoClassNames");
+    
+    // Cluster and LocalProfile start
 
-    if (expect(dinoClassNamesValue, "dinoClassNames", JsonValue.ValueType.OBJECT)) {
+    JsonValue dinoClassNamesValue = object.get("remapDinoClassNames");
+
+    if (expect(dinoClassNamesValue, "remapDinoClassNames", JsonValue.ValueType.OBJECT)) {
       JsonObject dinoClassNames = (JsonObject) dinoClassNamesValue;
 
       dinoClassNames.forEach((name, value) -> {
@@ -49,14 +52,14 @@ public class ModificationFile {
       });
     }
 
-    JsonValue itemArchetypesValue = object.get("itemArchetype");
+    JsonValue itemArchetypesValue = object.get("remapItemArchetypes");
 
-    if (expect(itemArchetypesValue, "itemArchetype", JsonValue.ValueType.OBJECT)) {
+    if (expect(itemArchetypesValue, "remapItemArchetypes", JsonValue.ValueType.OBJECT)) {
       JsonObject itemArchetypes = (JsonObject) itemArchetypesValue;
 
       itemArchetypes.forEach((name, value) -> {
         if (expect(value, name, JsonValue.ValueType.STRING)) {
-          remapItemArchetype.put(new ArkName(name), new ArkName(((JsonString) value).getString()));
+          remapItemArchetypes.put(new ArkName(name), new ArkName(((JsonString) value).getString()));
         }
       });
     }
@@ -77,6 +80,10 @@ public class ModificationFile {
         addItems.add(new ArkItem(item));
       }
     }
+    
+    // Cluster and LocalProfile end
+    
+    // Map start
 
     BiConsumer<String, Map<ArkName, List<ArkItem>>> inventoryLoader = (fieldName, map) -> {
       JsonValue inventoriesValue = object.get(fieldName);
@@ -103,6 +110,8 @@ public class ModificationFile {
     //inventoryLoader.accept("replaceInventoryItems", replaceInventoriesMap);
     inventoryLoader.accept("addToDefaultInventory", addDefaultInventoriesMap);
     inventoryLoader.accept("addToInventory", addInventoriesMap);
+    
+    // Map end
   }
 
 }

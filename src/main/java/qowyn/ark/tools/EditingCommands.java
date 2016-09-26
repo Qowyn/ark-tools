@@ -18,7 +18,6 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonStructure;
@@ -195,14 +194,13 @@ public class EditingCommands {
 
       stopwatch.stop("Collecting");
 
-      ArkSavegame export = new ArkSavegame();
+      ArkContainer export = new ArkContainer();
 
-      export.setSaveVersion(savegame.getSaveVersion());
-      export.setObjects(collector.remap(0));
+      export.getObjects().addAll(collector.remap(0));
 
       stopwatch.stop("Remapping");
 
-      CommonFunctions.writeJson(fileToWrite.toString(), g -> export.writeJson(g, oh.writingOptions()), oh);
+      CommonFunctions.writeJson(fileToWrite.toString(), export::writeJson, oh);
 
       stopwatch.stop("Writing");
 
@@ -213,7 +211,11 @@ public class EditingCommands {
   }
 
   public static void importThing(OptionHandler oh) {
-    List<String> params = oh.getParams();
+    OptionSpec<String> fileFormatSpec = oh.accepts("file-format", "Select format of input and output files.").withRequiredArg().describedAs(FileFormat.FILE_FORMAT_DESCRIBE);
+
+    OptionSet options = oh.reparse();
+
+    List<String> params = oh.getParams(options);
     if (params.size() != 3 || oh.wantsHelp()) {
       oh.printCommandHelp();
       System.exit(1);
@@ -232,7 +234,7 @@ public class EditingCommands {
     try {
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
 
-      FileFormat fileFormat = FileFormat.fromExtension(fileToRead);
+      FileFormat fileFormat = options.has(fileFormatSpec) ? FileFormat.valueOf(options.valueOf(fileFormatSpec)) : FileFormat.fromExtension(fileToRead);
 
       ArkContainer jsonFile = new ArkContainer((JsonArray) CommonFunctions.readJson(params.get(1)));
       stopwatch.stop("Reading import container");
@@ -255,7 +257,7 @@ public class EditingCommands {
         } else {
           DataManager.loadData(oh.lang());
           ArkCloudInventory cloudInventory;
-          if (Files.exists(fileToRead)) {
+          if (Files.exists(fileToRead) && Files.size(fileToRead) > 0) {
             cloudInventory = new ArkCloudInventory(fileToRead.toString(), oh.readingOptions());
           } else {
             cloudInventory = new ArkCloudInventory();
@@ -394,7 +396,7 @@ public class EditingCommands {
 
     StructPropertyList arkData = container.getPropertyValue("MyArkData", StructPropertyList.class);
     if (arkData == null) {
-      arkData = new StructPropertyList(Json.createArrayBuilder().build(), new ArkName("ArkInventoryData"));
+      arkData = new StructPropertyList(new ArkName("ArkInventoryData"));
       container.getProperties().add(new PropertyStruct("MyArkData", "StructProperty", arkData));
     }
 
@@ -414,7 +416,7 @@ public class EditingCommands {
           return;
         }
 
-        StructPropertyList creatureStruct = new StructPropertyList(Json.createArrayBuilder().build(), null);
+        StructPropertyList creatureStruct = new StructPropertyList(null);
 
         creatureStruct.getProperties().add(new PropertyStr("DinoClassName", "StrProperty", "Blueprint'" + creatureData.getPackagePath() + "." + creatureData.getBlueprint() + "'"));
 
@@ -503,7 +505,12 @@ public class EditingCommands {
   }
 
   public static void modify(OptionHandler oh) {
-    List<String> params = oh.getParams();
+    OptionSpec<Void> requireEmptySpec = oh.accepts("require-empty", "Refuse to modify non-empty cluster files. Return exit code 3 for non-empty files.");
+    OptionSpec<String> fileFormatSpec = oh.accepts("file-format", "Select format of input and output files.").withRequiredArg().describedAs(FileFormat.FILE_FORMAT_DESCRIBE);
+
+    OptionSet options = oh.reparse();
+
+    List<String> params = oh.getParams(options);
     if (params.size() != 3 || oh.wantsHelp()) {
       oh.printCommandHelp();
       System.exit(1);
@@ -513,12 +520,6 @@ public class EditingCommands {
     Path fileToRead = Paths.get(params.get(0)).toAbsolutePath();
     Path modificationPath = Paths.get(params.get(1)).toAbsolutePath();
     Path fileToWrite = Paths.get(params.get(2)).toAbsolutePath();
-
-    if (fileToRead.equals(fileToWrite)) {
-      System.err.println("save and outfile need to be different paths");
-      System.exit(2);
-      return;
-    }
 
     try {
       JsonStructure structure = CommonFunctions.readJson(modificationPath.toString());
@@ -532,16 +533,36 @@ public class EditingCommands {
       ModificationFile modificationFile = new ModificationFile();
       modificationFile.readJson((JsonObject) structure);
 
-      FileFormat fileFormat = FileFormat.fromExtension(fileToRead);
+      FileFormat fileFormat = options.has(fileFormatSpec) ? FileFormat.valueOf(options.valueOf(fileFormatSpec)) : FileFormat.fromExtension(fileToRead);
 
       if (fileFormat == FileFormat.CLUSTER) {
-        ArkCloudInventory cloudInventory = new ArkCloudInventory(fileToRead.toString(), oh.readingOptions());
+        ArkCloudInventory cloudInventory;
+        if (Files.exists(fileToRead) && Files.size(fileToRead) > 0) {
+          if (options.has(requireEmptySpec)) {
+            System.exit(3);
+            return;
+          }
+          cloudInventory = new ArkCloudInventory(fileToRead.toString(), oh.readingOptions());
+        } else {
+          cloudInventory = new ArkCloudInventory();
+          cloudInventory.setInventoryVersion(1);
+          cloudInventory.setInventoryData(new GameObject());
+          cloudInventory.getInventoryData().setClassString("ArkCloudInventoryData");
+          cloudInventory.getInventoryData().setItem(true);
+          cloudInventory.getInventoryData().setNames(new ArrayList<>());
+          cloudInventory.getInventoryData().getNames().add(new ArkName("ArkCloudInventoryData", 42));
+          cloudInventory.getInventoryData().setExtraData(new ExtraDataZero());
+        }
 
         int modifications = modifyClusterData(cloudInventory, modificationFile);
         if (!oh.isQuiet()) {
           System.out.println("Modifications done: " + modifications);
         }
 
+        if (options.has(requireEmptySpec) && fileToWrite.equals(fileToRead) && Files.exists(fileToRead) && Files.size(fileToRead) > 0) {
+          System.exit(3);
+          return;
+        }
         cloudInventory.writeBinary(fileToWrite.toString(), oh.writingOptions());
       } else if (fileFormat == FileFormat.LOCALPROFILE) {
         ArkLocalProfile localInventory = new ArkLocalProfile(fileToRead.toString(), oh.readingOptions());
@@ -574,7 +595,11 @@ public class EditingCommands {
 
   private static int modifyClusterData(PropertyContainer container, ModificationFile modificationFile) {
 
-    PropertyContainer arkData = container.getPropertyValue("MyArkData", PropertyContainer.class);
+    StructPropertyList arkData = container.getPropertyValue("MyArkData", StructPropertyList.class);
+    if (arkData == null) {
+      arkData = new StructPropertyList(new ArkName("ArkInventoryData"));
+      container.getProperties().add(new PropertyStruct("MyArkData", "StructProperty", arkData));
+    }
 
     int modifications = 0;
 
@@ -609,7 +634,7 @@ public class EditingCommands {
         PropertyContainer netItem = item.getPropertyValue("ArkTributeItem", PropertyContainer.class);
 
         ObjectReference archetypeReference = netItem.getPropertyValue("ItemArchetype", ObjectReference.class);
-        ArkName newArchetype = modificationFile.remapItemArchetype.get(archetypeReference.getObjectString());
+        ArkName newArchetype = modificationFile.remapItemArchetypes.get(archetypeReference.getObjectString());
 
         if (newArchetype != null) {
           modifications++;

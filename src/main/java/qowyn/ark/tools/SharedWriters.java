@@ -3,6 +3,7 @@ package qowyn.ark.tools;
 import static java.util.Comparator.comparing;
 import static java.util.Comparator.reverseOrder;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -163,6 +164,7 @@ public class SharedWriters {
   public static void writeInventoryLong(JsonGenerator generator, List<ArkItem> items, String objName, boolean blueprintStatus) {
     generator.writeStartArray(objName);
 
+    items.sort(Comparator.comparing(item -> DataManager.hasItem(item.className.toString()) ? DataManager.getItem(item.className.toString()).getName() : item.className.toString()));
     for (ArkItem item : items) {
       generator.writeStartObject();
 
@@ -193,6 +195,10 @@ public class SharedWriters {
         generator.write("durability", item.durability);
       }
 
+      if (item.rating > 0.0f) {
+        generator.write("rating", item.rating);
+      }
+
       if (item.quality > 0) {
         generator.write("quality", item.quality);
       }
@@ -215,6 +221,30 @@ public class SharedWriters {
 
       if (item.itemStatValues[7] > 0) {
         generator.write("hyperMultiplier", 1.0f + ((float) item.itemStatValues[7]) * 0.2f * 0.001f);
+      }
+
+      if (item.className.toString().contains("_Fertilized_")) {
+        generator.writeStartObject("eggAttributes");
+
+        for (int i = 0; i < item.eggLevelups.length; i++) {
+          byte value = item.eggLevelups[i];
+          if (value > 0) {
+            generator.write(AttributeNames.get(i), value);
+          }
+        }
+
+        generator.writeEnd();
+
+        generator.writeStartObject("eggColors");
+
+        for (int i = 0; i < item.eggColors.length; i++) {
+          byte value = item.eggColors[i];
+          if (value > 0) {
+            generator.write(Integer.toString(i), value);
+          }
+        }
+
+        generator.writeEnd();
       }
 
       generator.writeEnd();

@@ -1,8 +1,10 @@
 package qowyn.ark.tools;
 
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public enum FileFormat {
   MAP("map", ".ark", "Saved data of a map"),
@@ -12,6 +14,8 @@ public enum FileFormat {
   LOCALPROFILE("localprofile", null, "Local profile");
 
   private static final Map<String, FileFormat> EXTENSION_FORMAT_MAP = new HashMap<>();
+  
+  public static final String FILE_FORMAT_DESCRIBE;
 
   static {
     for (FileFormat format: FileFormat.values()) {
@@ -19,6 +23,8 @@ public enum FileFormat {
         EXTENSION_FORMAT_MAP.put(format.getExtension(), format);
       }
     }
+
+    FILE_FORMAT_DESCRIBE = Arrays.stream(FileFormat.values()).map(FileFormat::getIdentifier).sorted().collect(Collectors.joining("|"));
   }
 
   public static FileFormat fromExtension(Path path) {
