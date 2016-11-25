@@ -41,12 +41,14 @@ public class App {
     addCommand(list("t2j", "tribeToJson"), "Converting", list("TRIBE", "JSON"), "Converts from .arktribe to .json", ConvertingCommands::tribeToJson);
     addCommand(list("c2j", "cloudToJson"), "Converting", list("CLOUD", "JSON"), "Converts cloud data to .json", ConvertingCommands::cloudToJson);
     addCommand(list("l2j", "localProfileToJson"), "Converting", list("LOCALPROFILE", "JSON"), "Converts local profile data to .json", ConvertingCommands::localProfileToJson);
+    addCommand(list("s2j", "savToJson"), "Converting", list("SAV", "JSON"), "Converts .sav to .json", ConvertingCommands::savToJson);
 
     addCommand(list("j2m", "jsonToMap"), "Converting", list("JSON", "ARK"), "Converts from .json to .ark", ConvertingCommands::jsonToMap);
     addCommand(list("j2p", "jsonToProfile"), "Converting", list("JSON", "PROFILE"), "Converts from .json to .arkprofile", ConvertingCommands::jsonToProfile);
     addCommand(list("j2t", "jsonToTribe"), "Converting", list("JSON", "TRIBE"), "Converts from .json to .arktribe", ConvertingCommands::jsonToTribe);
     addCommand(list("j2c", "jsonToCloud"), "Converting", list("JSON", "CLOUD"), "Converts from .json to cloud data", ConvertingCommands::jsonToCloud);
     addCommand(list("j2l", "jsonToLocalProfile"), "Converting", list("JSON", "LOCALPROFILE"), "Converts from .json to local profile data", ConvertingCommands::jsonToLocalProfile);
+    addCommand(list("j2s", "jsonToSav"), "Converting", list("JSON", "SAV"), "Converts from .json to .sav", ConvertingCommands::jsonToSav);
 
     addCommand(list("classes"), "Debug", list("SAVE", "[OUT_FILE]"), "Dumps a list of all classes with count of objects to stdout or OUT_FILE.", DebugCommands::classes);
     addCommand(list("dump"), "Debug", list("SAVE", "CLASS_NAME", "[OUT_FILE]"), "Dumps all objects of given CLASS_NAME to stdout or OUT_FILE.", DebugCommands::dump);

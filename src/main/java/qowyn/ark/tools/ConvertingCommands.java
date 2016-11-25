@@ -8,6 +8,7 @@ import javax.json.JsonObject;
 import qowyn.ark.ArkCloudInventory;
 import qowyn.ark.ArkLocalProfile;
 import qowyn.ark.ArkProfile;
+import qowyn.ark.ArkSavFile;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.ArkTribe;
 
@@ -263,6 +264,56 @@ public class ConvertingCommands {
       ArkLocalProfile localProfile = new ArkLocalProfile(object);
       stopwatch.stop("Loading");
       localProfile.writeBinary(outPath, oh.writingOptions());
+      stopwatch.stop("Writing");
+
+      stopwatch.print();
+    } catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+  
+  public static void savToJson(OptionHandler oh) {
+    List<String> params = oh.getParams();
+    if (params.size() != 2 || oh.wantsHelp()) {
+      oh.printCommandHelp();
+      System.exit(1);
+      return;
+    }
+
+    try {
+      String inPath = params.get(0);
+      String outPath = params.get(1);
+
+      Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
+      ArkSavFile savFile = new ArkSavFile(inPath);
+      stopwatch.stop("Reading");
+      CommonFunctions.writeJson(outPath, savFile.toJson(), oh);
+      stopwatch.stop("Dumping");
+
+      stopwatch.print();
+    } catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
+  public static void jsonToSav(OptionHandler oh) {
+    List<String> params = oh.getParams();
+    if (params.size() != 2 || oh.wantsHelp()) {
+      oh.printCommandHelp();
+      System.exit(1);
+      return;
+    }
+
+    try {
+      String jsonPath = params.get(0);
+      String outPath = params.get(1);
+
+      Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
+      JsonObject object = (JsonObject) CommonFunctions.readJson(jsonPath);
+      stopwatch.stop("Parsing");
+      ArkSavFile savFile = new ArkSavFile(object);
+      stopwatch.stop("Loading");
+      savFile.writeBinary(outPath, oh.writingOptions());
       stopwatch.stop("Writing");
 
       stopwatch.print();
