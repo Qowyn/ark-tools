@@ -21,7 +21,7 @@ import qowyn.ark.types.LocationData;
 import qowyn.ark.types.ObjectReference;
 
 public class SharedWriters {
-  
+
   private static void writeFloat(JsonGenerator generator, String name, float value) {
     if (Float.isFinite(value)) {
       generator.write(name, value);
@@ -48,11 +48,20 @@ public class SharedWriters {
     int dinoID2 = creature.findPropertyValue("DinoID2", Integer.class).orElse(0);
     long id = (long) dinoID1 << Integer.SIZE | (dinoID2 & 0xFFFFFFFFL);
     generator.write("id", id);
-    
+
     if (creature.findPropertyValue("TargetingTeam", Integer.class).orElse(0) >= 50000) {
       generator.write("tamed", true);
+      generator.write("team", creature.findPropertyValue("TargetingTeam", Integer.class).orElse(0));
     } else if (writeAllProperties) {
       generator.write("tamed", false);
+      generator.write("team", creature.findPropertyValue("TargetingTeam", Integer.class).orElse(0));
+    }
+
+    int playerId = creature.findPropertyValue("OwningPlayerID", Integer.class).orElse(0);
+    if (playerId != 0) {
+      generator.write("playerId", playerId);
+    } else if (writeAllProperties) {
+      generator.write("playerId", playerId);
     }
 
     if (creature.hasAnyProperty("bIsFemale")) {
@@ -89,6 +98,13 @@ public class SharedWriters {
       generator.write("tamer", tamerName);
     } else if (writeAllProperties) {
       generator.write("tamer", "");
+    }
+
+    String ownerPlayerName = creature.getPropertyValue("OwningPlayerName", String.class);
+    if (ownerPlayerName != null) {
+      generator.write("ownerName", ownerPlayerName);
+    } else if (writeAllProperties) {
+      generator.write("ownerName", "");
     }
 
     String name = creature.getPropertyValue("TamedName", String.class);
