@@ -697,7 +697,7 @@ public class PlayerListCommands {
 
                 ArkContainer container = new ArkContainer(byteData);
 
-                SharedWriters.writeCreatureInfo(generator, container.getObjects().get(0), LatLonCalculator.DEFAULT, container);
+                SharedWriters.writeCreatureInfo(generator, container.getObjects().get(0), LatLonCalculator.DEFAULT, container, false);
               }
               generator.writeEnd();
             }

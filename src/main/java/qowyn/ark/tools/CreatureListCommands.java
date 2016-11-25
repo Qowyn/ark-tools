@@ -45,6 +45,8 @@ public class CreatureListCommands {
   private static OptionSpec<Void> withoutIndexSpec;
 
   private static OptionSpec<Void> cleanFolderSpec;
+  
+  private static OptionSpec<Void> writeAllFieldsSpec;
 
   private static OptionSet options;
 
@@ -83,6 +85,7 @@ public class CreatureListCommands {
       statisticsSpec = optionHandler.accepts("statistics", "Wrap list of dinos in statistics block.");
       withoutIndexSpec = optionHandler.accepts("without-index", "Omits reading and writing classes.json");
       cleanFolderSpec = optionHandler.accepts("clean", "Deletes all .json files in the target directory.");
+      writeAllFieldsSpec = optionHandler.accepts("write-all-fields", "Writes all the fields.");
 
       options = optionHandler.reparse();
 
@@ -239,7 +242,7 @@ public class CreatureListCommands {
         }
 
         for (GameObject creature : filteredClasses) {
-          SharedWriters.writeCreatureInfo(generator, creature, latLongCalculator, saveFile);
+          SharedWriters.writeCreatureInfo(generator, creature, latLongCalculator, saveFile, options.has(writeAllFieldsSpec));
         }
 
         generator.writeEnd(); // Array

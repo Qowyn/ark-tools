@@ -33,11 +33,11 @@ import qowyn.ark.types.ObjectReference;
 public class CommonFunctions {
 
   public static boolean onlyTamed(GameObject animal, GameObjectContainer saveFile) {
-    return animal.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).map(a -> a.hasAnyProperty("ExperiencePoints")).orElse(false);
+    return animal.findPropertyValue("TargetingTeam", Integer.class).orElse(0) >= 50000;
   }
 
   public static boolean onlyWild(GameObject animal, GameObjectContainer saveFile) {
-    return !animal.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).map(a -> a.hasAnyProperty("ExperiencePoints")).orElse(false);
+    return animal.findPropertyValue("TargetingTeam", Integer.class).orElse(0) < 50000;
   }
 
   public static int getBaseLevel(GameObject animal, GameObjectContainer saveFile) {
