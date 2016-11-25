@@ -104,7 +104,7 @@ public class PlayerListCommands {
             StructPropertyList tribeData = tribe.getPropertyValue("TribeData", StructPropertyList.class);
             Number tribeId = tribeData.getPropertyValue("TribeID", Number.class);
             tribes.put(tribeId.intValue(), tribeData);
-          } catch (UnsupportedOperationException | NullPointerException ex) {
+          } catch (RuntimeException ex) {
             // Either the header didn't match or one of the properties is missing
             System.err.println("Found potentially corrupt ArkTribe: " + path.toString());
             if (oh.isVerbose()) {
@@ -256,7 +256,7 @@ public class PlayerListCommands {
 
               generator.writeEnd();
             }, oh);
-          } catch (UnsupportedOperationException | NullPointerException ex) {
+          } catch (RuntimeException ex) {
             System.err.println("Found potentially corrupt ArkProfile: " + path.toString());
             if (oh.isVerbose()) {
               ex.printStackTrace();
@@ -645,7 +645,7 @@ public class PlayerListCommands {
 
               generator.writeEnd();
             }, oh);
-          } catch (UnsupportedOperationException | NullPointerException ex) {
+          } catch (RuntimeException ex) {
             System.err.println("Found potentially corrupt ArkTribe: " + path.toString());
             if (oh.isVerbose()) {
               ex.printStackTrace();
@@ -721,7 +721,7 @@ public class PlayerListCommands {
 
           }, oh);
 
-        } catch (UnsupportedOperationException | NullPointerException ex) {
+        } catch (RuntimeException ex) {
           System.err.println("Found potentially corrupt cluster data: " + path.toString());
           if (oh.isVerbose()) {
             ex.printStackTrace();
