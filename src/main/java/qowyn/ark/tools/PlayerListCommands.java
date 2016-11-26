@@ -9,6 +9,8 @@ import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -61,6 +63,7 @@ public class PlayerListCommands {
         .withRequiredArg().describedAs("steamid|playerid").defaultsTo("steamid");
     OptionSpec<String> inventorySpec = oh.accepts("inventory", "Include inventory of players.").withOptionalArg().describedAs("summary|long").defaultsTo("summary");
     OptionSpec<Void> positionsSpec = oh.accepts("positions", "Include current position of players.");
+    OptionSpec<Integer> maxAgeSpec = oh.accepts("max-age", "Ignore all player files older then <seconds> seconds.").withRequiredArg().describedAs("seconds").ofType(Integer.class);
 
     OptionSet options = oh.reparse();
 
@@ -102,31 +105,19 @@ public class PlayerListCommands {
       }
 
       Map<Integer, StructPropertyList> tribes = new HashMap<>();
-      Filter<Path> tribeFilter = path -> TRIBE_PATTERN.matcher(path.getFileName().toString()).matches();
-
-      try (DirectoryStream<Path> stream = Files.newDirectoryStream(saveDir, tribeFilter)) {
-        for (Path path : stream) {
-          try {
-            ArkTribe tribe = new ArkTribe(path.toString());
-            StructPropertyList tribeData = tribe.getPropertyValue("TribeData", StructPropertyList.class);
-            Number tribeId = tribeData.getPropertyValue("TribeID", Number.class);
-            tribes.put(tribeId.intValue(), tribeData);
-          } catch (RuntimeException ex) {
-            // Either the header didn't match or one of the properties is missing
-            System.err.println("Found potentially corrupt ArkTribe: " + path.toString());
-            if (oh.isVerbose()) {
-              ex.printStackTrace();
-            }
-          }
-        }
-      }
-
-      stopwatch.stop("Loading tribes");
 
       Filter<Path> profileFilter = path -> PROFILE_PATTERN.matcher(path.getFileName().toString()).matches();
 
       try (DirectoryStream<Path> stream = Files.newDirectoryStream(saveDir, profileFilter)) {
         for (Path path : stream) {
+          if (options.has(maxAgeSpec)) {
+            FileTime fileTime = Files.getLastModifiedTime(path);
+
+            if (fileTime.toInstant().isBefore(Instant.now().minusSeconds(maxAgeSpec.value(options)))) {
+              continue;
+            }
+          }
+
           try {
             ArkProfile profile = new ArkProfile(path.toString());
 
@@ -141,6 +132,27 @@ public class PlayerListCommands {
               playerFileName = Long.toString(playerId) + ".json";
             } else {
               throw new Error();
+            }
+
+            Number tribeId = myData.getPropertyValue("TribeID", Number.class);
+            if (tribeId != null && !tribes.containsKey(tribeId.intValue())) {
+              Path tribePath = saveDir.resolve(tribeId.intValue() + ".arktribe");
+              if (Files.exists(tribePath)) {
+                try {
+                  ArkTribe tribe = new ArkTribe(tribePath.toString());
+                  StructPropertyList tribeData = tribe.getPropertyValue("TribeData", StructPropertyList.class);
+                  tribes.put(tribeId.intValue(), tribeData);
+                } catch (RuntimeException ex) {
+                  // Either the header didn't match or one of the properties is missing
+                  System.err.println("Found potentially corrupt ArkTribe: " + tribePath);
+                  if (oh.isVerbose()) {
+                    ex.printStackTrace();
+                  }
+                  tribes.put(tribeId.intValue(), null);
+                }
+              } else {
+                tribes.put(tribeId.intValue(), null);
+              }
             }
 
             Path playerPath = outputDirectory.resolve(playerFileName);
@@ -254,7 +266,6 @@ public class PlayerListCommands {
 
               // Tribe
 
-              Number tribeId = myData.getPropertyValue("TribeID", Number.class);
               if (tribeId != null) {
                 generator.write("tribeId", tribeId.intValue());
                 StructPropertyList tribe = tribes.get(tribeId.intValue());
