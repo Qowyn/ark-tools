@@ -45,7 +45,7 @@ public class CreatureListCommands {
   private static OptionSpec<Void> withoutIndexSpec;
 
   private static OptionSpec<Void> cleanFolderSpec;
-  
+
   private static OptionSpec<Void> writeAllFieldsSpec;
 
   private static OptionSet options;
