@@ -1,5 +1,6 @@
 package qowyn.ark.tools;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,7 +31,14 @@ public class DataManager {
         fileName = DATA_FILE_NAME + DATA_FILE_EXT;
       }
 
-      JsonObject data = (JsonObject) CommonFunctions.readJsonRelative(fileName);
+      JsonObject data;
+
+      try {
+        data = (JsonObject) CommonFunctions.readJsonRelative(fileName);
+      } catch (FileNotFoundException fnfe) {
+        throw new RuntimeException("Unable to load data file ." + fileName);
+      }
+
       JsonArray creatures = data.getJsonArray("creatures");
 
       for (JsonObject entry : creatures.getValuesAs(JsonObject.class)) {

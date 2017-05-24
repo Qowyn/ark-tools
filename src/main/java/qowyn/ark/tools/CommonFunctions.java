@@ -1,6 +1,7 @@
 package qowyn.ark.tools;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -63,6 +64,10 @@ public class CommonFunctions {
   }
 
   public static void writeJson(OutputStream out, JsonStructure structure, OptionHandler oh) throws IOException {
+    if (out == null) {
+      throw new NullPointerException();
+    }
+
     if (oh.usePretty()) {
       Map<String, Object> properties = new HashMap<>(1);
       properties.put(JsonGenerator.PRETTY_PRINTING, true);
@@ -85,6 +90,10 @@ public class CommonFunctions {
   }
 
   public static void writeJson(OutputStream out, Consumer<JsonGenerator> writeJson, OptionHandler oh) throws IOException {
+    if (out == null) {
+      throw new NullPointerException();
+    }
+
     if (oh.usePretty()) {
       Map<String, Object> properties = new HashMap<>(1);
       properties.put(JsonGenerator.PRETTY_PRINTING, true);
@@ -107,6 +116,10 @@ public class CommonFunctions {
   }
 
   public static JsonStructure readJson(InputStream stream) throws IOException {
+    if (stream == null) {
+      throw new NullPointerException();
+    }
+
     try (JsonReader reader = Json.createReader(stream)) {
       return reader.read();
     }
@@ -120,11 +133,19 @@ public class CommonFunctions {
 
   public static JsonStructure readJsonRelative(String inFile) throws IOException {
     try (InputStream stream = CommonFunctions.class.getResourceAsStream(inFile)) {
+      if (stream == null) {
+        throw new FileNotFoundException();
+      }
+
       return readJson(stream);
     }
   }
 
   public static void readJson(InputStream stream, Consumer<JsonParser> parseJson) throws IOException {
+    if (stream == null) {
+      throw new NullPointerException();
+    }
+
     try (JsonParser parser = Json.createParser(stream)) {
       parseJson.accept(parser);
     }
