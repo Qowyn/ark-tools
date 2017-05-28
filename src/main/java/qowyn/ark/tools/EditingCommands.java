@@ -35,13 +35,15 @@ import qowyn.ark.PropertyContainer;
 import qowyn.ark.arrays.ArkArrayObjectReference;
 import qowyn.ark.arrays.ArkArrayStruct;
 import qowyn.ark.data.ExtraDataZero;
+import qowyn.ark.properties.Property;
 import qowyn.ark.properties.PropertyArray;
 import qowyn.ark.properties.PropertyDouble;
 import qowyn.ark.properties.PropertyFloat;
-import qowyn.ark.properties.PropertyInt32;
+import qowyn.ark.properties.PropertyInt;
 import qowyn.ark.properties.PropertyObject;
 import qowyn.ark.properties.PropertyStr;
 import qowyn.ark.properties.PropertyStruct;
+import qowyn.ark.properties.PropertyUInt32;
 import qowyn.ark.structs.Struct;
 import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.tools.data.ArkItem;
@@ -210,6 +212,10 @@ public class EditingCommands {
     }
   }
 
+  private static final ArkName CLOUD_INVENTORY_CLASS = ArkName.constantPlain("ArkCloudInventoryData");
+
+  private static final ArkName CLOUD_INVENTORY_NAME = ArkName.constant("ArkCloudInventoryData", 42);
+
   public static void importThing(OptionHandler oh) {
     OptionSpec<String> fileFormatSpec = oh.accepts("file-format", "Select format of input and output files.").withRequiredArg().describedAs(FileFormat.FILE_FORMAT_DESCRIBE);
 
@@ -263,10 +269,10 @@ public class EditingCommands {
             cloudInventory = new ArkCloudInventory();
             cloudInventory.setInventoryVersion(1);
             cloudInventory.setInventoryData(new GameObject());
-            cloudInventory.getInventoryData().setClassString("ArkCloudInventoryData");
+            cloudInventory.getInventoryData().setClassName(CLOUD_INVENTORY_CLASS);
             cloudInventory.getInventoryData().setItem(true);
             cloudInventory.getInventoryData().setNames(new ArrayList<>());
-            cloudInventory.getInventoryData().getNames().add(new ArkName("ArkCloudInventoryData", 42));
+            cloudInventory.getInventoryData().getNames().add(CLOUD_INVENTORY_NAME);
             cloudInventory.getInventoryData().setExtraData(new ExtraDataZero());
           }
 
@@ -347,9 +353,9 @@ public class EditingCommands {
     for (GameObject object : remappedObjects) {
       checkNames(object, remappedObjects, names, startIndex);
 
-      PropertyInt32 dinoID1 = object.getTypedProperty("DinoID1", PropertyInt32.class);
+      PropertyInt dinoID1 = object.getTypedProperty("DinoID1", PropertyInt.class);
       if (dinoID1 != null) {
-        PropertyInt32 dinoID2 = object.getTypedProperty("DinoID2", PropertyInt32.class);
+        PropertyInt dinoID2 = object.getTypedProperty("DinoID2", PropertyInt.class);
         if (dinoID2 != null) {
           long id = (long) dinoID1.getValue() << Integer.SIZE | (dinoID2.getValue() & 0xFFFFFFFFL);
           if (dinoIDs.contains(id)) {
@@ -368,8 +374,8 @@ public class EditingCommands {
 
       StructPropertyList itemID = object.getPropertyValue("ItemId", StructPropertyList.class);
       if (itemID != null) {
-        PropertyInt32 itemID1 = itemID.getTypedProperty("ItemID1", PropertyInt32.class);
-        PropertyInt32 itemID2 = itemID.getTypedProperty("ItemID2", PropertyInt32.class);
+        PropertyInt itemID1 = itemID.getTypedProperty("ItemID1", PropertyInt.class);
+        PropertyInt itemID2 = itemID.getTypedProperty("ItemID2", PropertyInt.class);
         if (itemID1 != null && itemID2 != null) {
           long id = (long) itemID1.getValue() << Integer.SIZE | (itemID2.getValue() & 0xFFFFFFFFL);
           if (itemIDs.contains(id)) {
@@ -392,18 +398,20 @@ public class EditingCommands {
     savegame.getObjects().addAll(remappedObjects);
   }
 
+  private static final ArkName ARK_INVENTORY_DATA = ArkName.constantPlain("ArkInventoryData");
+
   private static void importIntoClusterData(PropertyContainer container, ArkContainer importFile, Stopwatch stopwatch) {
 
     StructPropertyList arkData = container.getPropertyValue("MyArkData", StructPropertyList.class);
     if (arkData == null) {
-      arkData = new StructPropertyList(new ArkName("ArkInventoryData"));
-      container.getProperties().add(new PropertyStruct("MyArkData", "StructProperty", arkData));
+      arkData = new StructPropertyList();
+      container.getProperties().add(new PropertyStruct("MyArkData", arkData, ARK_INVENTORY_DATA));
     }
 
     ArkArrayStruct tamedDinosData = arkData.getPropertyValue("ArkTamedDinosData", ArkArrayStruct.class);
     if (tamedDinosData == null) {
       tamedDinosData = new ArkArrayStruct();
-      arkData.getProperties().add(new PropertyArray("ArkTamedDinosData", "ArrayProperty", tamedDinosData, new ArkName("StructProperty")));
+      arkData.getProperties().add(new PropertyArray("ArkTamedDinosData", tamedDinosData));
     }
 
     for (GameObject creature : importFile.getObjects()) {
@@ -416,35 +424,36 @@ public class EditingCommands {
           return;
         }
 
-        StructPropertyList creatureStruct = new StructPropertyList(null);
+        StructPropertyList creatureStruct = new StructPropertyList();
+        List<Property<?>> creatureProperties = creatureStruct.getProperties();
 
-        creatureStruct.getProperties().add(new PropertyStr("DinoClassName", "StrProperty", "Blueprint'" + creatureData.getPackagePath() + "." + creatureData.getBlueprint() + "'"));
+        creatureProperties.add(new PropertyStr("DinoClassName", "Blueprint'" + creatureData.getPackagePath() + "." + creatureData.getBlueprint() + "'"));
 
         ObjectReference dinoClass = new ObjectReference();
         dinoClass.setObjectType(ObjectReference.TYPE_PATH);
-        dinoClass.setObjectString(new ArkName("BlueprintGeneratedClass " + creatureData.getPackagePath() + "." + creatureData.getClassName()));
-        creatureStruct.getProperties().add(new PropertyObject("DinoClass", "ObjectProperty", dinoClass));
+        dinoClass.setObjectString(ArkName.from("BlueprintGeneratedClass " + creatureData.getPackagePath() + "." + creatureData.getClassName()));
+        creatureProperties.add(new PropertyObject("DinoClass", dinoClass));
 
-        creatureStruct.getProperties().add(new PropertyArray("DinoData", "ArrayProperty", importFile.toByteArray(), new ArkName("ByteProperty")));
+        creatureProperties.add(new PropertyArray("DinoData", importFile.toByteArray()));
 
         String tamedName = creature.findPropertyValue("TamedName", String.class).orElse(creatureData.getName());
         String fullName = tamedName + " - Lvl " + CommonFunctions.getFullLevel(creature, importFile) + " (" + creatureData.getName() + ")";
-        creatureStruct.getProperties().add(new PropertyStr("DinoName", "StrProperty", fullName));
+        creatureProperties.add(new PropertyStr("DinoName", fullName));
 
-        creatureStruct.getProperties().add(new PropertyStr("DinoNameInMap", "StrProperty", creature.getNames().get(0).toString()));
+        creatureProperties.add(new PropertyStr("DinoNameInMap", creature.getNames().get(0).toString()));
 
         for (int i = 0; i < AttributeNames.size(); i++) {
-          creatureStruct.getProperties().add(new PropertyStr("DinoStats", "StrProperty", i, AttributeNames.get(i)));
+          creatureProperties.add(new PropertyStr("DinoStats", i, AttributeNames.get(i)));
         }
 
         float experience = creature.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class)
             .map(importFile::getObject).map(o -> o.getPropertyValue("ExperiencePoints", Float.class)).orElse(0.0f);
-        creatureStruct.getProperties().add(new PropertyFloat("DinoExperiencePoints", "FloatProperty", experience));
+        creatureProperties.add(new PropertyFloat("DinoExperiencePoints", experience));
 
-        creatureStruct.getProperties().add(new PropertyFloat("Version", "FloatProperty", 2.0f));
-        creatureStruct.getProperties().add(new PropertyInt32("DinoID1", "UInt32Property", creature.findPropertyValue("DinoID1", Integer.class).orElse(0)));
-        creatureStruct.getProperties().add(new PropertyInt32("DinoID2", "UInt32Property", creature.findPropertyValue("DinoID2", Integer.class).orElse(0)));
-        creatureStruct.getProperties().add(new PropertyInt32("UploadTime", "IntProperty", (int) Instant.now().getEpochSecond()));
+        creatureProperties.add(new PropertyFloat("Version", 2.0f));
+        creatureProperties.add(new PropertyUInt32("DinoID1", creature.findPropertyValue("DinoID1", Integer.class).orElse(0)));
+        creatureProperties.add(new PropertyUInt32("DinoID2", creature.findPropertyValue("DinoID2", Integer.class).orElse(0)));
+        creatureProperties.add(new PropertyInt("UploadTime", (int) Instant.now().getEpochSecond()));
 
         tamedDinosData.add(creatureStruct);
       }
@@ -457,7 +466,7 @@ public class EditingCommands {
 
     Function<ArkName, ArkName> findFreeName = name -> {
       for (int i = 1; i < Integer.MAX_VALUE; i++) {
-        ArkName tempName = new ArkName(name.getNameString(), i);
+        ArkName tempName = ArkName.from(name.getName(), i);
         if (!names.contains(tempName)) {
           return tempName;
         }
@@ -547,10 +556,10 @@ public class EditingCommands {
           cloudInventory = new ArkCloudInventory();
           cloudInventory.setInventoryVersion(1);
           cloudInventory.setInventoryData(new GameObject());
-          cloudInventory.getInventoryData().setClassString("ArkCloudInventoryData");
+          cloudInventory.getInventoryData().setClassName(CLOUD_INVENTORY_CLASS);
           cloudInventory.getInventoryData().setItem(true);
           cloudInventory.getInventoryData().setNames(new ArrayList<>());
-          cloudInventory.getInventoryData().getNames().add(new ArkName("ArkCloudInventoryData", 42));
+          cloudInventory.getInventoryData().getNames().add(CLOUD_INVENTORY_NAME);
           cloudInventory.getInventoryData().setExtraData(new ExtraDataZero());
         }
 
@@ -597,8 +606,8 @@ public class EditingCommands {
 
     StructPropertyList arkData = container.getPropertyValue("MyArkData", StructPropertyList.class);
     if (arkData == null) {
-      arkData = new StructPropertyList(new ArkName("ArkInventoryData"));
-      container.getProperties().add(new PropertyStruct("MyArkData", "StructProperty", arkData));
+      arkData = new StructPropertyList();
+      container.getProperties().add(new PropertyStruct("MyArkData", arkData, ARK_INVENTORY_DATA));
     }
 
     int modifications = 0;
@@ -621,7 +630,7 @@ public class EditingCommands {
             String blueprintGeneratedClass = matcher.group(1);
             ObjectReference dinoClass = dino.getPropertyValue("DinoClass", ObjectReference.class);
             dinoClass.setObjectType(ObjectReference.TYPE_PATH);
-            dinoClass.setObjectString(new ArkName("BlueprintGeneratedClass " + blueprintGeneratedClass + "_C"));
+            dinoClass.setObjectString(ArkName.from("BlueprintGeneratedClass " + blueprintGeneratedClass + "_C"));
           }
         }
       }
@@ -646,7 +655,7 @@ public class EditingCommands {
     if (!modificationFile.addItems.isEmpty()) {
       if (arkItems == null) {
         arkItems = new ArkArrayStruct();
-        arkData.getProperties().add(new PropertyArray("ArkItems", "ArrayProperty", arkItems, new ArkName("StructProperty")));
+        arkData.getProperties().add(new PropertyArray("ArkItems", arkItems));
         modifications++;
       }
 
@@ -731,18 +740,18 @@ public class EditingCommands {
         newInventoryItems.addAll(inventoryItems.subList(defaultItemCount, inventoryItems.size()));
       }
 
-      PropertyInt32 displayDefaultItemInventoryCount = inventory.getTypedProperty("DisplayDefaultItemInventoryCount", PropertyInt32.class);
+      PropertyInt displayDefaultItemInventoryCount = inventory.getTypedProperty("DisplayDefaultItemInventoryCount", PropertyInt.class);
       if (displayDefaultItemInventoryCount != null) {
         displayDefaultItemInventoryCount.setValue(newDefaultItemCount);
       } else {
-        inventory.getProperties().add(new PropertyInt32("DisplayDefaultItemInventoryCount", "IntProperty", newDefaultItemCount));
+        inventory.getProperties().add(new PropertyInt("DisplayDefaultItemInventoryCount", newDefaultItemCount));
       }
 
       PropertyArray inventoryItemsProperty = inventory.getTypedProperty("InventoryItems", PropertyArray.class);
       if (inventoryItemsProperty != null) {
         inventoryItemsProperty.setValue(newInventoryItems);
       } else {
-        inventory.getProperties().add(new PropertyArray("InventoryItems", "ArrayProperty", newInventoryItems, new ArkName("ObjectProperty")));
+        inventory.getProperties().add(new PropertyArray("InventoryItems", newInventoryItems));
       }
     }
 
@@ -752,7 +761,7 @@ public class EditingCommands {
 
       if (inventoryItems == null) {
         inventoryItems = new ArkArrayObjectReference();
-        inventory.getProperties().add(new PropertyArray("InventoryItems", "ArrayProperty", inventoryItems, new ArkName("ObjectProperty")));
+        inventory.getProperties().add(new PropertyArray("InventoryItems", inventoryItems));
       }
 
       for (ArkItem newItem : addDefaultInventories.get(inventory)) {
@@ -765,11 +774,11 @@ public class EditingCommands {
         defaultItemCount++;
       }
 
-      PropertyInt32 displayDefaultItemInventoryCount = inventory.getTypedProperty("DisplayDefaultItemInventoryCount", PropertyInt32.class);
+      PropertyInt displayDefaultItemInventoryCount = inventory.getTypedProperty("DisplayDefaultItemInventoryCount", PropertyInt.class);
       if (displayDefaultItemInventoryCount != null) {
         displayDefaultItemInventoryCount.setValue(defaultItemCount);
       } else {
-        inventory.getProperties().add(new PropertyInt32("DisplayDefaultItemInventoryCount", "IntProperty", defaultItemCount));
+        inventory.getProperties().add(new PropertyInt("DisplayDefaultItemInventoryCount", defaultItemCount));
       }
     }
 
@@ -784,7 +793,7 @@ public class EditingCommands {
 
       if (inventoryItems == null) {
         inventoryItems = new ArkArrayObjectReference();
-        inventory.getProperties().add(new PropertyArray("InventoryItems", "ArrayProperty", inventoryItems, new ArkName("ObjectProperty")));
+        inventory.getProperties().add(new PropertyArray("InventoryItems", inventoryItems));
       }
 
       modifications += inventoryItems.size() - defaultItemCount;
@@ -808,7 +817,7 @@ public class EditingCommands {
 
       if (inventoryItems == null) {
         inventoryItems = new ArkArrayObjectReference();
-        inventory.getProperties().add(new PropertyArray("InventoryItems", "ArrayProperty", inventoryItems, new ArkName("ObjectProperty")));
+        inventory.getProperties().add(new PropertyArray("InventoryItems", inventoryItems));
       }
 
       for (ArkItem newItem : addInventories.get(inventory)) {
@@ -821,7 +830,8 @@ public class EditingCommands {
       }
     }
 
-    savegame.setObjects(collector.remap(0));
+    savegame.getObjects().clear();
+    savegame.getObjects().addAll(collector.remap(0));
 
     return modifications;
   }

@@ -13,7 +13,7 @@ import javax.json.JsonObject;
 
 import qowyn.ark.GameObject;
 import qowyn.ark.PropertyContainer;
-import qowyn.ark.arrays.ArkArrayLong;
+import qowyn.ark.arrays.ArkArrayUInt64;
 import qowyn.ark.data.ExtraDataZero;
 import qowyn.ark.properties.PropertyArray;
 import qowyn.ark.properties.PropertyBool;
@@ -21,10 +21,12 @@ import qowyn.ark.properties.PropertyByte;
 import qowyn.ark.properties.PropertyDouble;
 import qowyn.ark.properties.PropertyFloat;
 import qowyn.ark.properties.PropertyInt16;
-import qowyn.ark.properties.PropertyInt32;
+import qowyn.ark.properties.PropertyInt;
 import qowyn.ark.properties.PropertyObject;
 import qowyn.ark.properties.PropertyStr;
 import qowyn.ark.properties.PropertyStruct;
+import qowyn.ark.properties.PropertyUInt16;
+import qowyn.ark.properties.PropertyUInt32;
 import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.structs.StructVector;
 import qowyn.ark.types.ArkByteValue;
@@ -141,7 +143,7 @@ public class ArkItem {
    */
   public ArkItem(PropertyContainer item) {
     blueprintGeneratedClass = item.getPropertyValue("ItemArchetype", ObjectReference.class).getObjectString().toString();
-    className = new ArkName(blueprintGeneratedClass.substring(blueprintGeneratedClass.lastIndexOf('.') + 1));
+    className = ArkName.from(blueprintGeneratedClass.substring(blueprintGeneratedClass.lastIndexOf('.') + 1));
 
     canEquip = true;
     canSlot = item.findPropertyValue("bIsSlot", Boolean.class).orElse(true);
@@ -188,7 +190,7 @@ public class ArkItem {
    * From JSON / ModificationFile
    */
   public ArkItem(JsonObject object) {
-    className = new ArkName(object.getString("className"));
+    className = ArkName.from(object.getString("className"));
     blueprintGeneratedClass = "BlueprintGeneratedClass " + object.getString("blueprintGeneratedClass", "");
 
     canEquip = object.getBoolean("canEquip", true);
@@ -240,112 +242,104 @@ public class ArkItem {
       return null;
     }
 
-    StructPropertyList result = new StructPropertyList(null);
-    StructPropertyList arkTributeItem = new StructPropertyList(new ArkName("ItemNetInfo"));
+    StructPropertyList result = new StructPropertyList();
+    StructPropertyList arkTributeItem = new StructPropertyList();
 
-    result.getProperties().add(new PropertyStruct("ArkTributeItem", "StructProperty", arkTributeItem));
+    result.getProperties().add(new PropertyStruct("ArkTributeItem", arkTributeItem, ArkName.from("ItemNetInfo")));
 
     ObjectReference itemArchetype = new ObjectReference();
     itemArchetype.setObjectType(ObjectReference.TYPE_PATH);
-    itemArchetype.setObjectString(new ArkName(blueprintGeneratedClass));
-    arkTributeItem.getProperties().add(new PropertyObject("ItemArchetype", "ObjectProperty", itemArchetype));
+    itemArchetype.setObjectString(ArkName.from(blueprintGeneratedClass));
+    arkTributeItem.getProperties().add(new PropertyObject("ItemArchetype", itemArchetype));
 
     Random random = new Random();
     long randomId = random.nextLong();
 
-    StructPropertyList struct = new StructPropertyList(new ArkName("ItemNetID"));
+    StructPropertyList struct = new StructPropertyList();
 
-    struct.getProperties().add(new PropertyInt32("ItemID1", "UInt32Property", (int) (randomId >> 32)));
-    struct.getProperties().add(new PropertyInt32("ItemID2", "UInt32Property", (int) randomId));
+    struct.getProperties().add(new PropertyUInt32("ItemID1", (int) (randomId >> 32)));
+    struct.getProperties().add(new PropertyUInt32("ItemID2", (int) randomId));
 
-    arkTributeItem.getProperties().add(new PropertyStruct("ItemId", "StructProperty", struct));
+    arkTributeItem.getProperties().add(new PropertyStruct("ItemId", struct, ArkName.from("ItemNetID")));
 
-    arkTributeItem.getProperties().add(new PropertyBool("bIsBlueprint", "BoolProperty", isBlueprint));
-    arkTributeItem.getProperties().add(new PropertyBool("bIsEngram", "BoolProperty", isEngram));
-    arkTributeItem.getProperties().add(new PropertyBool("bIsCustomRecipe", "BoolProperty", false));
-    arkTributeItem.getProperties().add(new PropertyBool("bIsFoodRecipe", "BoolProperty", false));
-    arkTributeItem.getProperties().add(new PropertyBool("bIsRepairing", "BoolProperty", false));
-    arkTributeItem.getProperties().add(new PropertyBool("bAllowRemovalFromInventory", "BoolProperty", canRemove));
-    arkTributeItem.getProperties().add(new PropertyBool("bAllowRemovalFromSteamInventory", "BoolProperty", canRemoveFromCluster));
-    arkTributeItem.getProperties().add(new PropertyBool("bHideFromInventoryDisplay", "BoolProperty", isHidden));
-    arkTributeItem.getProperties().add(new PropertyBool("bFromSteamInventory", "BoolProperty", false));
-    arkTributeItem.getProperties().add(new PropertyBool("bIsFromAllClustersInventory", "BoolProperty", false));
-    arkTributeItem.getProperties().add(new PropertyBool("bIsEquipped", "BoolProperty", false));
-    arkTributeItem.getProperties().add(new PropertyBool("bIsSlot", "BoolProperty", canSlot));
-    arkTributeItem.getProperties().add(new PropertyInt32("ExpirationTimeUTC", "UInt32Property", 0));
-    arkTributeItem.getProperties().add(new PropertyInt32("ItemQuantity", "UInt32Property", quantity - 1));
-    arkTributeItem.getProperties().add(new PropertyFloat("ItemDurability", "FloatProperty", durability));
-    arkTributeItem.getProperties().add(new PropertyFloat("ItemRating", "FloatProperty", rating));
+    arkTributeItem.getProperties().add(new PropertyBool("bIsBlueprint", isBlueprint));
+    arkTributeItem.getProperties().add(new PropertyBool("bIsEngram", isEngram));
+    arkTributeItem.getProperties().add(new PropertyBool("bIsCustomRecipe", false));
+    arkTributeItem.getProperties().add(new PropertyBool("bIsFoodRecipe", false));
+    arkTributeItem.getProperties().add(new PropertyBool("bIsRepairing", false));
+    arkTributeItem.getProperties().add(new PropertyBool("bAllowRemovalFromInventory", canRemove));
+    arkTributeItem.getProperties().add(new PropertyBool("bAllowRemovalFromSteamInventory", canRemoveFromCluster));
+    arkTributeItem.getProperties().add(new PropertyBool("bHideFromInventoryDisplay", isHidden));
+    arkTributeItem.getProperties().add(new PropertyBool("bFromSteamInventory", false));
+    arkTributeItem.getProperties().add(new PropertyBool("bIsFromAllClustersInventory", false));
+    arkTributeItem.getProperties().add(new PropertyBool("bIsEquipped", false));
+    arkTributeItem.getProperties().add(new PropertyBool("bIsSlot", canSlot));
+    arkTributeItem.getProperties().add(new PropertyUInt32("ExpirationTimeUTC", 0));
+    arkTributeItem.getProperties().add(new PropertyUInt32("ItemQuantity", quantity - 1));
+    arkTributeItem.getProperties().add(new PropertyFloat("ItemDurability", durability));
+    arkTributeItem.getProperties().add(new PropertyFloat("ItemRating", rating));
 
-    ArkByteValue qualityValue = new ArkByteValue();
-    qualityValue.setByteValue(quality);
-    arkTributeItem.getProperties().add(new PropertyByte("ItemQualityIndex", "ByteProperty", qualityValue));
+    arkTributeItem.getProperties().add(new PropertyByte("ItemQualityIndex", quality));
 
     for (int i = 0; i < itemStatValues.length; i++) {
-      arkTributeItem.getProperties().add(new PropertyInt16("ItemStatValues", "UInt16Property", i, itemStatValues[i]));
+      arkTributeItem.getProperties().add(new PropertyUInt16("ItemStatValues", i, itemStatValues[i]));
     }
 
     for (int i = 0; i < itemColors.length; i++) {
-      arkTributeItem.getProperties().add(new PropertyInt16("ItemColorID", "Int16Property", i, itemColors[i]));
+      arkTributeItem.getProperties().add(new PropertyInt16("ItemColorID", i, itemColors[i]));
     }
 
     ObjectReference itemCustomClass = new ObjectReference();
     itemCustomClass.setLength(8);
     itemCustomClass.setObjectId(-1);
     itemCustomClass.setObjectType(ObjectReference.TYPE_ID);
-    arkTributeItem.getProperties().add(new PropertyObject("ItemCustomClass", "ObjectProperty", itemCustomClass));
+    arkTributeItem.getProperties().add(new PropertyObject("ItemCustomClass", itemCustomClass));
 
     ObjectReference itemSkinTemplate = new ObjectReference();
     itemSkinTemplate.setLength(8);
     itemSkinTemplate.setObjectId(-1);
     itemSkinTemplate.setObjectType(ObjectReference.TYPE_ID);
-    arkTributeItem.getProperties().add(new PropertyObject("ItemSkinTemplate", "ObjectProperty", itemSkinTemplate));
+    arkTributeItem.getProperties().add(new PropertyObject("ItemSkinTemplate", itemSkinTemplate));
 
-    arkTributeItem.getProperties().add(new PropertyFloat("CraftingSkill", "FloatProperty", 0.0f));
+    arkTributeItem.getProperties().add(new PropertyFloat("CraftingSkill", 0.0f));
 
-    arkTributeItem.getProperties().add(new PropertyStr("CustomItemName", "StrProperty", customName));
-    arkTributeItem.getProperties().add(new PropertyStr("CustomItemDescription", "StrProperty", customDescription));
+    arkTributeItem.getProperties().add(new PropertyStr("CustomItemName", customName));
+    arkTributeItem.getProperties().add(new PropertyStr("CustomItemDescription", customDescription));
 
     // TODO: add other values
 
-    arkTributeItem.getProperties().add(new PropertyDouble("NextSpoilingTime", "DoubleProperty", 0.0));
-    arkTributeItem.getProperties().add(new PropertyDouble("LastSpoilingTime", "DoubleProperty", 0.0));
+    arkTributeItem.getProperties().add(new PropertyDouble("NextSpoilingTime", 0.0));
+    arkTributeItem.getProperties().add(new PropertyDouble("LastSpoilingTime", 0.0));
 
     ObjectReference lastOwnerPlayer = new ObjectReference();
     lastOwnerPlayer.setLength(4);
     lastOwnerPlayer.setObjectId(-1);
     lastOwnerPlayer.setObjectType(ObjectReference.TYPE_ID);
-    arkTributeItem.getProperties().add(new PropertyObject("LastOwnerPlayer", "ObjectProperty", lastOwnerPlayer));
+    arkTributeItem.getProperties().add(new PropertyObject("LastOwnerPlayer", lastOwnerPlayer));
 
-    arkTributeItem.getProperties().add(new PropertyDouble("LastAutoDurabilityDecreaseTime", "DoubleProperty", 0.0));
-    arkTributeItem.getProperties().add(new PropertyStruct("OriginalItemDropLocation", "StructProperty", new StructVector(new ArkName("Vector"))));
+    arkTributeItem.getProperties().add(new PropertyDouble("LastAutoDurabilityDecreaseTime", 0.0));
+    arkTributeItem.getProperties().add(new PropertyStruct("OriginalItemDropLocation", new StructVector(), ArkName.from("Vector")));
 
     for (int i = 0; i < preSkinItemColors.length; i++) {
-      arkTributeItem.getProperties().add(new PropertyInt16("PreSkinItemColorID", "Int16Property", i, preSkinItemColors[i]));
+      arkTributeItem.getProperties().add(new PropertyInt16("PreSkinItemColorID", i, preSkinItemColors[i]));
     }
 
     for (int i = 0; i < eggLevelups.length; i++) {
-      ArkByteValue value = new ArkByteValue();
-      value.setByteValue(eggLevelups[i]);
-      arkTributeItem.getProperties().add(new PropertyByte("EggNumberOfLevelUpPointsApplied", "ByteProperty", i, value));
+      arkTributeItem.getProperties().add(new PropertyByte("EggNumberOfLevelUpPointsApplied", i, eggLevelups[i]));
     }
 
-    arkTributeItem.getProperties().add(new PropertyFloat("EggTamedIneffectivenessModifier", "FloatProperty", 0.0f));
+    arkTributeItem.getProperties().add(new PropertyFloat("EggTamedIneffectivenessModifier", 0.0f));
 
     for (int i = 0; i < eggColors.length; i++) {
-      ArkByteValue value = new ArkByteValue();
-      value.setByteValue(eggColors[i]);
-      arkTributeItem.getProperties().add(new PropertyByte("EggColorSetIndices", "ByteProperty", i, value));
+      arkTributeItem.getProperties().add(new PropertyByte("EggColorSetIndices", i, eggColors[i]));
     }
 
-    ArkByteValue itemVersion = new ArkByteValue();
-    itemVersion.setByteValue((byte) 0);
-    arkTributeItem.getProperties().add(new PropertyByte("ItemVersion", "ByteProperty", itemVersion));
-    arkTributeItem.getProperties().add(new PropertyInt32("CustomItemID", "IntProperty", 0));
-    arkTributeItem.getProperties().add(new PropertyArray("SteamUserItemID", "ArrayProperty", new ArkArrayLong(), new ArkName("UInt64Property")));
+    arkTributeItem.getProperties().add(new PropertyByte("ItemVersion", (byte) 0));
+    arkTributeItem.getProperties().add(new PropertyInt("CustomItemID", 0));
+    arkTributeItem.getProperties().add(new PropertyArray("SteamUserItemID", new ArkArrayUInt64()));
 
-    result.getProperties().add(new PropertyFloat("Version", "FloatProperty", 2.0f));
-    result.getProperties().add(new PropertyInt32("UploadTime", "IntProperty", (int) Instant.now().plusSeconds(uploadOffset).getEpochSecond()));
+    result.getProperties().add(new PropertyFloat("Version", 2.0f));
+    result.getProperties().add(new PropertyInt("UploadTime", (int) Instant.now().plusSeconds(uploadOffset).getEpochSecond()));
 
     return result;
   }
@@ -356,54 +350,52 @@ public class ArkItem {
     object.setClassName(className);
 
     if (!canEquip) {
-      object.getProperties().add(new PropertyBool("bAllowEquppingItem", "BoolProperty", canEquip));
+      object.getProperties().add(new PropertyBool("bAllowEquppingItem", canEquip));
     }
 
     if (!canSlot) {
-      object.getProperties().add(new PropertyBool("bCanSlot", "BoolProperty", canSlot));
+      object.getProperties().add(new PropertyBool("bCanSlot", canSlot));
     }
 
     if (isEngram) {
-      object.getProperties().add(new PropertyBool("bIsEngram", "BoolProperty", isEngram));
+      object.getProperties().add(new PropertyBool("bIsEngram", isEngram));
     }
 
     if (isBlueprint) {
-      object.getProperties().add(new PropertyBool("bIsBlueprint", "BoolProperty", isBlueprint));
+      object.getProperties().add(new PropertyBool("bIsBlueprint", isBlueprint));
     }
 
     if (!canRemove) {
-      object.getProperties().add(new PropertyBool("bAllowRemovalFromInventory", "BoolProperty", canRemove));
+      object.getProperties().add(new PropertyBool("bAllowRemovalFromInventory", canRemove));
     }
 
     if (isHidden) {
-      object.getProperties().add(new PropertyBool("bHideFromInventoryDisplay", "BoolProperty", isHidden));
+      object.getProperties().add(new PropertyBool("bHideFromInventoryDisplay", isHidden));
     }
 
     if (quantity != 1) {
-      object.getProperties().add(new PropertyInt32("ItemQuantity", "IntProperty", quantity));
+      object.getProperties().add(new PropertyInt("ItemQuantity", quantity));
     }
 
     if (!customName.isEmpty()) {
-      object.getProperties().add(new PropertyStr("CustomItemName", "StrProperty", customName));
+      object.getProperties().add(new PropertyStr("CustomItemName", customName));
     }
 
     if (!customDescription.isEmpty()) {
-      object.getProperties().add(new PropertyStr("CustomItemDescription", "StrProperty", customDescription));
+      object.getProperties().add(new PropertyStr("CustomItemDescription", customDescription));
     }
 
     if (durability > 0) {
-      object.getProperties().add(new PropertyFloat("SavedDurability", "FloatProperty", durability));
+      object.getProperties().add(new PropertyFloat("SavedDurability", durability));
     }
 
     if (quality > 0) {
-      ArkByteValue value = new ArkByteValue();
-      value.setByteValue(quality);
-      object.getProperties().add(new PropertyByte("ItemQualityIndex", "ByteProperty", value));
+      object.getProperties().add(new PropertyByte("ItemQualityIndex", quality));
     }
 
     for (int i = 0; i < itemStatValues.length; i++) {
       if (itemStatValues[i] != 0) {
-        object.getProperties().add(new PropertyInt16("ItemStatValues", "UInt16Property", i, itemStatValues[i]));
+        object.getProperties().add(new PropertyUInt16("ItemStatValues", i, itemStatValues[i]));
       }
     }
 
@@ -429,7 +421,7 @@ public class ArkItem {
 
     Function<ArkName, ArkName> findFreeName = name -> {
       for (int i = 1; i < Integer.MAX_VALUE; i++) {
-        ArkName tempName = new ArkName(name.getNameString(), i);
+        ArkName tempName = ArkName.from(name.getName(), i);
         if (!names.contains(tempName)) {
           return tempName;
         }
@@ -443,12 +435,12 @@ public class ArkItem {
       randomId = random.nextLong();
     }
 
-    StructPropertyList struct = new StructPropertyList(new ArkName("ItemNetID"));
+    StructPropertyList struct = new StructPropertyList();
 
-    struct.getProperties().add(new PropertyInt32("ItemID1", "UInt32Property", (int) (randomId >> 32)));
-    struct.getProperties().add(new PropertyInt32("ItemID2", "UInt32Property", (int) randomId));
+    struct.getProperties().add(new PropertyUInt32("ItemID1", (int) (randomId >> 32)));
+    struct.getProperties().add(new PropertyUInt32("ItemID2", (int) randomId));
 
-    object.getProperties().add(new PropertyStruct("ItemId", "StructProperty", struct));
+    object.getProperties().add(new PropertyStruct("ItemId", struct, ArkName.from("ItemNetID")));
 
     object.setNames(new ArrayList<>());
     object.getNames().add(findFreeName.apply(className));
@@ -460,7 +452,7 @@ public class ArkItem {
     ownerInventoryReference.setObjectId(ownerInventory);
     ownerInventoryReference.setObjectType(ObjectReference.TYPE_ID);
 
-    object.getProperties().add(new PropertyObject("OwnerInventory", "ObjectProperty", ownerInventoryReference));
+    object.getProperties().add(new PropertyObject("OwnerInventory", ownerInventoryReference));
     object.setExtraData(new ExtraDataZero());
 
     return object;

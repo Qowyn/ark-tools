@@ -59,7 +59,7 @@ public class ModificationFile {
 
       itemArchetypes.forEach((name, value) -> {
         if (expect(value, name, JsonValue.ValueType.STRING)) {
-          remapItemArchetypes.put(new ArkName(name), new ArkName(((JsonString) value).getString()));
+          remapItemArchetypes.put(ArkName.from(name), ArkName.from(((JsonString) value).getString()));
         }
       });
     }
@@ -68,7 +68,7 @@ public class ModificationFile {
 
     if (expect(removeItemsValue, "removeItems", JsonValue.ValueType.ARRAY)) {
       for (JsonString itemClass : ((JsonArray) removeItemsValue).getValuesAs(JsonString.class)) {
-        removeItems.add(new ArkName(itemClass.getString()));
+        removeItems.add(ArkName.from(itemClass.getString()));
       }
     }
 
@@ -100,7 +100,7 @@ public class ModificationFile {
               items.add(new ArkItem(item));
             }
 
-            map.put(new ArkName(name), items);
+            map.put(ArkName.from(name), items);
           }
         });
       }

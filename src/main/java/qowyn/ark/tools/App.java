@@ -72,6 +72,9 @@ public class App {
     addCommand(list("cluster"), "Players", list("CLUSTER_DIRECTORY", "OUTPUT_DIRECTORY"), "Writes lists of all things which players have uploaded into the cluster.", PlayerListCommands::cluster);
 
     addCommand(list("latlon"), "Settings", list(), "Exports internal LatLonCalculator data to latLonCalculator.json in the current working directory", SettingsCommands::latlon);
+
+    addCommand(list("updateData"), "Update", list(), "Checks for ark_data.json and translation updates, then downloads them if available.", UpdateCommands::updateData);
+    addCommand(list("version"), "Update", list(), "Shows version and exits.", UpdateCommands::version);
   }
 
   public static void main(String[] args) throws Exception {

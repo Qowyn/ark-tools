@@ -33,11 +33,11 @@ import qowyn.ark.ArkSavegame;
 import qowyn.ark.ArkTribe;
 import qowyn.ark.GameObject;
 import qowyn.ark.PropertyContainer;
-import qowyn.ark.arrays.ArkArrayByte;
-import qowyn.ark.arrays.ArkArrayInteger;
+import qowyn.ark.arrays.ArkArrayInt;
 import qowyn.ark.arrays.ArkArrayObjectReference;
 import qowyn.ark.arrays.ArkArrayString;
 import qowyn.ark.arrays.ArkArrayStruct;
+import qowyn.ark.arrays.ArkArrayUInt8;
 import qowyn.ark.properties.Property;
 import qowyn.ark.properties.PropertyByte;
 import qowyn.ark.structs.Struct;
@@ -277,7 +277,7 @@ public class PlayerListCommands {
                     generator.write("tribeOwner", true);
                   }
 
-                  List<Integer> tribeAdmins = tribe.getPropertyValue("TribeAdmins", ArkArrayInteger.class);
+                  List<Integer> tribeAdmins = tribe.getPropertyValue("TribeAdmins", ArkArrayInt.class);
                   if (tribeAdmins != null && tribeAdmins.contains(playerId)) {
                     generator.write("tribeAdmin", true);
                   }
@@ -640,8 +640,8 @@ public class PlayerListCommands {
               // TODO check what happens to abandoned tribes
               int ownerId = tribeData.getPropertyValue("OwnerPlayerDataID", Number.class).intValue();
               List<String> memberNames = tribeData.getPropertyValue("MembersPlayerName", ArkArrayString.class);
-              List<Integer> memberIds = tribeData.getPropertyValue("MembersPlayerDataID", ArkArrayInteger.class);
-              List<Integer> adminIds = tribeData.getPropertyValue("TribeAdmins", ArkArrayInteger.class);
+              List<Integer> memberIds = tribeData.getPropertyValue("MembersPlayerDataID", ArkArrayInt.class);
+              List<Integer> adminIds = tribeData.getPropertyValue("TribeAdmins", ArkArrayInt.class);
 
               if (!memberNames.isEmpty()) {
                 generator.writeStartArray("members");
@@ -743,7 +743,7 @@ public class PlayerListCommands {
               generator.writeStartArray("creatures");
               for (Struct dinoStruct : tamedDinosData) {
                 PropertyContainer dino = (PropertyContainer) dinoStruct;
-                ArkArrayByte byteData = dino.getPropertyValue("DinoData", ArkArrayByte.class);
+                ArkArrayUInt8 byteData = dino.getPropertyValue("DinoData", ArkArrayUInt8.class);
 
                 ArkContainer container = new ArkContainer(byteData);
 

@@ -122,7 +122,7 @@ public class ObjectCollector {
 
   protected void applyOrderRules(List<GameObject> remappedList) {
     for (GameObject object : mappedObjects.values()) {
-      if (object.getNames().get(0).getNameIndex() > 0) {
+      if (object.getNames().get(0).getInstance() > 0) {
         remappedList.add(object);
       }
     }
