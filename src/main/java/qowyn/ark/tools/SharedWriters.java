@@ -73,7 +73,7 @@ public class SharedWriters {
     for (int i = 0; i < 6; i++) {
       ArkByteValue color = creature.getPropertyValue("ColorSetIndices", ArkByteValue.class, i);
       if (color != null) {
-        generator.write("color" + i, color.getByteValue());
+        generator.write("color" + i, Byte.toUnsignedInt(color.getByteValue()));
       } else if (writeAllProperties) {
         generator.write("color" + i, 0);
       }
@@ -132,7 +132,7 @@ public class SharedWriters {
         AttributeNames.forEach((index, attrName) -> {
           ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsApplied", ArkByteValue.class, index);
           if (attrProp != null) {
-            generator.write(attrName, attrProp.getByteValue());
+            generator.write(attrName, Byte.toUnsignedInt(attrProp.getByteValue()));
           } else if (writeAllProperties) {
             generator.write(attrName, 0);
           }
@@ -152,7 +152,7 @@ public class SharedWriters {
         AttributeNames.forEach((index, attrName) -> {
           ArkByteValue attrProp = status.getPropertyValue("NumberOfLevelUpPointsAppliedTamed", ArkByteValue.class, index);
           if (attrProp != null) {
-            generator.write(attrName, attrProp.getByteValue());
+            generator.write(attrName, Byte.toUnsignedInt(attrProp.getByteValue()));
           } else if (writeAllProperties) {
             generator.write(attrName, 0);
           }
@@ -275,8 +275,8 @@ public class SharedWriters {
 
         for (int i = 0; i < item.eggLevelups.length; i++) {
           byte value = item.eggLevelups[i];
-          if (value > 0) {
-            generator.write(AttributeNames.get(i), value);
+          if (value != 0) {
+            generator.write(AttributeNames.get(i), Byte.toUnsignedInt(value));
           }
         }
 
@@ -286,8 +286,8 @@ public class SharedWriters {
 
         for (int i = 0; i < item.eggColors.length; i++) {
           byte value = item.eggColors[i];
-          if (value > 0) {
-            generator.write(Integer.toString(i), value);
+          if (value != 0) {
+            generator.write(Integer.toString(i), Byte.toUnsignedInt(value));
           }
         }
 
