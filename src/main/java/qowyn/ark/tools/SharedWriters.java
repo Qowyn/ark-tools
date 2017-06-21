@@ -258,24 +258,24 @@ public class SharedWriters {
         generator.write("quality", item.quality);
       }
 
-      if (item.itemStatValues[1] > 0) {
-        generator.write("armorMultiplier", 1.0f + ((float) item.itemStatValues[1]) * 0.2f * 0.001f);
+      if (item.itemStatValues[1] != 0) {
+        generator.write("armorMultiplier", 1.0f + ((float) Short.toUnsignedInt(item.itemStatValues[1])) * 0.2f * 0.001f);
       }
 
-      if (item.itemStatValues[2] > 0) {
-        generator.write("durabilityMultiplier", 1.0f + ((float) item.itemStatValues[2]) * 0.25f * 0.001f);
+      if (item.itemStatValues[2] != 0) {
+        generator.write("durabilityMultiplier", 1.0f + ((float) Short.toUnsignedInt(item.itemStatValues[2])) * 0.25f * 0.001f);
       }
 
-      if (item.itemStatValues[3] > 0) {
-        generator.write("damageMultiplier", 1.0f + ((float) item.itemStatValues[3]) * 0.1f * 0.001f);
+      if (item.itemStatValues[3] != 0) {
+        generator.write("damageMultiplier", 1.0f + ((float) Short.toUnsignedInt(item.itemStatValues[3])) * 0.1f * 0.001f);
       }
 
-      if (item.itemStatValues[5] > 0) {
-        generator.write("hypoMultiplier", 1.0f + ((float) item.itemStatValues[5]) * 0.2f * 0.001f);
+      if (item.itemStatValues[5] != 0) {
+        generator.write("hypoMultiplier", 1.0f + ((float) Short.toUnsignedInt(item.itemStatValues[5])) * 0.2f * 0.001f);
       }
 
-      if (item.itemStatValues[7] > 0) {
-        generator.write("hyperMultiplier", 1.0f + ((float) item.itemStatValues[7]) * 0.2f * 0.001f);
+      if (item.itemStatValues[7] != 0) {
+        generator.write("hyperMultiplier", 1.0f + ((float) Short.toUnsignedInt(item.itemStatValues[7])) * 0.2f * 0.001f);
       }
 
       if (item.className.toString().contains("_Fertilized_")) {

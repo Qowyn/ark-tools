@@ -554,7 +554,7 @@ public class EditingCommands {
           cloudInventory = new ArkCloudInventory(fileToRead.toString(), oh.readingOptions());
         } else {
           cloudInventory = new ArkCloudInventory();
-          cloudInventory.setInventoryVersion(1);
+          cloudInventory.setInventoryVersion(3);
           cloudInventory.setInventoryData(new GameObject());
           cloudInventory.getInventoryData().setClassName(CLOUD_INVENTORY_CLASS);
           cloudInventory.getInventoryData().setItem(true);
