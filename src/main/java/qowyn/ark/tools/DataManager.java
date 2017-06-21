@@ -16,6 +16,8 @@ public class DataManager {
 
   private static final Map<String, CreatureData> CREATURE_DATA = new HashMap<>();
 
+  private static final Map<String, CreatureData> CREATURE_DATA_BY_PATH = new HashMap<>();
+
   private static final Map<String, ItemData> ITEM_DATA = new HashMap<>();
 
   private static final Map<String, ItemData> ITEM_DATA_BY_BGC = new HashMap<>();
@@ -48,7 +50,9 @@ public class DataManager {
         String name = entry.getString("name");
         String category = entry.getString("category", null);
 
-        CREATURE_DATA.put(clazz, new CreatureData(name, clazz, blueprint, packagePath, category));
+        CreatureData creature = new CreatureData(name, clazz, blueprint, packagePath, category);
+        CREATURE_DATA.put(clazz, creature);
+        CREATURE_DATA_BY_PATH.put(packagePath + "." + clazz, creature);
       }
 
       JsonArray items = data.getJsonArray("items");
@@ -90,6 +94,14 @@ public class DataManager {
 
   public static CreatureData getCreature(String clazz) {
     return CREATURE_DATA.get(clazz);
+  }
+
+  public static boolean hasCreatureByPath(String clazz) {
+    return CREATURE_DATA_BY_PATH.containsKey(clazz);
+  }
+
+  public static CreatureData getCreatureByPath(String clazz) {
+    return CREATURE_DATA_BY_PATH.get(clazz);
   }
 
   public static boolean hasStructure(String clazz) {

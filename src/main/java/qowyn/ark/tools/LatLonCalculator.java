@@ -37,6 +37,8 @@ public final class LatLonCalculator {
       knownMaps.put("Valhalla", new LatLonCalculator(48.813560485839844f, 14750.0f, 48.813560485839844f, 14750.0f));
       knownMaps.put("MortemTupiu", new LatLonCalculator(32.479148864746094f, 20000.0f, 40.59893798828125f, 16000.0f));
       knownMaps.put("ShigoIslands", new LatLonCalculator(50.0f, 8128.0f, 50.0f, 8128.0f));
+      knownMaps.put("Ragnarok", new LatLonCalculator(50.009388f, 13100f, 50.009388f, 13100f));
+      knownMaps.put("TheVolcano", new LatLonCalculator(50.0f, 9181.0f, 50.0f, 9181.0f));
       knownMaps.put("PGARK", new LatLonCalculator(0.0f, 6080.0f, 0.0f, 6080.0f));
     }
   }

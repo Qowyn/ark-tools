@@ -34,6 +34,7 @@ import qowyn.ark.ArkTribe;
 import qowyn.ark.GameObject;
 import qowyn.ark.PropertyContainer;
 import qowyn.ark.arrays.ArkArrayInt;
+import qowyn.ark.arrays.ArkArrayInt8;
 import qowyn.ark.arrays.ArkArrayObjectReference;
 import qowyn.ark.arrays.ArkArrayString;
 import qowyn.ark.arrays.ArkArrayStruct;
@@ -743,11 +744,27 @@ public class PlayerListCommands {
               generator.writeStartArray("creatures");
               for (Struct dinoStruct : tamedDinosData) {
                 PropertyContainer dino = (PropertyContainer) dinoStruct;
-                ArkArrayUInt8 byteData = dino.getPropertyValue("DinoData", ArkArrayUInt8.class);
+                ArkContainer container = null;
+                if (cloudInventory.getInventoryVersion() == 1) {
+                  ArkArrayUInt8 byteData = dino.getPropertyValue("DinoData", ArkArrayUInt8.class);
 
-                ArkContainer container = new ArkContainer(byteData);
+                  container = new ArkContainer(byteData);
+                } else if (cloudInventory.getInventoryVersion() == 3) {
+                  ArkArrayInt8 byteData = dino.getPropertyValue("DinoData", ArkArrayInt8.class);
 
-                SharedWriters.writeCreatureInfo(generator, container.getObjects().get(0), LatLonCalculator.DEFAULT, container, false);
+                  container = new ArkContainer(byteData);
+                }
+
+                ObjectReference dinoClass = dino.getPropertyValue("DinoClass", ObjectReference.class);
+                // Skip "BlueprintGeneratedClass " = 24 chars
+                String dinoClassName = dinoClass.getObjectString().toString().substring(24);
+                generator.writeStartObject();
+
+                generator.write("type", DataManager.hasCreatureByPath(dinoClassName) ? DataManager.getCreatureByPath(dinoClassName).getName() : dinoClassName);
+
+                // NPE for unknown versions
+                SharedWriters.writeCreatureInfo(generator, container.getObjects().get(0), LatLonCalculator.DEFAULT, container, false, "data");
+                generator.writeEnd();
               }
               generator.writeEnd();
             }

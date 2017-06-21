@@ -31,7 +31,15 @@ public class SharedWriters {
   }
 
   public static void writeCreatureInfo(JsonGenerator generator, GameObject creature, LatLonCalculator latLongCalculator, GameObjectContainer saveFile, boolean writeAllProperties) {
-    generator.writeStartObject();
+    writeCreatureInfo(generator, creature, latLongCalculator, saveFile, writeAllProperties, null);
+  }
+
+  public static void writeCreatureInfo(JsonGenerator generator, GameObject creature, LatLonCalculator latLongCalculator, GameObjectContainer saveFile, boolean writeAllProperties, String fieldName) {
+    if (fieldName == null) {
+      generator.writeStartObject();
+    } else {
+      generator.writeStartObject(fieldName);
+    }
 
     LocationData ld = creature.getLocation();
     if (ld != null) {
