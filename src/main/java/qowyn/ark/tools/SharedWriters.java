@@ -13,7 +13,7 @@ import javax.json.stream.JsonGenerator;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
 import qowyn.ark.GameObjectContainer;
-import qowyn.ark.tools.data.ArkItem;
+import qowyn.ark.tools.data.Item;
 import qowyn.ark.tools.data.AttributeNames;
 import qowyn.ark.types.ArkByteValue;
 import qowyn.ark.types.ArkName;
@@ -178,10 +178,10 @@ public class SharedWriters {
     generator.writeEnd();
   }
 
-  public static void writeInventorySummary(JsonGenerator generator, List<ArkItem> items, String objName) {
+  public static void writeInventorySummary(JsonGenerator generator, List<Item> items, String objName) {
     Map<ArkName, Integer> itemMap = new HashMap<>();
 
-    for (ArkItem item : items) {
+    for (Item item : items) {
       itemMap.merge(item.className, item.quantity, Integer::sum);
     }
 
@@ -204,15 +204,15 @@ public class SharedWriters {
     generator.writeEnd();
   }
 
-  public static void writeInventoryLong(JsonGenerator generator, List<ArkItem> items, String objName) {
+  public static void writeInventoryLong(JsonGenerator generator, List<Item> items, String objName) {
     writeInventoryLong(generator, items, objName, false);
   }
 
-  public static void writeInventoryLong(JsonGenerator generator, List<ArkItem> items, String objName, boolean blueprintStatus) {
+  public static void writeInventoryLong(JsonGenerator generator, List<Item> items, String objName, boolean blueprintStatus) {
     generator.writeStartArray(objName);
 
     items.sort(Comparator.comparing(item -> DataManager.hasItem(item.className.toString()) ? DataManager.getItem(item.className.toString()).getName() : item.className.toString()));
-    for (ArkItem item : items) {
+    for (Item item : items) {
       generator.writeStartObject();
 
       String name = item.className.toString();

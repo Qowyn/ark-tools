@@ -46,7 +46,7 @@ import qowyn.ark.properties.PropertyStruct;
 import qowyn.ark.properties.PropertyUInt32;
 import qowyn.ark.structs.Struct;
 import qowyn.ark.structs.StructPropertyList;
-import qowyn.ark.tools.data.ArkItem;
+import qowyn.ark.tools.data.Item;
 import qowyn.ark.tools.data.AttributeNames;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.ObjectReference;
@@ -659,7 +659,7 @@ public class EditingCommands {
         modifications++;
       }
 
-      for (ArkItem item : modificationFile.addItems) {
+      for (Item item : modificationFile.addItems) {
         StructPropertyList itemData = item.toClusterData();
         if (itemData != null) {
           arkItems.add(itemData);
@@ -673,13 +673,13 @@ public class EditingCommands {
 
   private static int modifySavegame(ArkSavegame savegame, ModificationFile modificationFile) {
     int modifications = 0;
-    Map<GameObject, List<ArkItem>> replaceDefaultInventories = new HashMap<>();
-    Map<GameObject, List<ArkItem>> replaceInventories = new HashMap<>();
-    Map<GameObject, List<ArkItem>> addDefaultInventories = new HashMap<>();
-    Map<GameObject, List<ArkItem>> addInventories = new HashMap<>();
+    Map<GameObject, List<Item>> replaceDefaultInventories = new HashMap<>();
+    Map<GameObject, List<Item>> replaceInventories = new HashMap<>();
+    Map<GameObject, List<Item>> addDefaultInventories = new HashMap<>();
+    Map<GameObject, List<Item>> addInventories = new HashMap<>();
     ObjectCollector collector = new ObjectCollector(savegame);
 
-    BiFunction<Map<ArkName, List<ArkItem>>, GameObject, List<ArkItem>> mapChecker = (map, object) -> {
+    BiFunction<Map<ArkName, List<Item>>, GameObject, List<Item>> mapChecker = (map, object) -> {
       if (map.containsKey(object.getClassName())) {
         return map.get(object.getClassName());
       }
@@ -690,8 +690,8 @@ public class EditingCommands {
     };
 
     for (GameObject object : savegame.getObjects()) {
-      List<ArkItem> replaceDefault = mapChecker.apply(modificationFile.replaceDefaultInventoriesMap, object);
-      List<ArkItem> addDefault = mapChecker.apply(modificationFile.addDefaultInventoriesMap, object);
+      List<Item> replaceDefault = mapChecker.apply(modificationFile.replaceDefaultInventoriesMap, object);
+      List<Item> addDefault = mapChecker.apply(modificationFile.addDefaultInventoriesMap, object);
 
       if (replaceDefault != null) {
         replaceDefaultInventories.put(object, replaceDefault);
@@ -699,8 +699,8 @@ public class EditingCommands {
         addDefaultInventories.put(object, addDefault);
       }
 
-      List<ArkItem> replace = mapChecker.apply(modificationFile.replaceInventoriesMap, object);
-      List<ArkItem> add = mapChecker.apply(modificationFile.addInventoriesMap, object);
+      List<Item> replace = mapChecker.apply(modificationFile.replaceInventoriesMap, object);
+      List<Item> add = mapChecker.apply(modificationFile.addInventoriesMap, object);
 
       if (replace != null) {
         replaceInventories.put(object, replace);
@@ -725,7 +725,7 @@ public class EditingCommands {
 
       ArkArrayObjectReference newInventoryItems = new ArkArrayObjectReference();
 
-      for (ArkItem newItem : replaceDefaultInventories.get(inventory)) {
+      for (Item newItem : replaceDefaultInventories.get(inventory)) {
         ObjectReference newItemReference = new ObjectReference();
         newItemReference.setLength(8);
         newItemReference.setObjectType(ObjectReference.TYPE_ID);
@@ -764,7 +764,7 @@ public class EditingCommands {
         inventory.getProperties().add(new PropertyArray("InventoryItems", inventoryItems));
       }
 
-      for (ArkItem newItem : addDefaultInventories.get(inventory)) {
+      for (Item newItem : addDefaultInventories.get(inventory)) {
         ObjectReference newItemReference = new ObjectReference();
         newItemReference.setLength(8);
         newItemReference.setObjectType(ObjectReference.TYPE_ID);
@@ -802,7 +802,7 @@ public class EditingCommands {
         inventoryItems.remove(i);
       }
 
-      for (ArkItem newItem : replaceInventories.get(inventory)) {
+      for (Item newItem : replaceInventories.get(inventory)) {
         ObjectReference newItemReference = new ObjectReference();
         newItemReference.setLength(8);
         newItemReference.setObjectType(ObjectReference.TYPE_ID);
@@ -820,7 +820,7 @@ public class EditingCommands {
         inventory.getProperties().add(new PropertyArray("InventoryItems", inventoryItems));
       }
 
-      for (ArkItem newItem : addInventories.get(inventory)) {
+      for (Item newItem : addInventories.get(inventory)) {
         ObjectReference newItemReference = new ObjectReference();
         newItemReference.setLength(8);
         newItemReference.setObjectType(ObjectReference.TYPE_ID);

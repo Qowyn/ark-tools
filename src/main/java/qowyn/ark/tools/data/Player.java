@@ -18,7 +18,7 @@ import qowyn.ark.types.ArkByteValue;
 import qowyn.ark.types.LocationData;
 import qowyn.ark.types.ObjectReference;
 
-public class ArkPlayer {
+public class Player {
 
   public int savedPlayerDataVersion;
 
@@ -86,7 +86,7 @@ public class ArkPlayer {
 
   public final float[] currentStatusValues = new float[AttributeNames.size()];
 
-  public ArkPlayer(Path path, GameObjectContainer playersWithStats, LatLonCalculator latLonCalculator) throws IOException {
+  public Player(Path path, GameObjectContainer playersWithStats, LatLonCalculator latLonCalculator) throws IOException {
     ArkProfile profile = new ArkProfile(path.toString());
 
     savedPlayerDataVersion = profile.findPropertyValue("SavedPlayerDataVersion", Integer.class).orElse(0);

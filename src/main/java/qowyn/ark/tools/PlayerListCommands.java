@@ -43,7 +43,7 @@ import qowyn.ark.properties.PropertyByte;
 import qowyn.ark.structs.Struct;
 import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.structs.StructUniqueNetIdRepl;
-import qowyn.ark.tools.data.ArkItem;
+import qowyn.ark.tools.data.Item;
 import qowyn.ark.tools.data.AttributeNames;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.LocationData;
@@ -233,7 +233,7 @@ public class PlayerListCommands {
                 GameObject inventory = save.getObject(inventoryReference);
 
                 if (inventory != null) {
-                  List<ArkItem> items = new ArrayList<>();
+                  List<Item> items = new ArrayList<>();
                   ArkArrayObjectReference itemList = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
                   for (ObjectReference itemReference : itemList) {
                     GameObject item = save.getObject(itemReference);
@@ -244,7 +244,7 @@ public class PlayerListCommands {
                         continue;
                       }
 
-                      items.add(new ArkItem(item));
+                      items.add(new Item(item));
                     }
                   }
 
@@ -387,8 +387,8 @@ public class PlayerListCommands {
         if (mapNeeded) {
           Map<ArkName, Integer> structures = new HashMap<>();
           Map<ArkName, Integer> creatures = new HashMap<>();
-          List<ArkItem> items = new ArrayList<>();
-          List<ArkItem> blueprints = new ArrayList<>();
+          List<Item> items = new ArrayList<>();
+          List<Item> blueprints = new ArrayList<>();
           // Apparently there is a behavior in ARK causing certain structures to exist twice
           // within a save
           Set<ArkName> processedList = new HashSet<>();
@@ -476,15 +476,15 @@ public class PlayerListCommands {
 
                 if (item.hasAnyProperty("bIsBlueprint")) {
                   if (base != null) {
-                    base.getBlueprints().add(new ArkItem(item));
+                    base.getBlueprints().add(new Item(item));
                   } else {
-                    blueprints.add(new ArkItem(item));
+                    blueprints.add(new Item(item));
                   }
                 } else {
                   if (base != null) {
-                    base.getItems().add(new ArkItem(item));
+                    base.getItems().add(new Item(item));
                   } else {
-                    items.add(new ArkItem(item));
+                    items.add(new Item(item));
                   }
                 }
               }
@@ -754,12 +754,12 @@ public class PlayerListCommands {
 
             ArkArrayStruct arkItems = arkData.getPropertyValue("ArkItems", ArkArrayStruct.class);
             if (arkItems != null) {
-              List<ArkItem> items = new ArrayList<>();
+              List<Item> items = new ArrayList<>();
               for (Struct itemStruct : arkItems) {
                 PropertyContainer item = (PropertyContainer) itemStruct;
                 PropertyContainer netItem = item.getPropertyValue("ArkTributeItem", PropertyContainer.class);
 
-                items.add(new ArkItem(netItem));
+                items.add(new Item(netItem));
               }
 
               if (!items.isEmpty()) {
