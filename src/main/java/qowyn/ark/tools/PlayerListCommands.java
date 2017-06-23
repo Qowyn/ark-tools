@@ -46,6 +46,7 @@ import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.structs.StructUniqueNetIdRepl;
 import qowyn.ark.tools.data.Item;
 import qowyn.ark.tools.data.AttributeNames;
+import qowyn.ark.tools.data.Creature;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.LocationData;
 import qowyn.ark.types.ObjectReference;
@@ -763,7 +764,8 @@ public class PlayerListCommands {
                 generator.write("type", DataManager.hasCreatureByPath(dinoClassName) ? DataManager.getCreatureByPath(dinoClassName).getName() : dinoClassName);
 
                 // NPE for unknown versions
-                SharedWriters.writeCreatureInfo(generator, container.getObjects().get(0), LatLonCalculator.DEFAULT, container, false, "data");
+                Creature creature = new Creature(container.getObjects().get(0), container);
+                SharedWriters.writeCreatureInfo(generator, creature, LatLonCalculator.DEFAULT, container, false, "data");
                 generator.writeEnd();
               }
               generator.writeEnd();

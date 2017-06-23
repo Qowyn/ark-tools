@@ -29,6 +29,7 @@ import joptsimple.OptionSpec;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
 import qowyn.ark.ReadingOptions;
+import qowyn.ark.tools.data.Creature;
 
 public class CreatureListCommands {
 
@@ -241,7 +242,8 @@ public class CreatureListCommands {
           generator.writeStartArray();
         }
 
-        for (GameObject creature : filteredClasses) {
+        for (GameObject creatureObject : filteredClasses) {
+          Creature creature = new Creature(creatureObject, saveFile);
           SharedWriters.writeCreatureInfo(generator, creature, latLongCalculator, saveFile, options.has(writeAllFieldsSpec));
         }
 

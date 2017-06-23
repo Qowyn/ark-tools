@@ -57,6 +57,11 @@ public class DataCollector {
         itemMap.put(obj.getId(), new Item(obj));
       } else if (obj.getClassString().contains("Inventory")) {
         inventoryMap.put(obj.getId(), new Inventory(obj));
+      } else if (obj.hasAnyProperty("MyCharacterStatusComponent") && !obj.hasAnyProperty("LinkedPlayerDataID")) {
+        creatureMap.put(obj.getId(), new Creature(obj, savegame));
+        // Skip players, weapons and items on the ground
+      } else if (!obj.hasAnyProperty("LinkedPlayerDataID") && !obj.hasAnyProperty("AssociatedPrimalItem") && !obj.hasAnyProperty("MyItem")) {
+        // is (probably) a structure
       }
     }
   }

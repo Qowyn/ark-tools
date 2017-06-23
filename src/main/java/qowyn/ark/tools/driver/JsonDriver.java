@@ -69,6 +69,114 @@ public class JsonDriver implements DBDriver {
 
   static {
     /**
+     * Creature Properties
+     */
+    CREATURE_PROPERTIES.put("type", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !creature.type.isEmpty()) {
+        generator.write("type", creature.type);
+      }
+    });
+    CREATURE_PROPERTIES.put("location", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.location != null) {
+        if (creature.location == null) {
+          generator.writeNull("location");
+        } else {
+          generator.write("location", creature.location.toJson());
+        }
+      }
+    });
+    CREATURE_PROPERTIES.put("dinoId", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.dinoId != 0) {
+        generator.write("dinoId", creature.dinoId);
+      }
+    });
+    CREATURE_PROPERTIES.put("tamed", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.tamed) {
+        generator.write("tamed", creature.tamed);
+      }
+    });
+    CREATURE_PROPERTIES.put("targetingTeam", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.targetingTeam != 0) {
+        generator.write("targetingTeam", creature.targetingTeam);
+      }
+    });
+    CREATURE_PROPERTIES.put("owningPlayerId", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.owningPlayerId != 0) {
+        generator.write("owningPlayerId", creature.owningPlayerId);
+      }
+    });
+    CREATURE_PROPERTIES.put("isFemale", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.isFemale) {
+        generator.write("isFemale", creature.isFemale);
+      }
+    });
+    for (int index = 0; index < Creature.COLOR_SLOT_COUNT; index++) {
+      final int finalIndex = index;
+      CREATURE_PROPERTIES.put("colorSetIndex_" + finalIndex, (creature, generator, dataCollector, writeEmpty) -> {
+        if (writeEmpty || creature.colorSetIndices[finalIndex] != 0) {
+          generator.write("colorSetIndex_" + finalIndex, Byte.toUnsignedInt(creature.colorSetIndices[finalIndex]));
+        }
+      });
+    }
+    CREATURE_PROPERTIES.put("tamedAtTime", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.tamedAtTime != 0.0) {
+        generator.write("tamedAtTime", creature.tamedAtTime);
+      }
+    });
+    CREATURE_PROPERTIES.put("tribeName", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !creature.tribeName.isEmpty()) {
+        generator.write("tribeName", creature.tribeName);
+      }
+    });
+    CREATURE_PROPERTIES.put("tamerString", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !creature.tamerString.isEmpty()) {
+        generator.write("tamerString", creature.tamerString);
+      }
+    });
+    CREATURE_PROPERTIES.put("owningPlayerName", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !creature.owningPlayerName.isEmpty()) {
+        generator.write("owningPlayerName", creature.owningPlayerName);
+      }
+    });
+    CREATURE_PROPERTIES.put("tamedName", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !creature.tamedName.isEmpty()) {
+        generator.write("tamedName", creature.tamedName);
+      }
+    });
+    CREATURE_PROPERTIES.put("imprinterName", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !creature.imprinterName.isEmpty()) {
+        generator.write("imprinterName", creature.imprinterName);
+      }
+    });
+    CREATURE_PROPERTIES.put("baseCharacterLevel", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.baseCharacterLevel != 0) {
+        generator.write("baseCharacterLevel", creature.baseCharacterLevel);
+      }
+    });
+    for (int index = 0; index < AttributeNames.size(); index++) {
+      final int finalIndex = index;
+      CREATURE_PROPERTIES.put("numberOfLevelUpPointsApplied_" + finalIndex, (creature, generator, dataCollector, writeEmpty) -> {
+        if (writeEmpty || creature.numberOfLevelUpPointsApplied[finalIndex] != 0) {
+          generator.write("numberOfLevelUpPointsApplied_" + finalIndex, Byte.toUnsignedInt(creature.numberOfLevelUpPointsApplied[finalIndex]));
+        }
+      });
+      CREATURE_PROPERTIES.put("numberOfLevelUpPointsAppliedTamed_" + finalIndex, (creature, generator, dataCollector, writeEmpty) -> {
+        if (writeEmpty || creature.numberOfLevelUpPointsAppliedTamed[finalIndex] != 0) {
+          generator.write("numberOfLevelUpPointsAppliedTamed_" + finalIndex, Byte.toUnsignedInt(creature.numberOfLevelUpPointsAppliedTamed[finalIndex]));
+        }
+      });
+    }
+    CREATURE_PROPERTIES.put("extraCharacterLevel", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.extraCharacterLevel != 0) {
+        generator.write("extraCharacterLevel", creature.extraCharacterLevel);
+      }
+    });
+    CREATURE_PROPERTIES.put("dinoImprintingQuality", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.dinoImprintingQuality != 0.0f) {
+        generator.write("dinoImprintingQuality", creature.dinoImprintingQuality);
+      }
+    });
+    /**
      * Inventory Properties
      */
     INVENTORY_PROPERTIES.put("inventoryItems", (inventory, generator, dataCollector, writeEmpty) -> {
