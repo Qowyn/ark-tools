@@ -4,45 +4,43 @@ import java.util.ArrayList;
 import java.util.List;
 
 import qowyn.ark.GameObject;
-import qowyn.ark.GameObjectContainer;
 import qowyn.ark.arrays.ArkArrayObjectReference;
 import qowyn.ark.types.ObjectReference;
 
 public class ArkInventory {
 
-  private List<ArkItem> inventoryItems = new ArrayList<>();
+  public List<Integer> inventoryItems = new ArrayList<>();
 
-  private List<ArkItem> equippedItems = new ArrayList<>();
+  public List<Integer> equippedItems = new ArrayList<>();
 
-  public ArkInventory(GameObject inventory, GameObjectContainer container) {
+  public List<Integer> itemSlots = new ArrayList<>();
+
+  public double lastInventoryRefreshTime;
+
+  public ArkInventory(GameObject inventory) {
+
     List<ObjectReference> inventoryItemReferences = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
-    List<ObjectReference> equippedItemReferences = inventory.getPropertyValue("EquippedItems", ArkArrayObjectReference.class);
-
     if (inventoryItemReferences != null) {
       for (ObjectReference inventoryItem : inventoryItemReferences) {
-        GameObject item = inventoryItem.getObject(container);
-        if (item != null) {
-          inventoryItems.add(new ArkItem(item));
-        }
+        inventoryItems.add(inventoryItem.getObjectId());
       }
     }
 
+    List<ObjectReference> equippedItemReferences = inventory.getPropertyValue("EquippedItems", ArkArrayObjectReference.class);
     if (equippedItemReferences != null) {
       for (ObjectReference equippedItem : equippedItemReferences) {
-        GameObject item = equippedItem.getObject(container);
-        if (item != null) {
-          equippedItems.add(new ArkItem(item));
-        }
+        equippedItems.add(equippedItem.getObjectId());
       }
     }
-  }
 
-  public List<ArkItem> getInventoryItems() {
-    return inventoryItems;
-  }
+    List<ObjectReference> itemSlotReferences = inventory.getPropertyValue("ItemSlots", ArkArrayObjectReference.class);
+    if (itemSlotReferences != null) {
+      for (ObjectReference itemSlot : itemSlotReferences) {
+        itemSlots.add(itemSlot.getObjectId());
+      }
+    }
 
-  public List<ArkItem> getEquippedItems() {
-    return equippedItems;
+    lastInventoryRefreshTime = inventory.findPropertyValue("LastInventoryRefreshTime", Double.class).orElse(0.0);
   }
 
 }
