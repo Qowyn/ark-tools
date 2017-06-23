@@ -1,5 +1,6 @@
 package qowyn.ark.tools.driver;
 
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
@@ -9,9 +10,9 @@ import qowyn.ark.tools.data.DataCollector;
 
 public interface DBDriver {
 
-  public void openConnection(URI uri);
+  public void openConnection(URI uri) throws IOException;
 
-  public void openConnection(Path path);
+  public void openConnection(Path path) throws IOException;
 
   public List<String> getUrlSchemeList();
 
@@ -23,7 +24,7 @@ public interface DBDriver {
 
   public Map<String, String> getSupportedParameters();
 
-  public void write(DataCollector data);
+  public void write(DataCollector data) throws IOException;
 
   public void close();
 

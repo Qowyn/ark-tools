@@ -11,6 +11,11 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
+import javax.json.JsonObject;
+
+import joptsimple.OptionSet;
+import joptsimple.OptionSpec;
+import qowyn.ark.tools.data.DataCollector;
 import qowyn.ark.tools.driver.DBDriver;
 import qowyn.ark.tools.driver.DBDrivers;
 
@@ -61,7 +66,13 @@ public class DBCommands {
       if (!driver.getSupportedParameters().isEmpty()) {
         System.out.println("Supported Parameters");
         for (Entry<String,String> entry: driver.getSupportedParameters().entrySet()) {
-          System.out.println("\t" + entry.getKey() + " - " + entry.getValue());
+          System.out.print("\t" + entry.getKey() + " - " + entry.getValue());
+          String defaultValue = driver.getParameter(entry.getKey());
+          if (defaultValue != null) {
+            System.out.println(" - default: " + defaultValue);
+          } else {
+            System.out.println();
+          }
         }
         System.out.println();
       }
@@ -92,11 +103,17 @@ public class DBCommands {
   private OptionHandler oh;
 
   public void run() {
-    List<String> params = oh.getParams();
+    OptionSpec<String> configSpec = oh.accepts("config", "Reads params from the provided JSON configuration file.").withRequiredArg();
+    OptionSpec<String> paramSpec = oh.accepts("param", "Provides a driver-specific parameter to the driver.").withRequiredArg();
+
+    OptionSet options = oh.reparse();
+    List<String> params = oh.getParams(options);
     String driverName = params.get(0);
-    String savePath = params.get(1);
+    Path savePath = Paths.get(params.get(1));
     String pathOrUri = params.get(2);
-    String clusterPath = params.size() == 3 ? null : params.get(3);
+    Path clusterPath = params.size() == 3 ? null : Paths.get(params.get(3));
+
+    DataManager.loadData(oh.lang());
 
     DBDriver driver = DBDrivers.getDriver(driverName);
 
@@ -127,6 +144,53 @@ public class DBCommands {
       }
     }
 
+    if (options.has(configSpec)) {
+      try {
+        JsonObject config = (JsonObject) CommonFunctions.readJson(options.valueOf(configSpec));
+
+        for (String paramName: config.keySet()) {
+          driver.setParameter(paramName, config.getString(paramName));
+        }
+      } catch (IOException ex) {
+        System.err.println("Error: Unable to read config " + options.valueOf(configSpec));
+        System.exit(2);
+        return;
+      }
+    }
+
+    if (options.has(paramSpec)) {
+      for (String param: options.valuesOf(paramSpec)) {
+        int index = param.indexOf('=');
+
+        if (index < 0) {
+          System.err.println("Error: param should be a key-value pair delimited by '=', but was " + param);
+          System.exit(2);
+          return;
+        }
+
+        String paramName = param.substring(0, index);
+        String paramValue = param.substring(index + 1);
+
+        driver.setParameter(paramName, paramValue);
+      }
+    }
+    
+    DataCollector collector = new DataCollector(oh);
+    collector.verbose = oh.isVerbose();
+
+    try {
+      collector.loadSavegame(savePath);
+      collector.loadPlayers(savePath.getParent());
+      collector.loadTribes(savePath.getParent());
+      if (clusterPath != null) {
+        collector.loadCluster(clusterPath);
+      }
+    } catch (IOException ex) {
+      ex.printStackTrace();
+      System.exit(2);
+      return;
+    }
+
     if (path != null) {
       if (!driver.canHandlePath()) {
         System.err.println("Error: Driver " + driverName + " cannot handle path " + pathOrUri);
@@ -134,7 +198,13 @@ public class DBCommands {
         return;
       }
 
-      driver.openConnection(path);
+      try {
+        driver.openConnection(path);
+      } catch (IOException e) {
+        e.printStackTrace();
+        System.exit(2);
+        return;
+      }
     } else {
       if (!driver.getUrlSchemeList().contains(uri.getScheme())) {
         System.err.println("Error: Driver " + driverName + " cannot handle scheme " + pathOrUri);
@@ -142,10 +212,23 @@ public class DBCommands {
         return;
       }
 
-      driver.openConnection(uri);
+      try {
+        driver.openConnection(uri);
+      } catch (IOException e) {
+        e.printStackTrace();
+        System.exit(2);
+        return;
+      }
     }
 
-    
+    try {
+      driver.write(collector);
+    } catch (IOException e) {
+      e.printStackTrace();
+      System.exit(2);
+      return;
+    }
+    driver.close();
   }
 
 }

@@ -35,7 +35,7 @@ import qowyn.ark.types.ObjectReference;
 
 public class Item {
 
-  private static final int COLOR_SLOT_COUNT = 6;
+  public static final int COLOR_SLOT_COUNT = 6;
   
   public long itemId;
 
@@ -79,6 +79,10 @@ public class Item {
 
   public final byte[] eggColors = new byte[COLOR_SLOT_COUNT];
 
+  public String crafterCharacterName;
+
+  public float craftedSkillBonus;
+
   public int uploadOffset;
 
   public Item() {
@@ -89,6 +93,7 @@ public class Item {
     quantity = 1;
     customName = "";
     customDescription = "";
+    crafterCharacterName = "";
   }
 
   /**
@@ -136,6 +141,9 @@ public class Item {
     for (int i = 0; i < eggColors.length; i++) {
       eggColors[i] = item.findPropertyValue("EggColorSetIndices", ArkByteValue.class, i).map(ArkByteValue::getByteValue).orElse((byte) 0);
     }
+
+    crafterCharacterName = item.findPropertyValue("CrafterCharacterName", String.class).orElse("");
+    craftedSkillBonus = item.findPropertyValue("CraftedSkillBonus", Float.class).orElse(0.0f);
   }
 
   /**
@@ -184,6 +192,9 @@ public class Item {
     for (int i = 0; i < eggColors.length; i++) {
       eggColors[i] = item.findPropertyValue("EggColorSetIndices", ArkByteValue.class, i).map(ArkByteValue::getByteValue).orElse((byte) 0);
     }
+
+    crafterCharacterName = item.findPropertyValue("CrafterCharacterName", String.class).orElse("");
+    craftedSkillBonus = item.findPropertyValue("CraftedSkillBonus", Float.class).orElse(0.0f);
   }
 
   /**
@@ -232,6 +243,9 @@ public class Item {
     for (int i = 0; i < eggColors.length; i++) {
       eggColors[i] = (byte) object.getInt("eggColor_" + i, 0);
     }
+
+    crafterCharacterName = object.getString("crafterCharacterName", "");
+    craftedSkillBonus = Optional.ofNullable(object.getJsonNumber("craftedSkillBonus")).map(n -> n.bigDecimalValue().floatValue()).orElse(0.0f);
 
     uploadOffset = object.getInt("uploadOffset", 0);
   }
@@ -334,6 +348,9 @@ public class Item {
       arkTributeItem.getProperties().add(new PropertyByte("EggColorSetIndices", i, eggColors[i]));
     }
 
+    arkTributeItem.getProperties().add(new PropertyStr("CrafterCharacterName", crafterCharacterName));
+    arkTributeItem.getProperties().add(new PropertyFloat("CraftedSkillBonus", craftedSkillBonus));
+
     arkTributeItem.getProperties().add(new PropertyByte("ItemVersion", (byte) 0));
     arkTributeItem.getProperties().add(new PropertyInt("CustomItemID", 0));
     arkTributeItem.getProperties().add(new PropertyArray("SteamUserItemID", new ArkArrayUInt64()));
@@ -397,6 +414,13 @@ public class Item {
       if (itemStatValues[i] != 0) {
         object.getProperties().add(new PropertyUInt16("ItemStatValues", i, itemStatValues[i]));
       }
+    }
+
+    if (crafterCharacterName != null && !crafterCharacterName.isEmpty()) {
+      object.getProperties().add(new PropertyStr("CrafterCharacterName", crafterCharacterName));
+    }
+    if (craftedSkillBonus != 0.0f) {
+      object.getProperties().add(new PropertyFloat("CraftedSkillBonus", craftedSkillBonus));
     }
 
     Set<Long> itemIDs = new HashSet<>(); // Stored as StructPropertyList with 2 UInt32
