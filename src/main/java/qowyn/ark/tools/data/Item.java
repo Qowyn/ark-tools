@@ -33,7 +33,7 @@ import qowyn.ark.types.ArkByteValue;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.ObjectReference;
 
-public class ArkItem {
+public class Item {
 
   private static final int COLOR_SLOT_COUNT = 6;
   
@@ -81,7 +81,7 @@ public class ArkItem {
 
   public int uploadOffset;
 
-  public ArkItem() {
+  public Item() {
     canEquip = true;
     canSlot = true;
     canRemove = true;
@@ -94,7 +94,7 @@ public class ArkItem {
   /**
    * From ArkSavegame
    */
-  public ArkItem(GameObject item) {
+  public Item(GameObject item) {
     className = item.getClassName();
 
     canEquip = item.findPropertyValue("bAllowEquppingItem", Boolean.class).orElse(true);
@@ -141,7 +141,7 @@ public class ArkItem {
   /**
    * From cluster storage
    */
-  public ArkItem(PropertyContainer item) {
+  public Item(PropertyContainer item) {
     blueprintGeneratedClass = item.getPropertyValue("ItemArchetype", ObjectReference.class).getObjectString().toString();
     className = ArkName.from(blueprintGeneratedClass.substring(blueprintGeneratedClass.lastIndexOf('.') + 1));
 
@@ -189,7 +189,7 @@ public class ArkItem {
   /**
    * From JSON / ModificationFile
    */
-  public ArkItem(JsonObject object) {
+  public Item(JsonObject object) {
     className = ArkName.from(object.getString("className"));
     blueprintGeneratedClass = "BlueprintGeneratedClass " + object.getString("blueprintGeneratedClass", "");
 

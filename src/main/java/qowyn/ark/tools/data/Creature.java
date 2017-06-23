@@ -1,5 +1,5 @@
 package qowyn.ark.tools.data;
 
-public class ArkTribe {
+public class Creature {
 
 }

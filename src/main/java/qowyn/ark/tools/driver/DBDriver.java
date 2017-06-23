@@ -5,7 +5,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
-import qowyn.ark.tools.data.ArkDataCollector;
+import qowyn.ark.tools.data.DataCollector;
 
 public interface DBDriver {
 
@@ -23,7 +23,7 @@ public interface DBDriver {
 
   public Map<String, String> getSupportedParameters();
 
-  public void write(ArkDataCollector data);
+  public void write(DataCollector data);
 
   public void close();
 

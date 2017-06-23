@@ -15,7 +15,7 @@ import javax.json.JsonObject;
 import javax.json.JsonString;
 import javax.json.JsonValue;
 
-import qowyn.ark.tools.data.ArkItem;
+import qowyn.ark.tools.data.Item;
 import qowyn.ark.types.ArkName;
 
 public class ModificationFile {
@@ -26,15 +26,15 @@ public class ModificationFile {
 
   public final Set<ArkName> removeItems = new HashSet<>();
 
-  public final List<ArkItem> addItems = new ArrayList<>();
+  public final List<Item> addItems = new ArrayList<>();
 
-  public final Map<ArkName, List<ArkItem>> replaceDefaultInventoriesMap = new HashMap<>();
+  public final Map<ArkName, List<Item>> replaceDefaultInventoriesMap = new HashMap<>();
 
-  public final Map<ArkName, List<ArkItem>> replaceInventoriesMap = new HashMap<>();
+  public final Map<ArkName, List<Item>> replaceInventoriesMap = new HashMap<>();
 
-  public final Map<ArkName, List<ArkItem>> addDefaultInventoriesMap = new HashMap<>();
+  public final Map<ArkName, List<Item>> addDefaultInventoriesMap = new HashMap<>();
 
-  public final Map<ArkName, List<ArkItem>> addInventoriesMap = new HashMap<>();
+  public final Map<ArkName, List<Item>> addInventoriesMap = new HashMap<>();
 
   public void readJson(JsonObject object) {
     
@@ -77,7 +77,7 @@ public class ModificationFile {
     if (expect(addItemsValue, "addItems", JsonValue.ValueType.ARRAY)) {
       JsonArray itemArray = (JsonArray) addItemsValue;
       for (JsonObject item : itemArray.getValuesAs(JsonObject.class)) {
-        addItems.add(new ArkItem(item));
+        addItems.add(new Item(item));
       }
     }
     
@@ -85,7 +85,7 @@ public class ModificationFile {
     
     // Map start
 
-    BiConsumer<String, Map<ArkName, List<ArkItem>>> inventoryLoader = (fieldName, map) -> {
+    BiConsumer<String, Map<ArkName, List<Item>>> inventoryLoader = (fieldName, map) -> {
       JsonValue inventoriesValue = object.get(fieldName);
 
       if (expect(inventoriesValue, fieldName, JsonValue.ValueType.OBJECT)) {
@@ -94,10 +94,10 @@ public class ModificationFile {
         inventories.forEach((name, value) -> {
           if (expect(value, name, JsonValue.ValueType.ARRAY)) {
             JsonArray itemArray = (JsonArray) value;
-            List<ArkItem> items = new ArrayList<>();
+            List<Item> items = new ArrayList<>();
 
             for (JsonObject item : itemArray.getValuesAs(JsonObject.class)) {
-              items.add(new ArkItem(item));
+              items.add(new Item(item));
             }
 
             map.put(ArkName.from(name), items);

@@ -7,7 +7,7 @@ import qowyn.ark.GameObject;
 import qowyn.ark.arrays.ArkArrayObjectReference;
 import qowyn.ark.types.ObjectReference;
 
-public class ArkInventory {
+public class Inventory {
 
   public List<Integer> inventoryItems = new ArrayList<>();
 
@@ -17,7 +17,7 @@ public class ArkInventory {
 
   public double lastInventoryRefreshTime;
 
-  public ArkInventory(GameObject inventory) {
+  public Inventory(GameObject inventory) {
 
     List<ObjectReference> inventoryItemReferences = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
     if (inventoryItemReferences != null) {

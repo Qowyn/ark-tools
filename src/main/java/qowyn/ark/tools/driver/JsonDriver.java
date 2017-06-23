@@ -12,7 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import qowyn.ark.tools.data.ArkDataCollector;
+import qowyn.ark.tools.data.DataCollector;
 
 public class JsonDriver implements DBDriver {
 
@@ -93,7 +93,7 @@ public class JsonDriver implements DBDriver {
   }
 
   @Override
-  public void write(ArkDataCollector data) {
+  public void write(DataCollector data) {
     // TODO Auto-generated method stub
     
   }

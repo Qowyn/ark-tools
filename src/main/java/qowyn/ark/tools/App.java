@@ -71,7 +71,7 @@ public class App {
     addCommand(list("tribes"), "Players", list("SAVE", "DIRECTORY"), "Writes lists of all tribes in SAVE to the specified DIRECTORY.", PlayerListCommands::tribes);
     addCommand(list("cluster"), "Players", list("CLUSTER_DIRECTORY", "OUTPUT_DIRECTORY"), "Writes lists of all things which players have uploaded into the cluster.", PlayerListCommands::cluster);
 
-    //addCommand(list("db"), "DB", list("DRIVER", "SAVE", "URI_OR_PATH", "[CLUSTER_DIRECTORY]"), "Reads the SAVE, all players, all tribes and cluster data and outputs the result to URI_OR_PATH", DBCommands::run);
+    addCommand(list("db"), "DB", list("DRIVER", "SAVE", "URI_OR_PATH", "[CLUSTER_DIRECTORY]"), "Reads the SAVE, all players, all tribes and cluster data and outputs the result to URI_OR_PATH", DBCommands::run);
     addCommand(list("db-drivers", "dbDrivers"), "DB", list(), "Lists all installed drivers with their configuration parameters", DBCommands::list);
 
     addCommand(list("latlon"), "Settings", list(), "Exports internal LatLonCalculator data to latLonCalculator.json in the current working directory", SettingsCommands::latlon);
