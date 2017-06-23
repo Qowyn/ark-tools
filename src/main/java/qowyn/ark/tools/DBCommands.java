@@ -82,7 +82,12 @@ public class DBCommands {
   }
 
   public static void run(OptionHandler oh){
-    if (oh.getParams().size() < 3 || oh.getParams().size() > 4 || oh.wantsHelp()) {
+    OptionSpec<String> configSpec = oh.accepts("config", "Reads params from the provided JSON configuration file.").withRequiredArg();
+    OptionSpec<String> paramSpec = oh.accepts("param", "Provides a driver-specific parameter to the driver.").withRequiredArg();
+
+    OptionSet options = oh.reparse();
+
+    if (oh.getParams(options).size() < 3 || oh.getParams(options).size() > 4 || oh.wantsHelp()) {
       oh.printCommandHelp();
       System.exit(1);
       return;
@@ -96,17 +101,22 @@ public class DBCommands {
 
     DBCommands command = new DBCommands();
     command.oh = oh;
+    command.options = options;
+    command.configSpec = configSpec;
+    command.paramSpec = paramSpec;
     command.run();
     DBDrivers.close();
   }
 
   private OptionHandler oh;
 
-  public void run() {
-    OptionSpec<String> configSpec = oh.accepts("config", "Reads params from the provided JSON configuration file.").withRequiredArg();
-    OptionSpec<String> paramSpec = oh.accepts("param", "Provides a driver-specific parameter to the driver.").withRequiredArg();
+  private OptionSet options;
 
-    OptionSet options = oh.reparse();
+  private OptionSpec<String> configSpec;
+
+  private OptionSpec<String> paramSpec;
+
+  public void run() {
     List<String> params = oh.getParams(options);
     String driverName = params.get(0);
     Path savePath = Paths.get(params.get(1));

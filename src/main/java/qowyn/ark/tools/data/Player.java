@@ -44,7 +44,7 @@ public class Player {
 
   public float spawnDayTime;
 
-  public boolean bIsFemale;
+  public boolean isFemale;
 
   public final StructLinearColor[] bodyColors = new StructLinearColor[PlayerBodyColorRegions.size()];
 
@@ -72,7 +72,7 @@ public class Player {
 
   public float percentageOfFacialHairGrowth;
 
-  public int inventoryId;
+  public int inventoryId = -1;
 
   public LocationData location;
 
@@ -106,7 +106,7 @@ public class Player {
 
     // Character data
 
-    bIsFemale = characterConfig.findPropertyValue("bIsFemale", Boolean.class).orElse(false);
+    isFemale = characterConfig.findPropertyValue("bIsFemale", Boolean.class).orElse(false);
     for (int i = 0; i < PlayerBodyColorRegions.size(); i++) {
       bodyColors[i] = characterConfig.getPropertyValue("BodyColors", StructLinearColor.class, i);
     }
@@ -153,7 +153,25 @@ public class Player {
       return;
     }
 
-    
+    GameObject playerCharacterStatus = null;
+    for (GameObject object : playersWithStats.getObjects()) {
+      if (object.getNames().size() == 2 && object.getNames().get(0).toString().equals("PlayerCharacterStatus") && object.getNames().get(1) == player.getNames().get(0)) {
+        playerCharacterStatus = object;
+        break;
+      }
+    }
+
+    inventoryId = player.findPropertyValue("MyInventoryComponent", ObjectReference.class).map(ObjectReference::getObjectId).orElse(-1);
+    location = player.getLocation();
+
+    if (playerCharacterStatus != null) {
+      lastHypothermalCharacterInsulationValue = playerCharacterStatus.findPropertyValue("LastHypothermalCharacterInsulationValue", Float.class).orElse(0.0f);
+      lastHyperthermalCharacterInsulationValue = playerCharacterStatus.findPropertyValue("LastHyperthermalCharacterInsulationValue", Float.class).orElse(0.0f);
+
+      for (int index = 0; index < AttributeNames.size(); index++) {
+        currentStatusValues[index] = playerCharacterStatus.findPropertyValue("CurrentStatusValues", Float.class, index).orElse(0.0f);
+      }
+    }
   }
 
 }

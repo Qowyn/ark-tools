@@ -29,6 +29,7 @@ import com.lmax.disruptor.dsl.ProducerType;
 
 import qowyn.ark.GameObject;
 import qowyn.ark.GameObjectContainer;
+import qowyn.ark.structs.StructLinearColor;
 import qowyn.ark.types.ObjectReference;
 
 public class CommonFunctions {
@@ -155,6 +156,25 @@ public class CommonFunctions {
     try (InputStream stream = new FileInputStream(inFile)) {
       readJson(stream, parseJson);
     }
+  }
+
+  public static String getRGBA(StructLinearColor lc) {
+    double clampR = Math.min(1, Math.max(lc.getR(), 0));
+    double clampG = Math.min(1, Math.max(lc.getG(), 0));
+    double clampB = Math.min(1, Math.max(lc.getB(), 0));
+    double clampA = Math.min(1, Math.max(lc.getA(), 0));
+
+    // Gamma correction
+    clampR = Math.pow(clampR, 1.0 / 2.2);
+    clampG = Math.pow(clampG, 1.0 / 2.2);
+    clampB = Math.pow(clampB, 1.0 / 2.2);
+
+    String rs = ("0" + Integer.toHexString((int) Math.floor(clampR * 255.999999)));
+    String gs = ("0" + Integer.toHexString((int) Math.floor(clampG * 255.999999)));
+    String bs = ("0" + Integer.toHexString((int) Math.floor(clampB * 255.999999)));
+    String as = ("0" + Integer.toHexString((int) Math.floor(clampA * 255.999999)));
+
+    return "#" + rs.substring(rs.length() - 2) + gs.substring(gs.length() - 2) + bs.substring(bs.length() - 2) + as.substring(as.length() - 2);
   }
 
   @SuppressWarnings("unchecked")

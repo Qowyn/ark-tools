@@ -7,12 +7,10 @@ import java.nio.file.Path;
 import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
-import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
 
-import qowyn.ark.ArkProfile;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
 import qowyn.ark.tools.LatLonCalculator;
@@ -20,7 +18,7 @@ import qowyn.ark.tools.OptionHandler;
 
 public class DataCollector {
 
-  private static final Pattern PROFILE_PATTERN = Pattern.compile("\\d+\\.arkprofile");
+  private static final Pattern PROFILE_PATTERN = Pattern.compile("(\\d+|LocalPlayer)\\.arkprofile");
 
   private static final Pattern TRIBE_PATTERN = Pattern.compile("\\d+\\.arktribe");
 
