@@ -50,7 +50,7 @@ public class DataCollector {
 
   public LatLonCalculator latLonCalculator;
 
-  public long maxPlayerAge;
+  public long maxAge;
 
   public boolean verbose;
 
@@ -91,10 +91,10 @@ public class DataCollector {
 
     try (DirectoryStream<Path> stream = Files.newDirectoryStream(path, profileFilter)) {
       for (Path profilePath : stream) {
-        if (maxPlayerAge != 0) {
+        if (maxAge != 0) {
           FileTime fileTime = Files.getLastModifiedTime(profilePath);
 
-          if (fileTime.toInstant().isBefore(Instant.now().minusSeconds(maxPlayerAge))) {
+          if (fileTime.toInstant().isBefore(Instant.now().minusSeconds(maxAge))) {
             continue;
           }
         }
@@ -112,8 +112,30 @@ public class DataCollector {
     }
   }
 
-  public void loadTribes(Path path) {
-    
+  public void loadTribes(Path path) throws IOException {
+    Filter<Path> tribeFilter = p -> TRIBE_PATTERN.matcher(p.getFileName().toString()).matches();
+
+    try (DirectoryStream<Path> stream = Files.newDirectoryStream(path, tribeFilter)) {
+      for (Path tribePath : stream) {
+        if (maxAge != 0) {
+          FileTime fileTime = Files.getLastModifiedTime(tribePath);
+
+          if (fileTime.toInstant().isBefore(Instant.now().minusSeconds(maxAge))) {
+            continue;
+          }
+        }
+
+        try {
+          Tribe tribe = new Tribe(tribePath);
+          tribeMap.put(tribe.tribeId, tribe);
+        } catch (RuntimeException ex) {
+          System.err.println("Found potentially corrupt ArkTribe: " + tribePath.toString());
+          if (verbose) {
+            ex.printStackTrace();
+          }
+        }
+      }
+    }
   }
 
   public void loadCluster(Path path) {
