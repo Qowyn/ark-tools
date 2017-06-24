@@ -59,7 +59,7 @@ public class DataCollector {
   }
 
   public void loadSavegame(Path path) throws IOException {
-    savegame = new ArkSavegame(path.toString());
+    savegame = new ArkSavegame(path.toString(), oh.readingOptions());
     latLonCalculator = LatLonCalculator.forSave(savegame);
 
     for (GameObject obj: savegame.getObjects()) {
@@ -100,7 +100,7 @@ public class DataCollector {
         }
 
         try {
-          Player player = new Player(profilePath, savegame, latLonCalculator);
+          Player player = new Player(profilePath, savegame, latLonCalculator, oh.readingOptions());
           playerMap.put(player.playerDataId, player);
         } catch (RuntimeException ex) {
           System.err.println("Found potentially corrupt ArkProfile: " + profilePath.toString());
@@ -126,7 +126,7 @@ public class DataCollector {
         }
 
         try {
-          Tribe tribe = new Tribe(tribePath);
+          Tribe tribe = new Tribe(tribePath, oh.readingOptions());
           tribeMap.put(tribe.tribeId, tribe);
         } catch (RuntimeException ex) {
           System.err.println("Found potentially corrupt ArkTribe: " + tribePath.toString());
@@ -139,7 +139,6 @@ public class DataCollector {
   }
 
   public void loadCluster(Path path) {
-    
   }
 
 }

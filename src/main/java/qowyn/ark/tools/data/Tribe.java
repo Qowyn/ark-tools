@@ -7,6 +7,7 @@ import java.util.List;
 
 import qowyn.ark.ArkTribe;
 import qowyn.ark.PropertyContainer;
+import qowyn.ark.ReadingOptions;
 import qowyn.ark.arrays.ArkArrayInt8;
 import qowyn.ark.arrays.ArkArrayString;
 import qowyn.ark.arrays.ArkArrayStruct;
@@ -49,7 +50,11 @@ public class Tribe {
   public final List<TribeRankGroup> tribeRankGroups = new ArrayList<>();
 
   public Tribe(Path path) throws IOException {
-    ArkTribe tribe = new ArkTribe(path.toString());
+    this(path, ReadingOptions.create());
+  }
+
+  public Tribe(Path path, ReadingOptions ro) throws IOException {
+    ArkTribe tribe = new ArkTribe(path.toString(), ro);
 
     StructPropertyList tribeData = tribe.getPropertyValue("TribeData", StructPropertyList.class);
 

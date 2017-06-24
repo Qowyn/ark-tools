@@ -9,6 +9,7 @@ import qowyn.ark.ArkProfile;
 import qowyn.ark.GameObject;
 import qowyn.ark.GameObjectContainer;
 import qowyn.ark.PropertyContainer;
+import qowyn.ark.ReadingOptions;
 import qowyn.ark.arrays.ArkArrayObjectReference;
 import qowyn.ark.structs.StructLinearColor;
 import qowyn.ark.structs.StructPropertyList;
@@ -87,7 +88,11 @@ public class Player {
   public final float[] currentStatusValues = new float[AttributeNames.size()];
 
   public Player(Path path, GameObjectContainer playersWithStats, LatLonCalculator latLonCalculator) throws IOException {
-    ArkProfile profile = new ArkProfile(path.toString());
+    this(path, playersWithStats, latLonCalculator, ReadingOptions.create());
+  }
+
+  public Player(Path path, GameObjectContainer playersWithStats, LatLonCalculator latLonCalculator, ReadingOptions ro) throws IOException {
+    ArkProfile profile = new ArkProfile(path.toString(), ro);
 
     savedPlayerDataVersion = profile.findPropertyValue("SavedPlayerDataVersion", Integer.class).orElse(0);
 

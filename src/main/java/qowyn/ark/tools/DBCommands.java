@@ -184,6 +184,16 @@ public class DBCommands {
         driver.setParameter(paramName, paramValue);
       }
     }
+
+    if (path != null && !driver.canHandlePath()) {
+      System.err.println("Error: Driver " + driverName + " cannot handle path " + pathOrUri);
+      System.exit(2);
+      return;
+    } else if (path == null && !driver.getUrlSchemeList().contains(uri.getScheme())) {
+      System.err.println("Error: Driver " + driverName + " cannot handle scheme " + pathOrUri);
+      System.exit(2);
+      return;
+    }
     
     DataCollector collector = new DataCollector(oh);
     collector.verbose = oh.isVerbose();
@@ -202,12 +212,6 @@ public class DBCommands {
     }
 
     if (path != null) {
-      if (!driver.canHandlePath()) {
-        System.err.println("Error: Driver " + driverName + " cannot handle path " + pathOrUri);
-        System.exit(2);
-        return;
-      }
-
       try {
         driver.openConnection(path);
       } catch (IOException e) {
@@ -216,12 +220,6 @@ public class DBCommands {
         return;
       }
     } else {
-      if (!driver.getUrlSchemeList().contains(uri.getScheme())) {
-        System.err.println("Error: Driver " + driverName + " cannot handle scheme " + pathOrUri);
-        System.exit(2);
-        return;
-      }
-
       try {
         driver.openConnection(uri);
       } catch (IOException e) {

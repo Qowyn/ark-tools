@@ -34,6 +34,7 @@ import qowyn.ark.tools.data.PlayerBodyColorRegions;
 import qowyn.ark.tools.data.PlayerBoneModifierNames;
 import qowyn.ark.tools.data.Structure;
 import qowyn.ark.tools.data.Tribe;
+import qowyn.ark.tools.data.TribeRankGroup;
 
 public class JsonDriver implements DBDriver {
 
@@ -826,6 +827,185 @@ public class JsonDriver implements DBDriver {
     STRUCTURE_PROPERTIES.put("targetingTeam", (structure, generator, dataCollector, writeEmpty) -> {
       if (writeEmpty || structure.targetingTeam != 0) {
         generator.write("targetingTeam", structure.targetingTeam);
+      }
+    });
+  }
+  static {
+    /**
+     * Tribe Properties
+     */
+    TRIBE_PROPERTIES.put("tribeName", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !tribe.tribeName.isEmpty()) {
+        generator.write("tribeName", tribe.tribeName);
+      }
+    });
+    TRIBE_PROPERTIES.put("ownerPlayerDataId", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || tribe.ownerPlayerDataId != 0) {
+        generator.write("ownerPlayerDataId", tribe.ownerPlayerDataId);
+      }
+    });
+    TRIBE_PROPERTIES.put("tribeId", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || tribe.tribeId != 0) {
+        generator.write("tribeId", tribe.tribeId);
+      }
+    });
+    TRIBE_PROPERTIES.put("membersPlayerName", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !tribe.membersPlayerName.isEmpty()) {
+        generator.writeStartArray("membersPlayerName");
+        for (String value: tribe.membersPlayerName) {
+          generator.write(value);
+        }
+        generator.writeEnd();
+      }
+    });
+    TRIBE_PROPERTIES.put("membersPlayerDataId", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !tribe.membersPlayerDataId.isEmpty()) {
+        generator.writeStartArray("membersPlayerDataId");
+        for (int value: tribe.membersPlayerDataId) {
+          generator.write(value);
+        }
+        generator.writeEnd();
+      }
+    });
+    TRIBE_PROPERTIES.put("tribeAdmins", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !tribe.tribeAdmins.isEmpty()) {
+        generator.writeStartArray("tribeAdmins");
+        for (int value: tribe.tribeAdmins) {
+          generator.write(value);
+        }
+        generator.writeEnd();
+      }
+    });
+    TRIBE_PROPERTIES.put("membersRankGroups", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !tribe.membersRankGroups.isEmpty()) {
+        generator.writeStartArray("membersRankGroups");
+        for (byte value: tribe.membersRankGroups) {
+          generator.write(Byte.toUnsignedInt(value));
+        }
+        generator.writeEnd();
+      }
+    });
+    TRIBE_PROPERTIES.put("setGovernment", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !tribe.setGovernment) {
+        generator.write("setGovernment", tribe.setGovernment);
+      }
+    });
+    TRIBE_PROPERTIES.put("tribeGovernPINCode", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || tribe.tribeGovernPINCode != 0) {
+        generator.write("tribeGovernPINCode", tribe.tribeGovernPINCode);
+      }
+    });
+    TRIBE_PROPERTIES.put("tribeGovernDinoOwnership", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || tribe.tribeGovernDinoOwnership != 0) {
+        generator.write("tribeGovernDinoOwnership", tribe.tribeGovernDinoOwnership);
+      }
+    });
+    TRIBE_PROPERTIES.put("tribeGovernStructureOwnership", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || tribe.tribeGovernStructureOwnership != 0) {
+        generator.write("tribeGovernStructureOwnership", tribe.tribeGovernStructureOwnership);
+      }
+    });
+    TRIBE_PROPERTIES.put("tribeGovernDinoTaming", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || tribe.tribeGovernDinoTaming != 0) {
+        generator.write("tribeGovernDinoTaming", tribe.tribeGovernDinoTaming);
+      }
+    });
+    TRIBE_PROPERTIES.put("tribeGovernDinoUnclaimAdminOnly", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || tribe.tribeGovernDinoUnclaimAdminOnly != 0) {
+        generator.write("tribeGovernDinoUnclaimAdminOnly", tribe.tribeGovernDinoUnclaimAdminOnly);
+      }
+    });
+    TRIBE_PROPERTIES.put("tribeLog", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !tribe.tribeLog.isEmpty()) {
+        generator.writeStartArray("tribeLog");
+        for (String value: tribe.tribeLog) {
+          generator.write(value);
+        }
+        generator.writeEnd();
+      }
+    });
+    TRIBE_PROPERTIES.put("logIndex", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || tribe.logIndex != 0) {
+        generator.write("logIndex", tribe.logIndex);
+      }
+    });
+    TRIBE_PROPERTIES.put("tribeRankGroups", (tribe, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !tribe.tribeRankGroups.isEmpty()) {
+        generator.writeStartArray("tribeRankGroups");
+        for (TribeRankGroup group: tribe.tribeRankGroups) {
+          generator.writeStartObject();
+          if (writeEmpty || !group.rankGroupName.isEmpty()) {
+            generator.write("rankGroupName", group.rankGroupName);
+          }
+          if (writeEmpty || group.rankGroupRank != 0) {
+            generator.write("rankGroupRank", Byte.toUnsignedInt(group.rankGroupRank));
+          }
+          if (writeEmpty || group.inventoryRank != 0) {
+            generator.write("inventoryRank", Byte.toUnsignedInt(group.inventoryRank));
+          }
+          if (writeEmpty || group.structureActivationRank != 0) {
+            generator.write("structureActivationRank", Byte.toUnsignedInt(group.structureActivationRank));
+          }
+          if (writeEmpty || group.newStructureActivationRank != 0) {
+            generator.write("newStructureActivationRank", Byte.toUnsignedInt(group.newStructureActivationRank));
+          }
+          if (writeEmpty || group.newStructureInventoryRank != 0) {
+            generator.write("newStructureInventoryRank", Byte.toUnsignedInt(group.newStructureInventoryRank));
+          }
+          if (writeEmpty || group.petOrderRank != 0) {
+            generator.write("petOrderRank", Byte.toUnsignedInt(group.petOrderRank));
+          }
+          if (writeEmpty || group.petRidingRank != 0) {
+            generator.write("petRidingRank", Byte.toUnsignedInt(group.petRidingRank));
+          }
+          if (writeEmpty || group.inviteToGroupRank != 0) {
+            generator.write("inviteToGroupRank", Byte.toUnsignedInt(group.inviteToGroupRank));
+          }
+          if (writeEmpty || group.maxPromotionGroupRank != 0) {
+            generator.write("maxPromotionGroupRank", Byte.toUnsignedInt(group.maxPromotionGroupRank));
+          }
+          if (writeEmpty || group.maxDemotionGroupRank != 0) {
+            generator.write("maxDemotionGroupRank", Byte.toUnsignedInt(group.maxDemotionGroupRank));
+          }
+          if (writeEmpty || group.maxBanishmentGroupRank != 0) {
+            generator.write("maxBanishmentGroupRank", Byte.toUnsignedInt(group.maxBanishmentGroupRank));
+          }
+          if (writeEmpty || group.numInvitesRemaining != 0) {
+            generator.write("numInvitesRemaining", Byte.toUnsignedInt(group.numInvitesRemaining));
+          }
+          if (writeEmpty || group.preventStructureDemolish) {
+            generator.write("preventStructureDemolish", group.preventStructureDemolish);
+          }
+          if (writeEmpty || group.preventStructureAttachment) {
+            generator.write("preventStructureAttachment", group.preventStructureAttachment);
+          }
+          if (writeEmpty || group.preventStructureBuildInRange) {
+            generator.write("preventStructureBuildInRange", group.preventStructureBuildInRange);
+          }
+          if (writeEmpty || group.preventUnclaiming) {
+            generator.write("preventUnclaiming", group.preventUnclaiming);
+          }
+          if (writeEmpty || group.allowInvites) {
+            generator.write("allowInvites", group.allowInvites);
+          }
+          if (writeEmpty || group.limitInvites) {
+            generator.write("limitInvites", group.limitInvites);
+          }
+          if (writeEmpty || group.allowDemotions) {
+            generator.write("allowDemotions", group.allowDemotions);
+          }
+          if (writeEmpty || group.allowPromotions) {
+            generator.write("allowPromotions", group.allowPromotions);
+          }
+          if (writeEmpty || group.allowBanishments) {
+            generator.write("allowBanishments", group.allowBanishments);
+          }
+          if (writeEmpty || group.defaultRank) {
+            generator.write("defaultRank", group.defaultRank);
+          }
+          generator.writeEnd();
+        }
+        generator.writeEnd();
       }
     });
   }
