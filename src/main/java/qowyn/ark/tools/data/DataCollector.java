@@ -7,6 +7,9 @@ import java.nio.file.Path;
 import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
@@ -15,12 +18,15 @@ import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
 import qowyn.ark.tools.LatLonCalculator;
 import qowyn.ark.tools.OptionHandler;
+import qowyn.ark.types.ArkName;
 
 public class DataCollector {
 
   private static final Pattern PROFILE_PATTERN = Pattern.compile("(\\d+|LocalPlayer)\\.arkprofile");
 
   private static final Pattern TRIBE_PATTERN = Pattern.compile("\\d+\\.arktribe");
+
+  public final Map<ArkName, Integer> nameObjectMap = new HashMap<>();
 
   public final SortedMap<Integer, Item> itemMap = new TreeMap<>();
 
@@ -31,6 +37,10 @@ public class DataCollector {
   public final SortedMap<Integer, Structure> structureMap = new TreeMap<>();
 
   public final SortedMap<Long, Player> playerMap = new TreeMap<>();
+
+  public final SortedMap<Long, List<Creature>> playerClusterCreatureMap = new TreeMap<>();
+
+  public final SortedMap<Long, List<Item>> playerClusterItemMap = new TreeMap<>();
 
   public final SortedMap<Integer, Tribe> tribeMap = new TreeMap<>();
 
@@ -53,17 +63,27 @@ public class DataCollector {
     latLonCalculator = LatLonCalculator.forSave(savegame);
 
     for (GameObject obj: savegame.getObjects()) {
-      if (obj.isItem()) {
-        itemMap.put(obj.getId(), new Item(obj));
+      if (obj.isFromDataFile() || (obj.getNames().size() == 1 && obj.getNames().get(0).getInstance() == 0)) {
+        // Skip things like NPCZoneVolume and non-instanced things
       } else if (obj.getClassString().contains("Inventory")) {
         inventoryMap.put(obj.getId(), new Inventory(obj));
-      } else if (obj.hasAnyProperty("MyCharacterStatusComponent") && !obj.hasAnyProperty("LinkedPlayerDataID")) {
-        creatureMap.put(obj.getId(), new Creature(obj, savegame));
-        // Skip players, weapons and items on the ground
-      } else if (!obj.hasAnyProperty("LinkedPlayerDataID") && !obj.hasAnyProperty("AssociatedPrimalItem") && !obj.hasAnyProperty("MyItem")) {
-        // is (probably) a structure
+      } else {
+        if (!nameObjectMap.containsKey(obj.getNames().get(0))) {
+          nameObjectMap.put(obj.getNames().get(0), obj.getId());
+          if (obj.isItem()) {
+            itemMap.put(obj.getId(), new Item(obj));
+          } else if (obj.hasAnyProperty("MyCharacterStatusComponent") && !obj.hasAnyProperty("LinkedPlayerDataID")) {
+            creatureMap.put(obj.getId(), new Creature(obj, savegame));
+          } else if (obj.getLocation() != null && !obj.hasAnyProperty("LinkedPlayerDataID") && !obj.hasAnyProperty("AssociatedPrimalItem") && !obj.hasAnyProperty("MyItem") && !obj.hasAnyProperty("MyPawn")) {
+            // Skip players, weapons and items on the ground
+            // is (probably) a structure
+            structureMap.put(obj.getId(), new Structure(obj));
+          }
+        }
       }
     }
+
+    
   }
 
   public void loadPlayers(Path path) throws IOException {

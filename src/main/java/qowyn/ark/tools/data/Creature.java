@@ -48,13 +48,35 @@ public class Creature {
 
   public final byte[] numberOfLevelUpPointsAppliedTamed = new byte[AttributeNames.size()];
 
+  public boolean allowLevelUps;
+
   public float experiencePoints;
 
   public float dinoImprintingQuality;
 
   public float wildRandomScale;
 
+  public boolean isWakingTame;
+
+  public boolean isSleeping;
+
   public float requiredTameAffinity;
+
+  public float currentTameAffinity;
+
+  public float tameIneffectivenessModifier;
+
+  public int tamedFollowTarget;
+
+  public int tamingTeamID;
+
+  public String tamedOnServerName;
+
+  public String uploadedFromServerName;
+
+  public int tamedAggressionLevel;
+
+  public float matingProgress;
 
   public double lastEnterStasisTime;
 
@@ -93,7 +115,27 @@ public class Creature {
 
     wildRandomScale = creature.findPropertyValue("WildRandomScale", Float.class).orElse(1.0f);
 
+    isWakingTame = creature.findPropertyValue("bIsWakingTame", Boolean.class).orElse(false);
+
+    isSleeping = creature.findPropertyValue("bIsSleeping", Boolean.class).orElse(false);
+
     requiredTameAffinity = creature.findPropertyValue("RequiredTameAffinity", Float.class).orElse(0.0f);
+
+    currentTameAffinity = creature.findPropertyValue("CurrentTameAffinity", Float.class).orElse(0.0f);
+
+    tameIneffectivenessModifier = creature.findPropertyValue("TameIneffectivenessModifier", Float.class).orElse(0.0f);
+
+    tamedFollowTarget = creature.findPropertyValue("TamedFollowTarget", ObjectReference.class).map(ObjectReference::getObjectId).orElse(-1);
+
+    tamingTeamID = creature.findPropertyValue("TamingTeamID", Integer.class).orElse(0);
+
+    tamedOnServerName = creature.findPropertyValue("TamedOnServerName", String.class).orElse("");
+
+    uploadedFromServerName = creature.findPropertyValue("UploadedFromServerName", String.class).orElse("");
+
+    tamedAggressionLevel = creature.findPropertyValue("TamedAggressionLevel", Integer.class).orElse(0);
+
+    matingProgress = creature.findPropertyValue("MatingProgress", Float.class).orElse(0.0f);
 
     lastEnterStasisTime = creature.findPropertyValue("LastEnterStasisTime", Double.class).orElse(0.0);
 
@@ -111,6 +153,8 @@ public class Creature {
       for (int index = 0; index < AttributeNames.size(); index++) {
         numberOfLevelUpPointsAppliedTamed[index] = status.findPropertyValue("NumberOfLevelUpPointsAppliedTamed", ArkByteValue.class, index).map(ArkByteValue::getByteValue).orElse((byte) 0);
       }
+
+      allowLevelUps = status.findPropertyValue("bAllowLevelUps", Boolean.class).orElse(false);
 
       experiencePoints = status.findPropertyValue("ExperiencePoints", Float.class).orElse(0.0f);
 

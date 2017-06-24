@@ -2,11 +2,14 @@ package qowyn.ark.tools.data;
 
 import qowyn.ark.GameObject;
 import qowyn.ark.arrays.ArkArrayObjectReference;
+import qowyn.ark.types.LocationData;
 import qowyn.ark.types.ObjectReference;
 
 public class Structure {
 
   public String id;
+
+  public LocationData location;
 
   public int myInventoryComponent;
 
@@ -24,10 +27,14 @@ public class Structure {
 
   public float maxHealth;
 
+  public float health;
+
   public int targetingTeam;
 
   public Structure(GameObject structure) {
     id = structure.getNames().get(0).toString();
+
+    location = structure.getLocation();
 
     myInventoryComponent = structure.findPropertyValue("MyInventoryComponent", ObjectReference.class).map(ObjectReference::getObjectId).orElse(-1);
 
@@ -49,9 +56,11 @@ public class Structure {
 
     placedOnFloorStructure = structure.findPropertyValue("PlacedOnFloorStructure", ObjectReference.class).map(ObjectReference::getObjectId).orElse(-1);
 
-    ownerName = structure.findPropertyValue("TamedName", String.class).orElse("");
+    ownerName = structure.findPropertyValue("OwnerName", String.class).orElse("");
 
     maxHealth = structure.findPropertyValue("MaxHealth", Float.class).orElse(0.0f);
+
+    health = structure.findPropertyValue("Health", Float.class).orElse(maxHealth);
 
     targetingTeam = structure.findPropertyValue("TargetingTeam", Integer.class).orElse(0);
   }

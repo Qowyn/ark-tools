@@ -210,6 +210,11 @@ public class JsonDriver implements DBDriver {
         generator.writeEnd();
       }
     });
+    CREATURE_PROPERTIES.put("allowLevelUps", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.allowLevelUps) {
+        generator.write("allowLevelUps", creature.allowLevelUps);
+      }
+    });
     CREATURE_PROPERTIES.put("dinoImprintingQuality", (creature, generator, dataCollector, writeEmpty) -> {
       if (writeEmpty || creature.dinoImprintingQuality != 0.0f) {
         generator.write("dinoImprintingQuality", creature.dinoImprintingQuality);
@@ -220,9 +225,59 @@ public class JsonDriver implements DBDriver {
         generator.write("wildRandomScale", creature.wildRandomScale);
       }
     });
+    CREATURE_PROPERTIES.put("isWakingTame", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.isWakingTame) {
+        generator.write("isWakingTame", creature.isWakingTame);
+      }
+    });
+    CREATURE_PROPERTIES.put("isSleeping", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.isSleeping) {
+        generator.write("isSleeping", creature.isSleeping);
+      }
+    });
     CREATURE_PROPERTIES.put("requiredTameAffinity", (creature, generator, dataCollector, writeEmpty) -> {
       if (writeEmpty || creature.requiredTameAffinity != 0.0f) {
         generator.write("requiredTameAffinity", creature.requiredTameAffinity);
+      }
+    });
+    CREATURE_PROPERTIES.put("currentTameAffinity", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.currentTameAffinity != 0.0f) {
+        generator.write("currentTameAffinity", creature.currentTameAffinity);
+      }
+    });
+    CREATURE_PROPERTIES.put("tameIneffectivenessModifier", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.tameIneffectivenessModifier != 0.0f) {
+        generator.write("tameIneffectivenessModifier", creature.tameIneffectivenessModifier);
+      }
+    });
+    CREATURE_PROPERTIES.put("tamedFollowTarget", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.tamedFollowTarget != -1) {
+        generator.write("tamedFollowTarget", creature.tamedFollowTarget);
+      }
+    });
+    CREATURE_PROPERTIES.put("tamingTeamID", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.tamingTeamID != 0) {
+        generator.write("tamingTeamID", creature.tamingTeamID);
+      }
+    });
+    CREATURE_PROPERTIES.put("tamedOnServerName", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !creature.tamedOnServerName.isEmpty()) {
+        generator.write("tamedOnServerName", creature.tamedOnServerName);
+      }
+    });
+    CREATURE_PROPERTIES.put("uploadedFromServerName", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !creature.uploadedFromServerName.isEmpty()) {
+        generator.write("uploadedFromServerName", creature.uploadedFromServerName);
+      }
+    });
+    CREATURE_PROPERTIES.put("tamedAggressionLevel", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.tamedAggressionLevel != 0) {
+        generator.write("tamedAggressionLevel", creature.tamedAggressionLevel);
+      }
+    });
+    CREATURE_PROPERTIES.put("matingProgress", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.matingProgress != 0.0f) {
+        generator.write("matingProgress", creature.matingProgress);
       }
     });
     CREATURE_PROPERTIES.put("lastEnterStasisTime", (creature, generator, dataCollector, writeEmpty) -> {
@@ -230,6 +285,8 @@ public class JsonDriver implements DBDriver {
         generator.write("lastEnterStasisTime", creature.lastEnterStasisTime);
       }
     });
+  }
+  static {
     /**
      * Inventory Properties
      */
@@ -265,6 +322,8 @@ public class JsonDriver implements DBDriver {
         generator.write("lastInventoryRefreshTime", inventory.lastInventoryRefreshTime);
       }
     });
+  }
+  static {
     /**
      * Item Properties
      */
@@ -453,6 +512,8 @@ public class JsonDriver implements DBDriver {
         generator.write("uploadOffset", item.uploadOffset);
       }
     });
+  }
+  static {
     /**
      * Player Properties
      */
@@ -656,7 +717,13 @@ public class JsonDriver implements DBDriver {
         if (player.location == null) {
           generator.writeNull("location");
         } else {
-          generator.write("location", player.location.toJson());
+          generator.writeStartObject("location");
+          generator.write("x", player.location.getX());
+          generator.write("y", player.location.getY());
+          generator.write("z", player.location.getZ());
+          generator.write("lat", dataCollector.latLonCalculator.calculateLat(player.location.getX()));
+          generator.write("lon", dataCollector.latLonCalculator.calculateLon(player.location.getY()));
+          generator.writeEnd();
         }
       }
     });
@@ -680,7 +747,89 @@ public class JsonDriver implements DBDriver {
         generator.write("lastHyperthermalCharacterInsulationValue", player.lastHyperthermalCharacterInsulationValue);
       }
     });
-
+  }
+  static {
+    /**
+     * Structure Properties
+     */
+    STRUCTURE_PROPERTIES.put("id", (structure, generator, dataCollector, writeEmpty) -> {
+      generator.write("id", structure.id);
+    });
+    STRUCTURE_PROPERTIES.put("location", (structure, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || structure.location != null) {
+        if (structure.location == null) {
+          generator.writeNull("location");
+        } else {
+          generator.writeStartObject("location");
+          generator.write("x", structure.location.getX());
+          generator.write("y", structure.location.getY());
+          generator.write("z", structure.location.getZ());
+          generator.write("lat", dataCollector.latLonCalculator.calculateLat(structure.location.getX()));
+          generator.write("lon", dataCollector.latLonCalculator.calculateLon(structure.location.getY()));
+          generator.writeEnd();
+        }
+      }
+    });
+    STRUCTURE_PROPERTIES.put("myInventoryComponent", (structure, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || structure.myInventoryComponent != -1) {
+        generator.write("myInventoryComponent", structure.myInventoryComponent);
+      }
+    });
+    STRUCTURE_PROPERTIES.put("containerActivated", (structure, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || structure.containerActivated) {
+        generator.write("containerActivated", structure.containerActivated);
+      }
+    });
+    STRUCTURE_PROPERTIES.put("owningPlayerId", (structure, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || structure.owningPlayerId != 0) {
+        generator.write("owningPlayerId", structure.owningPlayerId);
+      }
+    });
+    STRUCTURE_PROPERTIES.put("owningPlayerName", (structure, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !structure.owningPlayerName.isEmpty()) {
+        generator.write("owningPlayerName", structure.owningPlayerName);
+      }
+    });
+    STRUCTURE_PROPERTIES.put("linkedStructures", (structure, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || structure.linkedStructures != null && structure.linkedStructures.length > 0) {
+        if (structure.linkedStructures == null) {
+          generator.writeNull("linkedStructures");
+        } else {
+          generator.writeStartArray("linkedStructures");
+          for (int linkedStructure: structure.linkedStructures) {
+            generator.write(linkedStructure);
+          }
+          generator.writeEnd();
+        }
+      }
+    });
+    STRUCTURE_PROPERTIES.put("placedOnFloorStructure", (structure, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || structure.placedOnFloorStructure != -1) {
+        generator.write("placedOnFloorStructure", structure.placedOnFloorStructure);
+      }
+    });
+    STRUCTURE_PROPERTIES.put("ownerName", (structure, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || !structure.ownerName.isEmpty()) {
+        generator.write("ownerName", structure.ownerName);
+      }
+    });
+    STRUCTURE_PROPERTIES.put("maxHealth", (structure, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || structure.maxHealth != 0) {
+        generator.write("maxHealth", structure.maxHealth);
+      }
+    });
+    STRUCTURE_PROPERTIES.put("health", (structure, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || structure.health != structure.maxHealth) {
+        generator.write("health", structure.health);
+      }
+    });
+    STRUCTURE_PROPERTIES.put("targetingTeam", (structure, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || structure.targetingTeam != 0) {
+        generator.write("targetingTeam", structure.targetingTeam);
+      }
+    });
+  }
+  static {
     List<String> protocols = new ArrayList<>();
 
     testAndAddProtocol("http", "http://localhost", protocols);
