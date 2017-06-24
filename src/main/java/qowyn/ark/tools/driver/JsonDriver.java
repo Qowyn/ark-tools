@@ -81,7 +81,13 @@ public class JsonDriver implements DBDriver {
         if (creature.location == null) {
           generator.writeNull("location");
         } else {
-          generator.write("location", creature.location.toJson());
+          generator.writeStartObject("location");
+          generator.write("x", creature.location.getX());
+          generator.write("y", creature.location.getY());
+          generator.write("z", creature.location.getZ());
+          generator.write("lat", dataCollector.latLonCalculator.calculateLat(creature.location.getX()));
+          generator.write("lon", dataCollector.latLonCalculator.calculateLon(creature.location.getY()));
+          generator.writeEnd();
         }
       }
     });
@@ -110,14 +116,24 @@ public class JsonDriver implements DBDriver {
         generator.write("isFemale", creature.isFemale);
       }
     });
-    for (int index = 0; index < Creature.COLOR_SLOT_COUNT; index++) {
-      final int finalIndex = index;
-      CREATURE_PROPERTIES.put("colorSetIndex_" + finalIndex, (creature, generator, dataCollector, writeEmpty) -> {
-        if (writeEmpty || creature.colorSetIndices[finalIndex] != 0) {
-          generator.write("colorSetIndex_" + finalIndex, Byte.toUnsignedInt(creature.colorSetIndices[finalIndex]));
+    CREATURE_PROPERTIES.put("colorSetIndices", (creature, generator, dataCollector, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeStartObject("colorSetIndices");
+      }
+      for (int index = 0; index < creature.colorSetIndices.length; index++) {
+        if (writeEmpty || creature.colorSetIndices[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeStartObject("colorSetIndices");
+          }
+          generator.write(Integer.toString(index), Byte.toUnsignedInt(creature.colorSetIndices[index]));
         }
-      });
-    }
+      }
+      if (!empty) {
+        generator.writeEnd();
+      }
+    });
     CREATURE_PROPERTIES.put("tamedAtTime", (creature, generator, dataCollector, writeEmpty) -> {
       if (writeEmpty || creature.tamedAtTime != 0.0) {
         generator.write("tamedAtTime", creature.tamedAtTime);
@@ -153,27 +169,65 @@ public class JsonDriver implements DBDriver {
         generator.write("baseCharacterLevel", creature.baseCharacterLevel);
       }
     });
-    for (int index = 0; index < AttributeNames.size(); index++) {
-      final int finalIndex = index;
-      CREATURE_PROPERTIES.put("numberOfLevelUpPointsApplied_" + finalIndex, (creature, generator, dataCollector, writeEmpty) -> {
-        if (writeEmpty || creature.numberOfLevelUpPointsApplied[finalIndex] != 0) {
-          generator.write("numberOfLevelUpPointsApplied_" + finalIndex, Byte.toUnsignedInt(creature.numberOfLevelUpPointsApplied[finalIndex]));
+    CREATURE_PROPERTIES.put("numberOfLevelUpPointsApplied", (creature, generator, dataCollector, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeStartObject("numberOfLevelUpPointsApplied");
+      }
+      for (int index = 0; index < creature.numberOfLevelUpPointsApplied.length; index++) {
+        if (writeEmpty || creature.numberOfLevelUpPointsApplied[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeStartObject("numberOfLevelUpPointsApplied");
+          }
+          generator.write(AttributeNames.get(index), Byte.toUnsignedInt(creature.numberOfLevelUpPointsApplied[index]));
         }
-      });
-      CREATURE_PROPERTIES.put("numberOfLevelUpPointsAppliedTamed_" + finalIndex, (creature, generator, dataCollector, writeEmpty) -> {
-        if (writeEmpty || creature.numberOfLevelUpPointsAppliedTamed[finalIndex] != 0) {
-          generator.write("numberOfLevelUpPointsAppliedTamed_" + finalIndex, Byte.toUnsignedInt(creature.numberOfLevelUpPointsAppliedTamed[finalIndex]));
-        }
-      });
-    }
+      }
+      if (!empty) {
+        generator.writeEnd();
+      }
+    });
     CREATURE_PROPERTIES.put("extraCharacterLevel", (creature, generator, dataCollector, writeEmpty) -> {
       if (writeEmpty || creature.extraCharacterLevel != 0) {
         generator.write("extraCharacterLevel", creature.extraCharacterLevel);
       }
     });
+    CREATURE_PROPERTIES.put("numberOfLevelUpPointsAppliedTamed", (creature, generator, dataCollector, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeStartObject("numberOfLevelUpPointsAppliedTamed");
+      }
+      for (int index = 0; index < creature.numberOfLevelUpPointsAppliedTamed.length; index++) {
+        if (writeEmpty || creature.numberOfLevelUpPointsAppliedTamed[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeStartObject("numberOfLevelUpPointsAppliedTamed");
+          }
+          generator.write(AttributeNames.get(index), Byte.toUnsignedInt(creature.numberOfLevelUpPointsAppliedTamed[index]));
+        }
+      }
+      if (!empty) {
+        generator.writeEnd();
+      }
+    });
     CREATURE_PROPERTIES.put("dinoImprintingQuality", (creature, generator, dataCollector, writeEmpty) -> {
       if (writeEmpty || creature.dinoImprintingQuality != 0.0f) {
         generator.write("dinoImprintingQuality", creature.dinoImprintingQuality);
+      }
+    });
+    CREATURE_PROPERTIES.put("wildRandomScale", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.wildRandomScale != 1.0f) {
+        generator.write("wildRandomScale", creature.wildRandomScale);
+      }
+    });
+    CREATURE_PROPERTIES.put("requiredTameAffinity", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.requiredTameAffinity != 0.0f) {
+        generator.write("requiredTameAffinity", creature.requiredTameAffinity);
+      }
+    });
+    CREATURE_PROPERTIES.put("lastEnterStasisTime", (creature, generator, dataCollector, writeEmpty) -> {
+      if (writeEmpty || creature.lastEnterStasisTime != 0.0) {
+        generator.write("lastEnterStasisTime", creature.lastEnterStasisTime);
       }
     });
     /**
@@ -294,40 +348,96 @@ public class JsonDriver implements DBDriver {
         generator.write("quality", Byte.toUnsignedInt(item.quality));
       }
     });
-    for (int index = 0; index < ItemStatDefinitions.size(); index++) {
-      final int finalIndex = index;
-      ITEM_PROPERTIES.put("itemStatValue_" + finalIndex, (item, generator, dataCollector, writeEmpty) -> {
-        if (writeEmpty || item.itemStatValues[finalIndex] != 0) {
-          generator.write("itemStatValue_" + finalIndex, Short.toUnsignedInt(item.itemStatValues[finalIndex]));
+    ITEM_PROPERTIES.put("itemStatValues", (item, generator, dataCollector, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeStartObject("itemStatValues");
+      }
+      for (int index = 0; index < item.itemStatValues.length; index++) {
+        if (writeEmpty || item.itemStatValues[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeStartObject("itemStatValues");
+          }
+          generator.write(ItemStatDefinitions.get(index), Short.toUnsignedInt(item.itemStatValues[index]));
         }
-      });
-    }
-    for (int index = 0; index < Item.COLOR_SLOT_COUNT; index++) {
-      final int finalIndex = index;
-      ITEM_PROPERTIES.put("itemColor_" + finalIndex, (item, generator, dataCollector, writeEmpty) -> {
-        if (writeEmpty || item.itemColors[finalIndex] != 0) {
-          generator.write("itemColor_" + finalIndex, Short.toUnsignedInt(item.itemColors[finalIndex]));
+      }
+      if (!empty) {
+        generator.writeEnd();
+      }
+    });
+    ITEM_PROPERTIES.put("itemColors", (item, generator, dataCollector, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeStartObject("itemColors");
+      }
+      for (int index = 0; index < item.itemColors.length; index++) {
+        if (writeEmpty || item.itemColors[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeStartObject("itemColors");
+          }
+          generator.write(Integer.toString(index), Short.toUnsignedInt(item.itemColors[index]));
         }
-      });
-      ITEM_PROPERTIES.put("preSkinItemColor_" + finalIndex, (item, generator, dataCollector, writeEmpty) -> {
-        if (writeEmpty || item.preSkinItemColors[finalIndex] != 0) {
-          generator.write("preSkinItemColor_" + finalIndex, Short.toUnsignedInt(item.preSkinItemColors[finalIndex]));
+      }
+      if (!empty) {
+        generator.writeEnd();
+      }
+    });
+    ITEM_PROPERTIES.put("preSkinItemColors", (item, generator, dataCollector, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeStartObject("preSkinItemColors");
+      }
+      for (int index = 0; index < item.preSkinItemColors.length; index++) {
+        if (writeEmpty || item.preSkinItemColors[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeStartObject("preSkinItemColors");
+          }
+          generator.write(Integer.toString(index), Short.toUnsignedInt(item.preSkinItemColors[index]));
         }
-      });
-      ITEM_PROPERTIES.put("eggColor_" + finalIndex, (item, generator, dataCollector, writeEmpty) -> {
-        if (writeEmpty || item.eggColors[finalIndex] != 0) {
-          generator.write("eggColor_" + finalIndex, Byte.toUnsignedInt(item.eggColors[finalIndex]));
+      }
+      if (!empty) {
+        generator.writeEnd();
+      }
+    });
+    ITEM_PROPERTIES.put("eggColors", (item, generator, dataCollector, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeStartObject("eggColors");
+      }
+      for (int index = 0; index < item.eggColors.length; index++) {
+        if (writeEmpty || item.eggColors[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeStartObject("eggColors");
+          }
+          generator.write(Integer.toString(index), Byte.toUnsignedInt(item.eggColors[index]));
         }
-      });
-    }
-    for (int index = 0; index < AttributeNames.size(); index++) {
-      final int finalIndex = index;
-      ITEM_PROPERTIES.put("eggLevelup_" + finalIndex, (item, generator, dataCollector, writeEmpty) -> {
-        if (writeEmpty || item.eggLevelups[finalIndex] != 0) {
-          generator.write("eggLevelup_" + finalIndex, Byte.toUnsignedInt(item.eggLevelups[finalIndex]));
+      }
+      if (!empty) {
+        generator.writeEnd();
+      }
+    });
+    ITEM_PROPERTIES.put("eggLevelups", (item, generator, dataCollector, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeStartObject("eggLevelups");
+      }
+      for (int index = 0; index < item.eggLevelups.length; index++) {
+        if (writeEmpty || item.eggLevelups[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeStartObject("eggLevelups");
+          }
+          generator.write(AttributeNames.get(index), Byte.toUnsignedInt(item.eggLevelups[index]));
         }
-      });
-    }
+      }
+      if (!empty) {
+        generator.writeEnd();
+      }
+    });
     ITEM_PROPERTIES.put("crafterCharacterName", (item, generator, dataCollector, writeEmpty) -> {
       if (writeEmpty || !item.crafterCharacterName.isEmpty()) {
         generator.write("crafterCharacterName", item.crafterCharacterName);
@@ -398,18 +508,28 @@ public class JsonDriver implements DBDriver {
         generator.write("isFemale", player.isFemale);
       }
     });
-    for (int index = 0; index < PlayerBodyColorRegions.size(); index++) {
-      final int finalIndex = index;
-      PLAYER_PROPERTIES.put("bodyColor_" + finalIndex, (player, generator, dataCollector, writeEmpty) -> {
-        if (writeEmpty || player.bodyColors[finalIndex] != null) {
-          if (player.bodyColors[finalIndex] == null) {
-            generator.writeNull("bodyColor_" + finalIndex);
+    PLAYER_PROPERTIES.put("bodyColors", (player, generator, dataCollector, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeStartObject("bodyColors");
+      }
+      for (int index = 0; index < player.bodyColors.length; index++) {
+        if (writeEmpty || player.bodyColors[index] != null) {
+          if (empty) {
+            empty = false;
+            generator.writeStartObject("bodyColors");
+          }
+          if (player.bodyColors[index] == null) {
+            generator.writeNull(PlayerBodyColorRegions.get(index));
           } else {
-            generator.write("bodyColor_" + finalIndex, CommonFunctions.getRGBA(player.bodyColors[finalIndex]));
+            generator.write(PlayerBodyColorRegions.get(index), CommonFunctions.getRGBA(player.bodyColors[index]));
           }
         }
-      });
-    }
+      }
+      if (!empty) {
+        generator.writeEnd();
+      }
+    });
     PLAYER_PROPERTIES.put("overrideHeadHairColor", (player, generator, dataCollector, writeEmpty) -> {
       if (writeEmpty || player.overrideHeadHairColor != null) {
         if (player.overrideHeadHairColor == null) {
@@ -443,14 +563,24 @@ public class JsonDriver implements DBDriver {
         generator.write("playerCharacterName", player.playerCharacterName);
       }
     });
-    for (int index = 0; index < PlayerBoneModifierNames.size(); index++) {
-      final int finalIndex = index;
-      PLAYER_PROPERTIES.put("rawBoneModifier_" + finalIndex, (player, generator, dataCollector, writeEmpty) -> {
-        if (writeEmpty || player.rawBoneModifiers[finalIndex] != 0.0f) {
-          generator.write("rawBoneModifier_" + finalIndex, player.rawBoneModifiers[finalIndex]);
+    PLAYER_PROPERTIES.put("rawBoneModifiers", (player, generator, dataCollector, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeStartObject("rawBoneModifiers");
+      }
+      for (int index = 0; index < player.rawBoneModifiers.length; index++) {
+        if (writeEmpty || player.rawBoneModifiers[index] != 0.0f) {
+          if (empty) {
+            empty = false;
+            generator.writeStartObject("rawBoneModifiers");
+          }
+          generator.write(PlayerBoneModifierNames.get(index), player.rawBoneModifiers[index]);
         }
-      });
-    }
+      }
+      if (!empty) {
+        generator.writeEnd();
+      }
+    });
     PLAYER_PROPERTIES.put("playerSpawnRegionIndex", (player, generator, dataCollector, writeEmpty) -> {
       if (writeEmpty || player.playerSpawnRegionIndex != 0) {
         generator.write("playerSpawnRegionIndex", player.playerSpawnRegionIndex);
@@ -470,19 +600,42 @@ public class JsonDriver implements DBDriver {
         generator.writeEnd();
       }
     });
-    for (int index = 0; index < AttributeNames.size(); index++) {
-      final int finalIndex = index;
-      PLAYER_PROPERTIES.put("numberOfLevelUpPointsApplied_" + finalIndex, (player, generator, dataCollector, writeEmpty) -> {
-        if (writeEmpty || player.numberOfLevelUpPointsApplied[finalIndex] != 0) {
-          generator.write("numberOfLevelUpPointsApplied_" + finalIndex, Byte.toUnsignedInt(player.numberOfLevelUpPointsApplied[finalIndex]));
+    PLAYER_PROPERTIES.put("numberOfLevelUpPointsApplied", (player, generator, dataCollector, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeStartObject("numberOfLevelUpPointsApplied");
+      }
+      for (int index = 0; index < player.numberOfLevelUpPointsApplied.length; index++) {
+        if (writeEmpty || player.numberOfLevelUpPointsApplied[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeStartObject("numberOfLevelUpPointsApplied");
+          }
+          generator.write(AttributeNames.get(index), Byte.toUnsignedInt(player.numberOfLevelUpPointsApplied[index]));
         }
-      });
-      PLAYER_PROPERTIES.put("currentStatusValue_" + finalIndex, (player, generator, dataCollector, writeEmpty) -> {
-        if (writeEmpty || player.currentStatusValues[finalIndex] != 0) {
-          generator.write("currentStatusValue_" + finalIndex, player.currentStatusValues[finalIndex]);
+      }
+      if (!empty) {
+        generator.writeEnd();
+      }
+    });
+    PLAYER_PROPERTIES.put("currentStatusValues", (player, generator, dataCollector, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeStartObject("currentStatusValues");
+      }
+      for (int index = 0; index < player.currentStatusValues.length; index++) {
+        if (writeEmpty || player.currentStatusValues[index] != 0.0f) {
+          if (empty) {
+            empty = false;
+            generator.writeStartObject("currentStatusValues");
+          }
+          generator.write(AttributeNames.get(index), player.currentStatusValues[index]);
         }
-      });
-    }
+      }
+      if (!empty) {
+        generator.writeEnd();
+      }
+    });
     PLAYER_PROPERTIES.put("percentageOfHeadHairGrowth", (player, generator, dataCollector, writeEmpty) -> {
       if (writeEmpty || player.percentageOfHeadHairGrowth != 0.0f) {
         generator.write("percentageOfHeadHairGrowth", player.percentageOfHeadHairGrowth);

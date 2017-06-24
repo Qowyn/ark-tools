@@ -52,6 +52,12 @@ public class Creature {
 
   public float dinoImprintingQuality;
 
+  public float wildRandomScale;
+
+  public float requiredTameAffinity;
+
+  public double lastEnterStasisTime;
+
   public Creature(GameObject creature, GameObjectContainer saveFile) {
     CreatureData creatureData = DataManager.getCreature(creature.getClassString());
     type = creatureData != null ? creatureData.getName() : creature.getClassString(); 
@@ -84,6 +90,12 @@ public class Creature {
     tamedName = creature.findPropertyValue("TamedName", String.class).orElse("");
 
     imprinterName = creature.findPropertyValue("ImprinterName", String.class).orElse("");
+
+    wildRandomScale = creature.findPropertyValue("WildRandomScale", Float.class).orElse(1.0f);
+
+    requiredTameAffinity = creature.findPropertyValue("RequiredTameAffinity", Float.class).orElse(0.0f);
+
+    lastEnterStasisTime = creature.findPropertyValue("LastEnterStasisTime", Double.class).orElse(0.0);
 
     GameObject status = creature.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).orElse(null);
 
