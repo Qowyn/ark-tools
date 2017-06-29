@@ -175,6 +175,13 @@ public class SharedWriters {
         generator.write("experience", 0);
       }
 
+      Float tamedIneffectivenessModifier = status.getPropertyValue("TamedIneffectivenessModifier", Float.class);
+      if (tamedIneffectivenessModifier != null) {
+        generator.write("tamedEffectivenessModifier", 1 - tamedIneffectivenessModifier);
+      } else if (writeAllProperties) {
+        generator.write("tamedEffectivenessModifier", 0);
+      }
+
       Float imprintingQuality = status.getPropertyValue("DinoImprintingQuality", Float.class);
       if (imprintingQuality != null) {
         generator.write("imprintingQuality", imprintingQuality);
