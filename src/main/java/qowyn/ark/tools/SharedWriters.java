@@ -13,12 +13,14 @@ import javax.json.stream.JsonGenerator;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
 import qowyn.ark.GameObjectContainer;
+import qowyn.ark.arrays.ArkArrayStruct;
 import qowyn.ark.tools.data.ArkItem;
 import qowyn.ark.tools.data.AttributeNames;
 import qowyn.ark.types.ArkByteValue;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.LocationData;
 import qowyn.ark.types.ObjectReference;
+import qowyn.ark.structs.StructPropertyList;
 
 public class SharedWriters {
 
@@ -128,6 +130,20 @@ public class SharedWriters {
     } else if (writeAllProperties) {
       generator.write("imprinter", "");
     }
+
+    ArkArrayStruct ancestors = creature.getPropertyValue("DinoAncestors", ArkArrayStruct.class);
+    if (ancestors != null)
+    ancestors.forEach((value) -> {
+      StructPropertyList propertyList = (StructPropertyList)value;
+      int fatherID1 = propertyList.getPropertyValue("MaleDinoID1", Integer.class);
+      int fatherID2 = propertyList.getPropertyValue("MaleDinoID2", Integer.class);
+      long fatherID = (long) fatherID1 << Integer.SIZE | (fatherID2 & 0xFFFFFFFFL);
+      generator.write("maleAncestorID", fatherID);
+      int motherID1 = propertyList.getPropertyValue("FemaleDinoID1", Integer.class);
+      int motherID2 = propertyList.getPropertyValue("FemaleDinoID2", Integer.class);
+      long motherID = (long) motherID1 << Integer.SIZE | (motherID2 & 0xFFFFFFFFL);
+      generator.write("femaleAncestorID", motherID);
+    });
 
     GameObject status = creature.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).orElse(null);
 
