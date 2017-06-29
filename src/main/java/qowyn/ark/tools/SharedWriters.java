@@ -131,19 +131,46 @@ public class SharedWriters {
       generator.write("imprinter", "");
     }
 
-    ArkArrayStruct ancestors = creature.getPropertyValue("DinoAncestors", ArkArrayStruct.class);
-    if (ancestors != null) {
-      ancestors.forEach((value) -> {
+    // Not all ancestors are saved. Only those ancestor information 
+    // are available which are displayed ingame in the UI.
+    ArkArrayStruct femaleAncestors = creature.getPropertyValue("DinoAncestors", ArkArrayStruct.class);
+    if (femaleAncestors != null) {
+      // traverse female ancestor line
+      generator.writeStartArray("femaleAncestors");
+      femaleAncestors.forEach((value) -> {
         StructPropertyList propertyList = (StructPropertyList)value;
+        generator.writeStartObject();
         int fatherID1 = propertyList.getPropertyValue("MaleDinoID1", Integer.class);
         int fatherID2 = propertyList.getPropertyValue("MaleDinoID2", Integer.class);
         long fatherID = (long) fatherID1 << Integer.SIZE | (fatherID2 & 0xFFFFFFFFL);
-        generator.write("maleAncestorId", fatherID);
+        generator.write("maleId", fatherID);
         int motherID1 = propertyList.getPropertyValue("FemaleDinoID1", Integer.class);
         int motherID2 = propertyList.getPropertyValue("FemaleDinoID2", Integer.class);
         long motherID = (long) motherID1 << Integer.SIZE | (motherID2 & 0xFFFFFFFFL);
-        generator.write("femaleAncestorId", motherID);
+        generator.write("femaleId", motherID);
+        generator.writeEnd();
       });
+      generator.writeEnd();
+    }
+
+    ArkArrayStruct maleAncestors = creature.getPropertyValue("DinoAncestorsMale", ArkArrayStruct.class);
+    if (maleAncestors != null) {
+      // traverse male ancestor line
+      generator.writeStartArray("maleAncestors");
+      maleAncestors.forEach((value) -> {
+        StructPropertyList propertyList = (StructPropertyList)value;
+        generator.writeStartObject();
+        int fatherID1 = propertyList.getPropertyValue("MaleDinoID1", Integer.class);
+        int fatherID2 = propertyList.getPropertyValue("MaleDinoID2", Integer.class);
+        long fatherID = (long) fatherID1 << Integer.SIZE | (fatherID2 & 0xFFFFFFFFL);
+        generator.write("maleId", fatherID);
+        int motherID1 = propertyList.getPropertyValue("FemaleDinoID1", Integer.class);
+        int motherID2 = propertyList.getPropertyValue("FemaleDinoID2", Integer.class);
+        long motherID = (long) motherID1 << Integer.SIZE | (motherID2 & 0xFFFFFFFFL);
+        generator.write("femaleId", motherID);
+        generator.writeEnd();
+      });
+      generator.writeEnd();
     }
 
     GameObject status = creature.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).orElse(null);
