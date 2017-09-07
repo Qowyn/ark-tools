@@ -5,6 +5,8 @@ import java.util.List;
 
 import javax.json.JsonObject;
 
+import joptsimple.OptionSet;
+import joptsimple.OptionSpec;
 import qowyn.ark.ArkCloudInventory;
 import qowyn.ark.ArkLocalProfile;
 import qowyn.ark.ArkProfile;
@@ -15,7 +17,10 @@ import qowyn.ark.ArkTribe;
 public class ConvertingCommands {
 
   public static void mapToJson(OptionHandler oh) {
-    List<String> params = oh.getParams();
+    OptionSpec<Void> allowBrokenFileSpec = oh.accepts("allow-broken-file", "Tries to read as much of broken/truncated files as possible");
+
+    OptionSet options = oh.reparse();
+    List<String> params = oh.getParams(options);
     if (params.size() != 2 || oh.wantsHelp()) {
       oh.printCommandHelp();
       System.exit(1);
@@ -31,9 +36,18 @@ public class ConvertingCommands {
       String outPath = params.get(1);
 
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
-      ArkSavegame saveFile = new ArkSavegame(savePath, oh.readingOptions());
+      ArkSavegame saveFile = new ArkSavegame();
+      try {
+        saveFile.readBinary(savePath, oh.readingOptions());
+      } catch (Exception e) {
+        if (!options.has(allowBrokenFileSpec)) {
+          throw e;
+        }
+      }
       stopwatch.stop("Reading");
-      CommonFunctions.writeJson(outPath, g -> saveFile.writeJson(g, oh.writingOptions()), oh);
+      if (saveFile != null) {
+        CommonFunctions.writeJson(outPath, g -> saveFile.writeJson(g, oh.writingOptions()), oh);
+      }
       stopwatch.stop("Dumping");
 
       stopwatch.print();

@@ -60,7 +60,7 @@ public class OptionHandler {
     asyncSizeSpec = parser.accepts("async-size", "Size of buffer for asynchronous I/O, higher values increase used memory but can reduce total processing time with slow I/O.")
         .withRequiredArg().withValuesConvertedBy(new IntegerValueConverter()).defaultsTo(options.getAsyncBufferSize());
 
-    asyncSpec = parser.acceptsAll(Arrays.asList("async", "a"), "Wether asynchronous I/O should be used.")
+    asyncSpec = parser.acceptsAll(Arrays.asList("async", "a"), "Whether asynchronous I/O should be used.")
         .withRequiredArg().withValuesConvertedBy(new BooleanValueConverter()).defaultsTo(options.isAsynchronous());
     
     langSpec = parser.accepts("lang", "Load data for specified language, needs appropriate ark_data_lang.json.").withRequiredArg();

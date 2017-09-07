@@ -196,7 +196,6 @@ public class DBCommands {
     }
     
     DataCollector collector = new DataCollector(oh);
-    collector.verbose = oh.isVerbose();
 
     try {
       collector.loadSavegame(savePath);

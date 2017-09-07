@@ -8,10 +8,12 @@ import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
 import qowyn.ark.ArkSavegame;
@@ -36,13 +38,11 @@ public class DataCollector {
 
   public final SortedMap<Integer, Structure> structureMap = new TreeMap<>();
 
-  public final SortedMap<Long, Player> playerMap = new TreeMap<>();
+  public final SortedMap<Long, Player> playerMap;
 
-  public final SortedMap<Long, List<Creature>> playerClusterCreatureMap = new TreeMap<>();
+  public final SortedMap<Long, ClusterStorage> playerClusterMap;
 
-  public final SortedMap<Long, List<Item>> playerClusterItemMap = new TreeMap<>();
-
-  public final SortedMap<Integer, Tribe> tribeMap = new TreeMap<>();
+  public final SortedMap<Integer, Tribe> tribeMap;
 
   public final OptionHandler oh;
 
@@ -52,19 +52,36 @@ public class DataCollector {
 
   public long maxAge;
 
-  public boolean verbose;
+  private final ExecutorService executor;
+
+  
 
   public DataCollector(OptionHandler oh) {
     this.oh = oh;
+
+    if (!oh.useParallel()) {
+      executor = Executors.newSingleThreadExecutor();
+      playerMap = new TreeMap<>();
+      playerClusterMap = new TreeMap<>();
+      tribeMap = new TreeMap<>();
+    } else {
+      executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+      playerMap = new ConcurrentSkipListMap<>();
+      playerClusterMap = new ConcurrentSkipListMap<>();
+      tribeMap = new ConcurrentSkipListMap<>();
+    }
   }
 
   public void loadSavegame(Path path) throws IOException {
-    savegame = new ArkSavegame(path.toString(), oh.readingOptions());
+    savegame = new ArkSavegame(path.toString(), oh.readingOptions().withObjectFilter(obj -> {
+      // Skip things like NPCZoneVolume and non-instanced objects
+      return !obj.isFromDataFile() && (obj.getNames().size() > 1 || obj.getNames().get(0).getInstance() > 0);
+    }));
     latLonCalculator = LatLonCalculator.forSave(savegame);
 
     for (GameObject obj: savegame.getObjects()) {
       if (obj.isFromDataFile() || (obj.getNames().size() == 1 && obj.getNames().get(0).getInstance() == 0)) {
-        // Skip things like NPCZoneVolume and non-instanced things
+        // Skip things like NPCZoneVolume and non-instanced objects
       } else if (obj.getClassString().contains("Inventory")) {
         inventoryMap.put(obj.getId(), new Inventory(obj));
       } else {
@@ -99,15 +116,21 @@ public class DataCollector {
           }
         }
 
-        try {
-          Player player = new Player(profilePath, savegame, latLonCalculator, oh.readingOptions());
-          playerMap.put(player.playerDataId, player);
-        } catch (RuntimeException ex) {
-          System.err.println("Found potentially corrupt ArkProfile: " + profilePath.toString());
-          if (verbose) {
-            ex.printStackTrace();
+        executor.submit(() -> {
+          try {
+            Player player = new Player(profilePath, savegame, latLonCalculator, oh.readingOptions());
+            playerMap.put(player.playerDataId, player);
+          } catch (RuntimeException ex) {
+            System.err.println("Found potentially corrupt ArkProfile: " + profilePath.toString());
+            if (oh.isVerbose()) {
+              ex.printStackTrace();
+            }
+          } catch (IOException ex) {
+            if (oh.isVerbose()) {
+              ex.printStackTrace();
+            }
           }
-        }
+        });
       }
     }
   }
@@ -130,7 +153,7 @@ public class DataCollector {
           tribeMap.put(tribe.tribeId, tribe);
         } catch (RuntimeException ex) {
           System.err.println("Found potentially corrupt ArkTribe: " + tribePath.toString());
-          if (verbose) {
+          if (oh.isVerbose()) {
             ex.printStackTrace();
           }
         }
