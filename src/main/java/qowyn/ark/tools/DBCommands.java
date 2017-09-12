@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
-import javax.json.JsonObject;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -156,11 +156,11 @@ public class DBCommands {
 
     if (options.has(configSpec)) {
       try {
-        JsonObject config = (JsonObject) CommonFunctions.readJson(options.valueOf(configSpec));
+        JsonNode config = CommonFunctions.readJson(Paths.get(options.valueOf(configSpec)));
 
-        for (String paramName: config.keySet()) {
-          driver.setParameter(paramName, config.getString(paramName));
-        }
+        config.fields().forEachRemaining(field -> {
+          driver.setParameter(field.getKey(), field.getValue().asText());
+        });
       } catch (IOException ex) {
         System.err.println("Error: Unable to read config " + options.valueOf(configSpec));
         System.exit(2);
@@ -195,10 +195,12 @@ public class DBCommands {
       return;
     }
     
+    Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
     DataCollector collector = new DataCollector(oh);
 
     try {
       collector.loadSavegame(savePath);
+      stopwatch.stop("Collecting data from map-save");
       collector.loadPlayers(savePath.getParent());
       collector.loadTribes(savePath.getParent());
       if (clusterPath != null) {
@@ -209,6 +211,9 @@ public class DBCommands {
       System.exit(2);
       return;
     }
+
+    collector.waitForData();
+    stopwatch.stop("Collecting additional data");
 
     if (path != null) {
       try {
@@ -228,6 +233,8 @@ public class DBCommands {
       }
     }
 
+    stopwatch.stop("Connecting");
+
     try {
       driver.write(collector);
     } catch (IOException e) {
@@ -236,6 +243,9 @@ public class DBCommands {
       return;
     }
     driver.close();
+
+    stopwatch.stop("Writing");
+    stopwatch.print();
   }
 
 }

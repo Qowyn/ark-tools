@@ -18,10 +18,7 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonStructure;
-import javax.json.JsonValue;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -73,7 +70,7 @@ public class EditingCommands {
     try {
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
 
-      ArkSavegame savegame = new ArkSavegame(fileToRead.toString(), oh.readingOptions());
+      ArkSavegame savegame = new ArkSavegame(fileToRead, oh.readingOptions());
 
       stopwatch.stop("Reading");
 
@@ -98,7 +95,7 @@ public class EditingCommands {
 
       stopwatch.stop("Setting values");
 
-      savegame.writeBinary(fileToWrite.toString(), oh.writingOptions());
+      savegame.writeBinary(fileToWrite, oh.writingOptions());
 
       stopwatch.stop("Writing");
 
@@ -135,7 +132,7 @@ public class EditingCommands {
     try {
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
 
-      ArkSavegame savegame = new ArkSavegame(fileToRead.toString(), oh.readingOptions());
+      ArkSavegame savegame = new ArkSavegame(fileToRead, oh.readingOptions());
 
       stopwatch.stop("Loading");
 
@@ -202,7 +199,7 @@ public class EditingCommands {
 
       stopwatch.stop("Remapping");
 
-      CommonFunctions.writeJson(fileToWrite.toString(), export::writeJson, oh);
+      CommonFunctions.writeJson(fileToWrite, export::writeJson, oh);
 
       stopwatch.stop("Writing");
 
@@ -242,18 +239,18 @@ public class EditingCommands {
 
       FileFormat fileFormat = options.has(fileFormatSpec) ? FileFormat.valueOf(options.valueOf(fileFormatSpec)) : FileFormat.fromExtension(fileToRead);
 
-      ArkContainer jsonFile = new ArkContainer((JsonArray) CommonFunctions.readJson(params.get(1)));
+      ArkContainer jsonFile = new ArkContainer(CommonFunctions.readJson(Paths.get(params.get(1))));
       stopwatch.stop("Reading import container");
 
       boolean containsCreature = jsonFile.getObjects().stream().anyMatch(o -> o.getClassString().contains("_Character_"));
 
       if (fileFormat == FileFormat.MAP) {
-        ArkSavegame savegame = new ArkSavegame(fileToRead.toString(), oh.readingOptions());
+        ArkSavegame savegame = new ArkSavegame(fileToRead, oh.readingOptions());
         stopwatch.stop("Reading save");
 
         importIntoSavegame(savegame, jsonFile, stopwatch);
 
-        savegame.writeBinary(fileToWrite.toString(), oh.writingOptions());
+        savegame.writeBinary(fileToWrite, oh.writingOptions());
 
         stopwatch.stop("Writing");
       } else if (fileFormat == FileFormat.CLUSTER) {
@@ -264,7 +261,7 @@ public class EditingCommands {
           DataManager.loadData(oh.lang());
           ArkCloudInventory cloudInventory;
           if (Files.exists(fileToRead) && Files.size(fileToRead) > 0) {
-            cloudInventory = new ArkCloudInventory(fileToRead.toString(), oh.readingOptions());
+            cloudInventory = new ArkCloudInventory(fileToRead, oh.readingOptions());
           } else {
             cloudInventory = new ArkCloudInventory();
             cloudInventory.setInventoryVersion(1);
@@ -278,7 +275,7 @@ public class EditingCommands {
 
           importIntoClusterData(cloudInventory, jsonFile, stopwatch);
 
-          cloudInventory.writeBinary(fileToWrite.toString(), oh.writingOptions());
+          cloudInventory.writeBinary(fileToWrite, oh.writingOptions());
 
           stopwatch.stop("Writing");
         }
@@ -288,11 +285,11 @@ public class EditingCommands {
           System.exit(1);
         } else {
           DataManager.loadData(oh.lang());
-          ArkLocalProfile localInventory = new ArkLocalProfile(fileToRead.toString(), oh.readingOptions());
+          ArkLocalProfile localInventory = new ArkLocalProfile(fileToRead, oh.readingOptions());
 
           importIntoClusterData(localInventory, jsonFile, stopwatch);
 
-          localInventory.writeBinary(fileToWrite.toString(), oh.writingOptions());
+          localInventory.writeBinary(fileToWrite, oh.writingOptions());
 
           stopwatch.stop("Writing");
         }
@@ -531,16 +528,16 @@ public class EditingCommands {
     Path fileToWrite = Paths.get(params.get(2)).toAbsolutePath();
 
     try {
-      JsonStructure structure = CommonFunctions.readJson(modificationPath.toString());
+      JsonNode node = CommonFunctions.readJson(modificationPath);
 
-      if (structure.getValueType() != JsonValue.ValueType.OBJECT) {
-        System.err.println("Expected object in " + modificationPath + " but found " + structure.getValueType());
+      if (!node.isObject()) {
+        System.err.println("Expected object in " + modificationPath + " but found " + node.getNodeType());
         System.exit(2);
         return;
       }
 
       ModificationFile modificationFile = new ModificationFile();
-      modificationFile.readJson((JsonObject) structure);
+      modificationFile.readJson(node);
 
       FileFormat fileFormat = options.has(fileFormatSpec) ? FileFormat.valueOf(options.valueOf(fileFormatSpec)) : FileFormat.fromExtension(fileToRead);
 
@@ -551,7 +548,7 @@ public class EditingCommands {
             System.exit(3);
             return;
           }
-          cloudInventory = new ArkCloudInventory(fileToRead.toString(), oh.readingOptions());
+          cloudInventory = new ArkCloudInventory(fileToRead, oh.readingOptions());
         } else {
           cloudInventory = new ArkCloudInventory();
           cloudInventory.setInventoryVersion(3);
@@ -572,25 +569,25 @@ public class EditingCommands {
           System.exit(3);
           return;
         }
-        cloudInventory.writeBinary(fileToWrite.toString(), oh.writingOptions());
+        cloudInventory.writeBinary(fileToWrite, oh.writingOptions());
       } else if (fileFormat == FileFormat.LOCALPROFILE) {
-        ArkLocalProfile localInventory = new ArkLocalProfile(fileToRead.toString(), oh.readingOptions());
+        ArkLocalProfile localInventory = new ArkLocalProfile(fileToRead, oh.readingOptions());
 
         int modifications = modifyClusterData(localInventory, modificationFile);
         if (!oh.isQuiet()) {
           System.out.println("Modifications done: " + modifications);
         }
 
-        localInventory.writeBinary(fileToWrite.toString(), oh.writingOptions());
+        localInventory.writeBinary(fileToWrite, oh.writingOptions());
       } else if (fileFormat == FileFormat.MAP) {
-        ArkSavegame savegame = new ArkSavegame(fileToRead.toString(), oh.readingOptions());
+        ArkSavegame savegame = new ArkSavegame(fileToRead, oh.readingOptions());
 
         int modifications = modifySavegame(savegame, modificationFile);
         if (!oh.isQuiet()) {
           System.out.println("Modifications done: " + modifications);
         }
 
-        savegame.writeBinary(fileToWrite.toString(), oh.writingOptions());
+        savegame.writeBinary(fileToWrite, oh.writingOptions());
       } else {
         System.err.println("Modifying " + fileFormat + " is not yet implemented.");
         System.exit(1);

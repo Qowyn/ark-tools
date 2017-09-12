@@ -5,8 +5,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.json.JsonArray;
-import javax.json.JsonObject;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public class DataManager {
 
@@ -33,36 +32,36 @@ public class DataManager {
         fileName = DATA_FILE_NAME + DATA_FILE_EXT;
       }
 
-      JsonObject data;
+      JsonNode data;
 
       try {
-        data = (JsonObject) CommonFunctions.readJsonRelative(fileName);
+        data = CommonFunctions.readJsonRelative(fileName);
       } catch (FileNotFoundException fnfe) {
         throw new RuntimeException("Unable to load data file ." + fileName);
       }
 
-      JsonArray creatures = data.getJsonArray("creatures");
+      JsonNode creatures = data.get("creatures");
 
-      for (JsonObject entry : creatures.getValuesAs(JsonObject.class)) {
-        String packagePath = entry.getString("package");
-        String blueprint = entry.getString("blueprint");
-        String clazz = entry.getString("class");
-        String name = entry.getString("name");
-        String category = entry.getString("category", null);
+      for (JsonNode entry : creatures) {
+        String packagePath = entry.path("package").asText();
+        String blueprint = entry.path("blueprint").asText();
+        String clazz = entry.path("class").asText();
+        String name = entry.path("name").asText();
+        String category = entry.path("category").asText();
 
         CreatureData creature = new CreatureData(name, clazz, blueprint, packagePath, category);
         CREATURE_DATA.put(clazz, creature);
         CREATURE_DATA_BY_PATH.put(packagePath + "." + clazz, creature);
       }
 
-      JsonArray items = data.getJsonArray("items");
+      JsonNode items = data.get("items");
 
-      for (JsonObject entry : items.getValuesAs(JsonObject.class)) {
-        String packagePath = entry.getString("package");
-        String blueprint = entry.getString("blueprint");
-        String clazz = entry.getString("class");
-        String name = entry.getString("name");
-        String category = entry.getString("category", null);
+      for (JsonNode entry : items) {
+        String packagePath = entry.path("package").asText();
+        String blueprint = entry.path("blueprint").asText();
+        String clazz = entry.path("class").asText();
+        String name = entry.path("name").asText();
+        String category = entry.path("category").asText();
 
         String blueprintGeneratedClass = "BlueprintGeneratedClass " + packagePath + "." + clazz;
 
@@ -71,14 +70,14 @@ public class DataManager {
         ITEM_DATA_BY_BGC.put(blueprintGeneratedClass, item);
       }
 
-      JsonArray structures = data.getJsonArray("structures");
+      JsonNode structures = data.get("structures");
 
-      for (JsonObject entry : structures.getValuesAs(JsonObject.class)) {
-        String packagePath = entry.getString("package");
-        String blueprint = entry.getString("blueprint");
-        String clazz = entry.getString("class");
-        String name = entry.getString("name");
-        String category = entry.getString("category", null);
+      for (JsonNode entry : structures) {
+        String packagePath = entry.path("package").asText();
+        String blueprint = entry.path("blueprint").asText();
+        String clazz = entry.path("class").asText();
+        String name = entry.path("name").asText();
+        String category = entry.path("category").asText();
 
         STRUCTURES_DATA.put(clazz, new CreatureData(name, clazz, blueprint, packagePath, category));
       }

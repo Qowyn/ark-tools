@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import joptsimple.OptionException;
+import qowyn.ark.ArkArchive;
 
 public class App {
 
@@ -88,6 +89,10 @@ public class App {
       System.err.println(oe.getMessage());
       System.exit(2); // System.exit never returns normally but javac does not care
       return;
+    }
+
+    if (!oh.isVerbose()) {
+      ArkArchive.debugOutput = null;
     }
 
     if (!oh.hasCommand() || !COMMAND_NAME_MAP.containsKey(oh.getCommand())) {

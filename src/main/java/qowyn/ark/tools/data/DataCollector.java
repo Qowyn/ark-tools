@@ -7,22 +7,26 @@ import java.nio.file.Path;
 import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Pattern;
 
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
+import qowyn.ark.GameObjectContainer;
 import qowyn.ark.tools.LatLonCalculator;
 import qowyn.ark.tools.OptionHandler;
 import qowyn.ark.types.ArkName;
 
-public class DataCollector {
+public class DataCollector implements DataContext {
 
   private static final Pattern PROFILE_PATTERN = Pattern.compile("(\\d+|LocalPlayer)\\.arkprofile");
 
@@ -52,20 +56,18 @@ public class DataCollector {
 
   public long maxAge;
 
-  private final ExecutorService executor;
-
-  
+  private final List<Callable<Object>> tasks;
 
   public DataCollector(OptionHandler oh) {
     this.oh = oh;
 
     if (!oh.useParallel()) {
-      executor = Executors.newSingleThreadExecutor();
+      tasks = null;
       playerMap = new TreeMap<>();
       playerClusterMap = new TreeMap<>();
       tribeMap = new TreeMap<>();
     } else {
-      executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+      tasks = new ArrayList<>();
       playerMap = new ConcurrentSkipListMap<>();
       playerClusterMap = new ConcurrentSkipListMap<>();
       tribeMap = new ConcurrentSkipListMap<>();
@@ -73,7 +75,7 @@ public class DataCollector {
   }
 
   public void loadSavegame(Path path) throws IOException {
-    savegame = new ArkSavegame(path.toString(), oh.readingOptions().withObjectFilter(obj -> {
+    savegame = new ArkSavegame(path, oh.readingOptions().withObjectFilter(obj -> {
       // Skip things like NPCZoneVolume and non-instanced objects
       return !obj.isFromDataFile() && (obj.getNames().size() > 1 || obj.getNames().get(0).getInstance() > 0);
     }));
@@ -94,13 +96,11 @@ public class DataCollector {
           } else if (obj.getLocation() != null && !obj.hasAnyProperty("LinkedPlayerDataID") && !obj.hasAnyProperty("AssociatedPrimalItem") && !obj.hasAnyProperty("MyItem") && !obj.hasAnyProperty("MyPawn")) {
             // Skip players, weapons and items on the ground
             // is (probably) a structure
-            structureMap.put(obj.getId(), new Structure(obj));
+            structureMap.put(obj.getId(), new Structure(obj, savegame));
           }
         }
       }
     }
-
-    
   }
 
   public void loadPlayers(Path path) throws IOException {
@@ -116,21 +116,27 @@ public class DataCollector {
           }
         }
 
-        executor.submit(() -> {
-          try {
-            Player player = new Player(profilePath, savegame, latLonCalculator, oh.readingOptions());
-            playerMap.put(player.playerDataId, player);
-          } catch (RuntimeException ex) {
-            System.err.println("Found potentially corrupt ArkProfile: " + profilePath.toString());
-            if (oh.isVerbose()) {
-              ex.printStackTrace();
-            }
-          } catch (IOException ex) {
-            if (oh.isVerbose()) {
-              ex.printStackTrace();
-            }
-          }
-        });
+        if (tasks != null) {
+          tasks.add(Executors.callable(() -> loadPlayer(profilePath)));
+        } else {
+          loadPlayer(profilePath);
+        }
+      }
+    }
+  }
+
+  protected void loadPlayer(Path profilePath) {
+    try {
+      Player player = new Player(profilePath, this, oh.readingOptions());
+      playerMap.put(player.playerDataId, player);
+    } catch (RuntimeException ex) {
+      System.err.println("Found potentially corrupt ArkProfile: " + profilePath.toString());
+      if (oh.isVerbose()) {
+        ex.printStackTrace();
+      }
+    } catch (IOException ex) {
+      if (oh.isVerbose()) {
+        ex.printStackTrace();
       }
     }
   }
@@ -148,20 +154,56 @@ public class DataCollector {
           }
         }
 
-        try {
-          Tribe tribe = new Tribe(tribePath, oh.readingOptions());
-          tribeMap.put(tribe.tribeId, tribe);
-        } catch (RuntimeException ex) {
-          System.err.println("Found potentially corrupt ArkTribe: " + tribePath.toString());
-          if (oh.isVerbose()) {
-            ex.printStackTrace();
-          }
+        if (tasks != null) {
+          tasks.add(Executors.callable(() -> loadTribe(tribePath)));
+        } else {
+          loadTribe(tribePath);
         }
       }
     }
   }
 
+  protected void loadTribe(Path tribePath) {
+    try {
+      Tribe tribe = new Tribe(tribePath, oh.readingOptions());
+      tribeMap.put(tribe.tribeId, tribe);
+    } catch (RuntimeException ex) {
+      System.err.println("Found potentially corrupt ArkTribe: " + tribePath.toString());
+      if (oh.isVerbose()) {
+        ex.printStackTrace();
+      }
+    } catch (IOException ex) {
+      if (oh.isVerbose()) {
+        ex.printStackTrace();
+      }
+    }
+  }
+
   public void loadCluster(Path path) {
+  }
+
+  public void waitForData() {
+    if (tasks != null) {
+      ForkJoinPool pool = new ForkJoinPool(oh.threadCount(), ForkJoinPool.defaultForkJoinWorkerThreadFactory, null, true);
+      pool.invokeAll(tasks);
+      pool.shutdown();
+      tasks.clear();
+    }
+  }
+
+  @Override
+  public LatLonCalculator getLatLonCalculator() {
+    return latLonCalculator;
+  }
+
+  @Override
+  public GameObjectContainer getObjectContainer() {
+    return savegame;
+  }
+
+  @Override
+  public ArkSavegame getSavegame() {
+    return savegame;
   }
 
 }

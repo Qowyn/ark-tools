@@ -14,16 +14,16 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.jar.Manifest;
 
-import javax.json.JsonObject;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -80,11 +80,12 @@ public class UpdateCommands {
 
       tryDownload(LANG_URI, basePath.resolve("ark_data_languages.json"), myVersion, oh.isQuiet(), options.has(withoutStrictSSLSpec));
 
-      JsonObject languageList = (JsonObject) CommonFunctions.readJsonRelative("/ark_data_languages.json");
+      JsonNode languageList = CommonFunctions.readJsonRelative("/ark_data_languages.json");
 
-      Collection<String> languages; 
+      List<String> languages; 
       if (options.has(allLanguagesSpec)) {
-        languages = languageList.keySet();
+        languages = new ArrayList<>(languageList.size());
+        languageList.fieldNames().forEachRemaining(languages::add);
       } else {
         languages = options.valuesOf(withLanguageSpec);
       }
@@ -92,8 +93,8 @@ public class UpdateCommands {
       List<String> languageFiles = new ArrayList<>();
       boolean valid = true;
       for (String language: languages) {
-        if (languageList.containsKey(language)) {
-          languageFiles.add(languageList.getString(language));
+        if (languageList.has(language)) {
+          languageFiles.add(languageList.get(language).asText());
         } else {
           valid = false;
           System.err.println("Unknown language " + language);

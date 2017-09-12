@@ -4,7 +4,7 @@
 
 	<groupId>qowyn.ark</groupId>
 	<artifactId>ark-tools</artifactId>
-	<version>0.6.0-preview2</version>
+	<version>0.6.0</version>
 	<packaging>jar</packaging>
 
 	<name>ark-tools</name>
@@ -20,7 +20,7 @@
 		<dependency>
 			<groupId>qowyn.ark</groupId>
 			<artifactId>ark-savegame-toolkit</artifactId>
-			<version>0.7.4</version>
+			<version>0.8.0</version>
 		</dependency>
 
 		<dependency>

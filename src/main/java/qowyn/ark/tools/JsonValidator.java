@@ -3,36 +3,37 @@ package qowyn.ark.tools;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-import javax.json.JsonValue;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeType;
 
 public class JsonValidator {
 
-  public static boolean expect(JsonValue value, String fieldName, JsonValue.ValueType valueType) {
-    if (value == null) {
+  public static boolean expect(JsonNode node, String fieldName, JsonNodeType nodeType) {
+    if (node == null) {
       return false;
     }
 
-    if (value.getValueType() != valueType) {
-      System.err.println("Expected " + fieldName + " to be " + valueType + " but found " + value.getValueType());
+    if (node.getNodeType() != nodeType) {
+      System.err.println("Expected " + fieldName + " to be " + nodeType + " but found " + node.getNodeType());
       return false;
     }
     return true;
   }
 
-  public static boolean expect(JsonValue value, String fieldName, JsonValue.ValueType... valueTypes) {
-    if (value == null) {
+  public static boolean expect(JsonNode node, String fieldName, JsonNodeType... nodeTypes) {
+    if (node == null) {
       return false;
     }
 
-    for (JsonValue.ValueType valueType : valueTypes) {
-      if (value.getValueType() == valueType) {
+    for (JsonNodeType nodeType : nodeTypes) {
+      if (node.getNodeType() == nodeType) {
         return true;
       }
     }
 
-    String typeNames = Arrays.stream(valueTypes).map(JsonValue.ValueType::toString).collect(Collectors.joining(", "));
+    String typeNames = Arrays.stream(nodeTypes).map(JsonNodeType::toString).collect(Collectors.joining(", "));
 
-    System.err.println("Expected " + fieldName + " to be one of " + typeNames + " but found " + value.getValueType());
+    System.err.println("Expected " + fieldName + " to be one of " + typeNames + " but found " + node.getNodeType());
     return false;
   }
 

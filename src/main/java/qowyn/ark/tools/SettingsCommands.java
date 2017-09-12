@@ -1,6 +1,7 @@
 package qowyn.ark.tools;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 
 public class SettingsCommands {
 
@@ -12,7 +13,7 @@ public class SettingsCommands {
     }
 
     try {
-      CommonFunctions.writeJson("latLonCalculator.json", LatLonCalculator.exportList(), oh);
+      CommonFunctions.writeJson(Paths.get("latLonCalculator.json"), LatLonCalculator::exportList, oh);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

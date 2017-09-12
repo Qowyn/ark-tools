@@ -1,16 +1,29 @@
 package qowyn.ark.tools.data;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+
 import qowyn.ark.GameObject;
 import qowyn.ark.GameObjectContainer;
+import qowyn.ark.arrays.ArkArrayStruct;
+import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.tools.CreatureData;
 import qowyn.ark.tools.DataManager;
 import qowyn.ark.types.ArkByteValue;
+import qowyn.ark.types.ArkName;
 import qowyn.ark.types.LocationData;
 import qowyn.ark.types.ObjectReference;
 
 public class Creature {
 
   public static final int COLOR_SLOT_COUNT = 6;
+
+  public ArkName className;
 
   public String type;
 
@@ -37,8 +50,12 @@ public class Creature {
   public String owningPlayerName;
 
   public String tamedName;
-  
+
   public String imprinterName;
+
+  public final ArrayList<AncestorLineEntry> femaleAncestors = new ArrayList<>();
+
+  public final ArrayList<AncestorLineEntry> maleAncestors = new ArrayList<>();
 
   public int baseCharacterLevel;
 
@@ -64,7 +81,7 @@ public class Creature {
 
   public float currentTameAffinity;
 
-  public float tameIneffectivenessModifier;
+  public float tamedIneffectivenessModifier;
 
   public int tamedFollowTarget;
 
@@ -80,7 +97,12 @@ public class Creature {
 
   public double lastEnterStasisTime;
 
+  public GameObject status;
+
+  public GameObject inventory;
+
   public Creature(GameObject creature, GameObjectContainer saveFile) {
+    className = creature.getClassName();
     CreatureData creatureData = DataManager.getCreature(creature.getClassString());
     type = creatureData != null ? creatureData.getName() : creature.getClassString(); 
 
@@ -113,6 +135,44 @@ public class Creature {
 
     imprinterName = creature.findPropertyValue("ImprinterName", String.class).orElse("");
 
+    // Not all ancestors are saved. Only those ancestor information 
+    // are available which are displayed ingame in the UI.
+    creature.findPropertyValue("DinoAncestors", ArkArrayStruct.class).ifPresent(ancestors -> {
+      // traverse female ancestor line
+      ancestors.forEach((value) -> {
+        StructPropertyList propertyList = (StructPropertyList)value;
+        AncestorLineEntry entry = new AncestorLineEntry();
+
+        int fatherID1 = propertyList.getPropertyValue("MaleDinoID1", Integer.class);
+        int fatherID2 = propertyList.getPropertyValue("MaleDinoID2", Integer.class);
+        entry.maleId = (long) fatherID1 << Integer.SIZE | (fatherID2 & 0xFFFFFFFFL);
+
+        int motherID1 = propertyList.getPropertyValue("FemaleDinoID1", Integer.class);
+        int motherID2 = propertyList.getPropertyValue("FemaleDinoID2", Integer.class);
+        entry.femaleId = (long) motherID1 << Integer.SIZE | (motherID2 & 0xFFFFFFFFL);
+
+        femaleAncestors.add(entry);
+      });
+    });
+
+    creature.findPropertyValue("DinoAncestorsMale", ArkArrayStruct.class).ifPresent(ancestors -> {
+      // traverse male ancestor line
+      ancestors.forEach((value) -> {
+        StructPropertyList propertyList = (StructPropertyList)value;
+        AncestorLineEntry entry = new AncestorLineEntry();
+
+        int fatherID1 = propertyList.getPropertyValue("MaleDinoID1", Integer.class);
+        int fatherID2 = propertyList.getPropertyValue("MaleDinoID2", Integer.class);
+        entry.maleId = (long) fatherID1 << Integer.SIZE | (fatherID2 & 0xFFFFFFFFL);
+
+        int motherID1 = propertyList.getPropertyValue("FemaleDinoID1", Integer.class);
+        int motherID2 = propertyList.getPropertyValue("FemaleDinoID2", Integer.class);
+        entry.femaleId = (long) motherID1 << Integer.SIZE | (motherID2 & 0xFFFFFFFFL);
+
+        maleAncestors.add(entry);
+      });
+    });
+
     wildRandomScale = creature.findPropertyValue("WildRandomScale", Float.class).orElse(1.0f);
 
     isWakingTame = creature.findPropertyValue("bIsWakingTame", Boolean.class).orElse(false);
@@ -123,7 +183,7 @@ public class Creature {
 
     currentTameAffinity = creature.findPropertyValue("CurrentTameAffinity", Float.class).orElse(0.0f);
 
-    tameIneffectivenessModifier = creature.findPropertyValue("TameIneffectivenessModifier", Float.class).orElse(0.0f);
+    tamedIneffectivenessModifier = creature.findPropertyValue("TameIneffectivenessModifier", Float.class).orElse(0.0f);
 
     tamedFollowTarget = creature.findPropertyValue("TamedFollowTarget", ObjectReference.class).map(ObjectReference::getObjectId).orElse(-1);
 
@@ -139,7 +199,9 @@ public class Creature {
 
     lastEnterStasisTime = creature.findPropertyValue("LastEnterStasisTime", Double.class).orElse(0.0);
 
-    GameObject status = creature.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).orElse(null);
+    status = creature.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).orElse(null);
+
+    inventory = creature.findPropertyValue("MyInventoryComponent", ObjectReference.class).map(saveFile::getObject).orElse(null);
 
     if (status != null && status.getClassString().startsWith("DinoCharacterStatusComponent_")) {
       baseCharacterLevel = status.findPropertyValue("BaseCharacterLevel", Integer.class).orElse(1);
@@ -159,7 +221,270 @@ public class Creature {
       experiencePoints = status.findPropertyValue("ExperiencePoints", Float.class).orElse(0.0f);
 
       dinoImprintingQuality = status.findPropertyValue("DinoImprintingQuality", Float.class).orElse(0.0f);
+
+      tamedIneffectivenessModifier = status.findPropertyValue("TamedIneffectivenessModifier", Float.class).orElse(tamedIneffectivenessModifier);
     }
   }
 
+  public static class AncestorLineEntry {
+
+    public long maleId;
+
+    public long femaleId;
+
+  }
+
+  public static final SortedMap<String, WriterFunction<Creature>> PROPERTIES = new TreeMap<>();
+
+  static {
+    /**
+     * Creature Properties
+     */
+    PROPERTIES.put("type", (creature, generator, context, writeEmpty) -> {
+      if (context instanceof DataCollector) {
+        generator.writeStringField("type", creature.className.toString());
+      } else {
+        generator.writeStringField("type", creature.type);
+      }
+    });
+    PROPERTIES.put("location", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.location != null) {
+        if (creature.location == null) {
+          generator.writeNullField("location");
+        } else {
+          generator.writeObjectFieldStart("location");
+          generator.writeNumberField("x", creature.location.getX());
+          generator.writeNumberField("y", creature.location.getY());
+          generator.writeNumberField("z", creature.location.getZ());
+          if (context.getLatLonCalculator() != null) {
+            generator.writeNumberField("lat", context.getLatLonCalculator().calculateLat(creature.location.getX()));
+            generator.writeNumberField("lon", context.getLatLonCalculator().calculateLon(creature.location.getY()));
+          }
+          generator.writeEndObject();
+        }
+      }
+    });
+    PROPERTIES.put("id", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.dinoId != 0) {
+        generator.writeNumberField("id", creature.dinoId);
+      }
+    });
+    PROPERTIES.put("tamed", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.tamed) {
+        generator.writeBooleanField("tamed", creature.tamed);
+      }
+    });
+    PROPERTIES.put("team", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.targetingTeam != 0) {
+        generator.writeNumberField("team", creature.targetingTeam);
+      }
+    });
+    PROPERTIES.put("playerId", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.owningPlayerId != 0) {
+        generator.writeNumberField("playerId", creature.owningPlayerId);
+      }
+    });
+    PROPERTIES.put("female", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.isFemale) {
+        generator.writeBooleanField("female", creature.isFemale);
+      }
+    });
+    PROPERTIES.put("colorSetIndices", (creature, generator, context, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeObjectFieldStart("colorSetIndices");
+      }
+      for (int index = 0; index < creature.colorSetIndices.length; index++) {
+        if (writeEmpty || creature.colorSetIndices[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeObjectFieldStart("colorSetIndices");
+          }
+          generator.writeNumberField(Integer.toString(index), Byte.toUnsignedInt(creature.colorSetIndices[index]));
+        }
+      }
+      if (!empty) {
+        generator.writeEndObject();
+      }
+    });
+    PROPERTIES.put("tamedAtTime", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.tamedAtTime != 0.0) {
+        generator.writeNumberField("tamedAtTime", creature.tamedAtTime);
+      }
+    });
+    PROPERTIES.put("tamedTime", (creature, generator, context, writeEmpty) -> {
+      if (context.getSavegame() != null && creature.tamedAtTime != 0.0) {
+        generator.writeNumberField("tamedTime", context.getSavegame().getGameTime() - creature.tamedAtTime);
+      } else if (writeEmpty) {
+        generator.writeNullField("tamedTime");
+      }
+    });
+    PROPERTIES.put("tribe", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || !creature.tribeName.isEmpty()) {
+        generator.writeStringField("tribe", creature.tribeName);
+      }
+    });
+    PROPERTIES.put("tamer", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || !creature.tamerString.isEmpty()) {
+        generator.writeStringField("tamer", creature.tamerString);
+      }
+    });
+    PROPERTIES.put("ownerName", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || !creature.owningPlayerName.isEmpty()) {
+        generator.writeStringField("ownerName", creature.owningPlayerName);
+      }
+    });
+    PROPERTIES.put("name", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || !creature.tamedName.isEmpty()) {
+        generator.writeStringField("name", creature.tamedName);
+      }
+    });
+    PROPERTIES.put("imprinter", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || !creature.imprinterName.isEmpty()) {
+        generator.writeStringField("imprinter", creature.imprinterName);
+      }
+    });
+    PROPERTIES.put("baseLevel", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.baseCharacterLevel != 0) {
+        generator.writeNumberField("baseLevel", creature.baseCharacterLevel);
+      }
+    });
+    PROPERTIES.put("wildLevels", (creature, generator, context, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeObjectFieldStart("wildLevels");
+      }
+      for (int index = 0; index < creature.numberOfLevelUpPointsApplied.length; index++) {
+        if (writeEmpty || creature.numberOfLevelUpPointsApplied[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeObjectFieldStart("wildLevels");
+          }
+          generator.writeNumberField(AttributeNames.get(index), Byte.toUnsignedInt(creature.numberOfLevelUpPointsApplied[index]));
+        }
+      }
+      if (!empty) {
+        generator.writeEndObject();
+      }
+    });
+    PROPERTIES.put("extraLevel", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.extraCharacterLevel != 0) {
+        generator.writeNumberField("extraLevel", creature.extraCharacterLevel);
+      }
+    });
+    PROPERTIES.put("tamedLevels", (creature, generator, context, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeObjectFieldStart("tamedLevels");
+      }
+      for (int index = 0; index < creature.numberOfLevelUpPointsAppliedTamed.length; index++) {
+        if (writeEmpty || creature.numberOfLevelUpPointsAppliedTamed[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeObjectFieldStart("tamedLevels");
+          }
+          generator.writeNumberField(AttributeNames.get(index), Byte.toUnsignedInt(creature.numberOfLevelUpPointsAppliedTamed[index]));
+        }
+      }
+      if (!empty) {
+        generator.writeEndObject();
+      }
+    });
+    PROPERTIES.put("allowLevelUps", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.allowLevelUps) {
+        generator.writeBooleanField("allowLevelUps", creature.allowLevelUps);
+      }
+    });
+    PROPERTIES.put("experience", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.experiencePoints != 0.0f) {
+        generator.writeNumberField("experience", creature.experiencePoints);
+      }
+    });
+    PROPERTIES.put("imprintingQuality", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.dinoImprintingQuality != 0.0f) {
+        generator.writeNumberField("imprintingQuality", creature.dinoImprintingQuality);
+      }
+    });
+    PROPERTIES.put("wildRandomScale", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.wildRandomScale != 1.0f) {
+        generator.writeNumberField("wildRandomScale", creature.wildRandomScale);
+      }
+    });
+    PROPERTIES.put("isWakingTame", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.isWakingTame) {
+        generator.writeBooleanField("isWakingTame", creature.isWakingTame);
+      }
+    });
+    PROPERTIES.put("isSleeping", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.isSleeping) {
+        generator.writeBooleanField("isSleeping", creature.isSleeping);
+      }
+    });
+    PROPERTIES.put("requiredTameAffinity", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.requiredTameAffinity != 0.0f) {
+        generator.writeNumberField("requiredTameAffinity", creature.requiredTameAffinity);
+      }
+    });
+    PROPERTIES.put("currentTameAffinity", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.currentTameAffinity != 0.0f) {
+        generator.writeNumberField("currentTameAffinity", creature.currentTameAffinity);
+      }
+    });
+    PROPERTIES.put("tamingEffectivness", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.tamedIneffectivenessModifier != 1.0f) {
+        generator.writeNumberField("tamingEffectivness", 1.0f - creature.tamedIneffectivenessModifier);
+      }
+    });
+    PROPERTIES.put("tamedFollowTarget", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.tamedFollowTarget != -1) {
+        generator.writeNumberField("tamedFollowTarget", creature.tamedFollowTarget);
+      }
+    });
+    PROPERTIES.put("tamingTeamID", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.tamingTeamID != 0) {
+        generator.writeNumberField("tamingTeamID", creature.tamingTeamID);
+      }
+    });
+    PROPERTIES.put("tamedOnServerName", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || !creature.tamedOnServerName.isEmpty()) {
+        generator.writeStringField("tamedOnServerName", creature.tamedOnServerName);
+      }
+    });
+    PROPERTIES.put("uploadedFromServerName", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || !creature.uploadedFromServerName.isEmpty()) {
+        generator.writeStringField("uploadedFromServerName", creature.uploadedFromServerName);
+      }
+    });
+    PROPERTIES.put("tamedAggressionLevel", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.tamedAggressionLevel != 0) {
+        generator.writeNumberField("tamedAggressionLevel", creature.tamedAggressionLevel);
+      }
+    });
+    PROPERTIES.put("matingProgress", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.matingProgress != 0.0f) {
+        generator.writeNumberField("matingProgress", creature.matingProgress);
+      }
+    });
+    PROPERTIES.put("lastEnterStasisTime", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || creature.lastEnterStasisTime != 0.0) {
+        generator.writeNumberField("lastEnterStasisTime", creature.lastEnterStasisTime);
+      }
+    });
+  }
+
+  public static final List<WriterFunction<Creature>> PROPERTIES_LIST = new ArrayList<>(PROPERTIES.values());
+
+  public void writeAllProperties(JsonGenerator generator, DataContext context, boolean writeEmpty) throws IOException {
+    for (WriterFunction<Creature> writer: PROPERTIES_LIST) {
+      writer.accept(this, generator, context, writeEmpty);
+    }
+  }
+
+  public void writeInventory(JsonGenerator generator, DataContext context, boolean writeEmpty, boolean inventorySummary) throws IOException {
+    if (this.inventory != null) {
+      Inventory inventory = new Inventory(this.inventory);
+      generator.writeFieldName("inventory");
+      inventory.writeInventory(generator, context, writeEmpty, inventorySummary);
+    }
+  }
 }

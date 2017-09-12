@@ -10,7 +10,6 @@ import joptsimple.OptionSpec;
 import joptsimple.OptionSpecBuilder;
 import qowyn.ark.ReadingOptions;
 import qowyn.ark.WritingOptions;
-import qowyn.ark.tools.options.BooleanValueConverter;
 import qowyn.ark.tools.options.IntegerValueConverter;
 
 public class OptionHandler {
@@ -19,9 +18,7 @@ public class OptionHandler {
 
   private final OptionSpec<String> nonOptionsSpec;
 
-  private final OptionSpec<Integer> asyncSizeSpec;
-
-  private final OptionSpec<Boolean> asyncSpec;
+  private final OptionSpec<Integer> threadCountSpec;
   
   private final OptionSpec<String> langSpec;
 
@@ -57,11 +54,8 @@ public class OptionHandler {
 
     WritingOptions options = WritingOptions.create();
 
-    asyncSizeSpec = parser.accepts("async-size", "Size of buffer for asynchronous I/O, higher values increase used memory but can reduce total processing time with slow I/O.")
-        .withRequiredArg().withValuesConvertedBy(new IntegerValueConverter()).defaultsTo(options.getAsyncBufferSize());
-
-    asyncSpec = parser.acceptsAll(Arrays.asList("async", "a"), "Whether asynchronous I/O should be used.")
-        .withRequiredArg().withValuesConvertedBy(new BooleanValueConverter()).defaultsTo(options.isAsynchronous());
+    threadCountSpec = parser.accepts("thread-count", "Amount of threads to use for parallel tasks.")
+        .withRequiredArg().withValuesConvertedBy(new IntegerValueConverter()).defaultsTo(options.getThreadCount());
     
     langSpec = parser.accepts("lang", "Load data for specified language, needs appropriate ark_data_lang.json.").withRequiredArg();
 
@@ -115,12 +109,8 @@ public class OptionHandler {
     return params.subList(1, params.size());
   }
 
-  public int asyncSize() {
-    return initialOptions.valueOf(asyncSizeSpec);
-  }
-
-  public boolean useAsync() {
-    return initialOptions.valueOf(asyncSpec);
+  public int threadCount() {
+    return initialOptions.valueOf(threadCountSpec);
   }
   
   public String lang() {
@@ -198,15 +188,14 @@ public class OptionHandler {
 
   public WritingOptions writingOptions() {
     return WritingOptions.create()
-        .asyncBufferSize(asyncSize())
-        .asynchronous(useAsync())
+        .withThreadCount(threadCount())
         .parallel(useParallel())
         .withMemoryMapping(useMmap());
   }
 
   public ReadingOptions readingOptions() {
     return ReadingOptions.create()
-        .asynchronous(useAsync())
+        .withThreadCount(threadCount())
         .parallel(useParallel())
         .withMemoryMapping(useMmap());
   }

@@ -4,6 +4,10 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
+
+import com.fasterxml.jackson.core.JsonGenerator;
 
 import qowyn.ark.ArkTribe;
 import qowyn.ark.PropertyContainer;
@@ -54,7 +58,7 @@ public class Tribe {
   }
 
   public Tribe(Path path, ReadingOptions ro) throws IOException {
-    ArkTribe tribe = new ArkTribe(path.toString(), ro);
+    ArkTribe tribe = new ArkTribe(path, ro);
 
     StructPropertyList tribeData = tribe.getPropertyValue("TribeData", StructPropertyList.class);
 
@@ -117,6 +121,222 @@ public class Tribe {
       for (Struct tribeRankStruct: tribeRankStructs) {
         tribeRankGroups.add(new TribeRankGroup((PropertyContainer) tribeRankStruct));
       }
+    }
+  }
+
+  public static final SortedMap<String, WriterFunction<Tribe>> PROPERTIES = new TreeMap<>();
+
+  static {
+    /**
+     * Tribe Properties
+     */
+    PROPERTIES.put("name", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || !tribe.tribeName.isEmpty()) {
+        generator.writeStringField("name", tribe.tribeName);
+      }
+    });
+    PROPERTIES.put("ownerPlayerId", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || tribe.ownerPlayerDataId != 0) {
+        generator.writeNumberField("ownerPlayerId", tribe.ownerPlayerDataId);
+      }
+    });
+    PROPERTIES.put("ownerPlayerName", (tribe, generator, context, writeEmpty) -> {
+      if (tribe.ownerPlayerDataId != 0) {
+        int index = tribe.membersPlayerDataId.indexOf(tribe.ownerPlayerDataId);
+        if (index > -1) {
+          generator.writeStringField("ownerPlayerName", tribe.membersPlayerName.get(index));
+        } else {
+          generator.writeNullField("ownerPlayerName");
+        }
+      } else if (writeEmpty) {
+        generator.writeNullField("ownerPlayerName");
+      }
+    });
+    PROPERTIES.put("tribeId", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || tribe.tribeId != 0) {
+        generator.writeNumberField("tribeId", tribe.tribeId);
+      }
+    });
+    PROPERTIES.put("memberNames", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || !tribe.membersPlayerName.isEmpty()) {
+        generator.writeArrayFieldStart("memberNames");
+        for (String value: tribe.membersPlayerName) {
+          generator.writeString(value);
+        }
+        generator.writeEndArray();
+      }
+    });
+    PROPERTIES.put("memberIds", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || !tribe.membersPlayerDataId.isEmpty()) {
+        generator.writeArrayFieldStart("memberIds");
+        for (int value: tribe.membersPlayerDataId) {
+          generator.writeNumber(value);
+        }
+        generator.writeEndArray();
+      }
+    });
+    PROPERTIES.put("tribeAdminNames", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || !tribe.tribeAdmins.isEmpty()) {
+        generator.writeArrayFieldStart("tribeAdminNames");
+        for (int value: tribe.tribeAdmins) {
+          int index = tribe.membersPlayerDataId.indexOf(value);
+          if (index > -1) {
+            generator.writeString(tribe.membersPlayerName.get(index));
+          } else {
+            generator.writeNull();
+          }
+        }
+        generator.writeEndArray();
+      }
+    });
+    PROPERTIES.put("tribeAdminIds", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || !tribe.tribeAdmins.isEmpty()) {
+        generator.writeArrayFieldStart("tribeAdminIds");
+        for (int value: tribe.tribeAdmins) {
+          generator.writeNumber(value);
+        }
+        generator.writeEndArray();
+      }
+    });
+    PROPERTIES.put("membersRankGroups", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || !tribe.membersRankGroups.isEmpty()) {
+        generator.writeArrayFieldStart("membersRankGroups");
+        for (byte value: tribe.membersRankGroups) {
+          generator.writeNumber(Byte.toUnsignedInt(value));
+        }
+        generator.writeEndArray();
+      }
+    });
+    PROPERTIES.put("setGovernment", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || !tribe.setGovernment) {
+        generator.writeBooleanField("setGovernment", tribe.setGovernment);
+      }
+    });
+    PROPERTIES.put("tribeGovernPINCode", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || tribe.tribeGovernPINCode != 0) {
+        generator.writeNumberField("tribeGovernPINCode", tribe.tribeGovernPINCode);
+      }
+    });
+    PROPERTIES.put("tribeGovernDinoOwnership", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || tribe.tribeGovernDinoOwnership != 0) {
+        generator.writeNumberField("tribeGovernDinoOwnership", tribe.tribeGovernDinoOwnership);
+      }
+    });
+    PROPERTIES.put("tribeGovernStructureOwnership", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || tribe.tribeGovernStructureOwnership != 0) {
+        generator.writeNumberField("tribeGovernStructureOwnership", tribe.tribeGovernStructureOwnership);
+      }
+    });
+    PROPERTIES.put("tribeGovernDinoTaming", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || tribe.tribeGovernDinoTaming != 0) {
+        generator.writeNumberField("tribeGovernDinoTaming", tribe.tribeGovernDinoTaming);
+      }
+    });
+    PROPERTIES.put("tribeGovernDinoUnclaimAdminOnly", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || tribe.tribeGovernDinoUnclaimAdminOnly != 0) {
+        generator.writeNumberField("tribeGovernDinoUnclaimAdminOnly", tribe.tribeGovernDinoUnclaimAdminOnly);
+      }
+    });
+    PROPERTIES.put("tribeLog", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || !tribe.tribeLog.isEmpty()) {
+        generator.writeArrayFieldStart("tribeLog");
+        for (String value: tribe.tribeLog) {
+          generator.writeString(value);
+        }
+        generator.writeEndArray();
+      }
+    });
+    PROPERTIES.put("logIndex", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || tribe.logIndex != 0) {
+        generator.writeNumberField("logIndex", tribe.logIndex);
+      }
+    });
+    PROPERTIES.put("tribeRankGroups", (tribe, generator, context, writeEmpty) -> {
+      if (writeEmpty || !tribe.tribeRankGroups.isEmpty()) {
+        generator.writeArrayFieldStart("tribeRankGroups");
+        for (TribeRankGroup group: tribe.tribeRankGroups) {
+          generator.writeStartObject();
+          if (writeEmpty || !group.rankGroupName.isEmpty()) {
+            generator.writeStringField("rankGroupName", group.rankGroupName);
+          }
+          if (writeEmpty || group.rankGroupRank != 0) {
+            generator.writeNumberField("rankGroupRank", Byte.toUnsignedInt(group.rankGroupRank));
+          }
+          if (writeEmpty || group.inventoryRank != 0) {
+            generator.writeNumberField("inventoryRank", Byte.toUnsignedInt(group.inventoryRank));
+          }
+          if (writeEmpty || group.structureActivationRank != 0) {
+            generator.writeNumberField("structureActivationRank", Byte.toUnsignedInt(group.structureActivationRank));
+          }
+          if (writeEmpty || group.newStructureActivationRank != 0) {
+            generator.writeNumberField("newStructureActivationRank", Byte.toUnsignedInt(group.newStructureActivationRank));
+          }
+          if (writeEmpty || group.newStructureInventoryRank != 0) {
+            generator.writeNumberField("newStructureInventoryRank", Byte.toUnsignedInt(group.newStructureInventoryRank));
+          }
+          if (writeEmpty || group.petOrderRank != 0) {
+            generator.writeNumberField("petOrderRank", Byte.toUnsignedInt(group.petOrderRank));
+          }
+          if (writeEmpty || group.petRidingRank != 0) {
+            generator.writeNumberField("petRidingRank", Byte.toUnsignedInt(group.petRidingRank));
+          }
+          if (writeEmpty || group.inviteToGroupRank != 0) {
+            generator.writeNumberField("inviteToGroupRank", Byte.toUnsignedInt(group.inviteToGroupRank));
+          }
+          if (writeEmpty || group.maxPromotionGroupRank != 0) {
+            generator.writeNumberField("maxPromotionGroupRank", Byte.toUnsignedInt(group.maxPromotionGroupRank));
+          }
+          if (writeEmpty || group.maxDemotionGroupRank != 0) {
+            generator.writeNumberField("maxDemotionGroupRank", Byte.toUnsignedInt(group.maxDemotionGroupRank));
+          }
+          if (writeEmpty || group.maxBanishmentGroupRank != 0) {
+            generator.writeNumberField("maxBanishmentGroupRank", Byte.toUnsignedInt(group.maxBanishmentGroupRank));
+          }
+          if (writeEmpty || group.numInvitesRemaining != 0) {
+            generator.writeNumberField("numInvitesRemaining", Byte.toUnsignedInt(group.numInvitesRemaining));
+          }
+          if (writeEmpty || group.preventStructureDemolish) {
+            generator.writeBooleanField("preventStructureDemolish", group.preventStructureDemolish);
+          }
+          if (writeEmpty || group.preventStructureAttachment) {
+            generator.writeBooleanField("preventStructureAttachment", group.preventStructureAttachment);
+          }
+          if (writeEmpty || group.preventStructureBuildInRange) {
+            generator.writeBooleanField("preventStructureBuildInRange", group.preventStructureBuildInRange);
+          }
+          if (writeEmpty || group.preventUnclaiming) {
+            generator.writeBooleanField("preventUnclaiming", group.preventUnclaiming);
+          }
+          if (writeEmpty || group.allowInvites) {
+            generator.writeBooleanField("allowInvites", group.allowInvites);
+          }
+          if (writeEmpty || group.limitInvites) {
+            generator.writeBooleanField("limitInvites", group.limitInvites);
+          }
+          if (writeEmpty || group.allowDemotions) {
+            generator.writeBooleanField("allowDemotions", group.allowDemotions);
+          }
+          if (writeEmpty || group.allowPromotions) {
+            generator.writeBooleanField("allowPromotions", group.allowPromotions);
+          }
+          if (writeEmpty || group.allowBanishments) {
+            generator.writeBooleanField("allowBanishments", group.allowBanishments);
+          }
+          if (writeEmpty || group.defaultRank) {
+            generator.writeBooleanField("defaultRank", group.defaultRank);
+          }
+          generator.writeEndObject();
+        }
+        generator.writeEndArray();
+      }
+    });
+  }
+
+  public static final List<WriterFunction<Tribe>> PROPERTIES_LIST = new ArrayList<>(PROPERTIES.values());
+
+  public void writeAllProperties(JsonGenerator generator, DataContext context, boolean writeEmpty) throws IOException {
+    for (WriterFunction<Tribe> writer: PROPERTIES_LIST) {
+      writer.accept(this, generator, context, writeEmpty);
     }
   }
 

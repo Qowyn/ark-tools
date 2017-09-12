@@ -3,14 +3,11 @@ package qowyn.ark.tools;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
-import javax.json.JsonValue.ValueType;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import qowyn.ark.ArkSavegame;
 
@@ -22,7 +19,7 @@ import qowyn.ark.ArkSavegame;
  */
 public final class LatLonCalculator {
 
-  public static final Map<String, LatLonCalculator> knownMaps = new HashMap<>();
+  public static final NavigableMap<String, LatLonCalculator> knownMaps = new TreeMap<>();
 
   /**
    * Default based on TheIsland
@@ -44,23 +41,23 @@ public final class LatLonCalculator {
   }
 
   /**
-   * Exports current list of known maps as JsonObject.
-   * 
-   * @return list of known maps as JsonObject
+   * Exports current list of known maps
+   * @param generator The generator to use
    */
-  public static JsonObject exportList() {
-    JsonObjectBuilder builder = Json.createObjectBuilder();
+  public static void exportList(JsonGenerator generator) throws IOException {
+    generator.writeStartObject();
 
-    knownMaps.entrySet().stream().sorted(Comparator.comparing(Map.Entry::getKey)).forEach(entry -> {
-      JsonObjectBuilder entryBuilder = Json.createObjectBuilder();
-      entryBuilder.add("latShift", entry.getValue().latShift);
-      entryBuilder.add("latDiv", entry.getValue().latDiv);
-      entryBuilder.add("lonShift", entry.getValue().lonShift);
-      entryBuilder.add("lonDiv", entry.getValue().lonDiv);
-      builder.add(entry.getKey(), entryBuilder);
-    });
+    for (String key: knownMaps.keySet()) {
+      LatLonCalculator value = knownMaps.get(key);
+      generator.writeObjectFieldStart(key);
+      generator.writeNumberField("latShift", value.latShift);
+      generator.writeNumberField("latDiv", value.latDiv);
+      generator.writeNumberField("lonShift", value.lonShift);
+      generator.writeNumberField("lonDiv", value.lonDiv);
+      generator.writeEndObject();
+    }
 
-    return builder.build();
+    generator.writeEndObject();
   }
 
   /**
@@ -71,7 +68,7 @@ public final class LatLonCalculator {
       if (stream == null) {
         return false;
       }
-      importList((JsonObject) CommonFunctions.readJson(stream));
+      importList(CommonFunctions.readJson(stream));
       return true;
     } catch (FileNotFoundException e) {
       return false;
@@ -83,27 +80,27 @@ public final class LatLonCalculator {
   }
 
   /**
-   * Imports list of known maps from JsonObject.
+   * Imports list of known maps from JsonNode.
    * 
-   * @param object list of known maps as a JsonObject
+   * @param node list of known maps as a JsonNode
    */
-  private static void importList(JsonObject object) {
+  private static void importList(JsonNode node) {
     knownMaps.clear();
     try {
-      object.forEach((mapName, entryValue) -> {
-        if (entryValue.getValueType() != ValueType.OBJECT) {
+      node.fields().forEachRemaining(entry -> {
+        if (!entry.getValue().isObject()) {
           System.err.println("Error in provided LatLonCalculator settings: found non-object.");
           System.exit(3);
         }
 
-        JsonObject entryObject = (JsonObject) entryValue;
+        JsonNode entryNode = entry.getValue();
 
-        float latShift = entryObject.getJsonNumber("latShift").bigDecimalValue().floatValue();
-        float latDiv = entryObject.getJsonNumber("latDiv").bigDecimalValue().floatValue();
-        float lonShift = entryObject.getJsonNumber("lonShift").bigDecimalValue().floatValue();
-        float lonDiv = entryObject.getJsonNumber("lonDiv").bigDecimalValue().floatValue();
+        float latShift = entryNode.path("latShift").floatValue();
+        float latDiv = entryNode.path("latDiv").floatValue();
+        float lonShift = entryNode.path("lonShift").floatValue();
+        float lonDiv = entryNode.path("lonDiv").floatValue();
 
-        knownMaps.put(mapName, new LatLonCalculator(latShift, latDiv, lonShift, lonDiv));
+        knownMaps.put(entry.getKey(), new LatLonCalculator(latShift, latDiv, lonShift, lonDiv));
       });
     } catch (RuntimeException ex) {
       System.err.println("Error in provided LatLonCalculator settings.");

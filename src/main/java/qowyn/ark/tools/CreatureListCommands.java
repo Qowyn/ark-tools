@@ -1,8 +1,6 @@
 package qowyn.ark.tools;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,16 +11,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiPredicate;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
-import javax.json.stream.JsonGenerator;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonToken;
 
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -30,6 +24,7 @@ import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
 import qowyn.ark.ReadingOptions;
 import qowyn.ark.tools.data.Creature;
+import qowyn.ark.tools.data.CustomDataContext;
 
 public class CreatureListCommands {
 
@@ -49,9 +44,11 @@ public class CreatureListCommands {
 
   private static OptionSpec<Void> writeAllFieldsSpec;
 
+  private static OptionSpec<String> inventorySpec;
+
   private static OptionSet options;
 
-  private static Consumer<JsonGenerator> writerFunction;
+  private static WriteJsonCallback writerFunction;
 
   public static void creatures(OptionHandler optionHandler) {
     CreatureListCommands.optionHandler = optionHandler;
@@ -87,6 +84,7 @@ public class CreatureListCommands {
       withoutIndexSpec = optionHandler.accepts("without-index", "Omits reading and writing classes.json");
       cleanFolderSpec = optionHandler.accepts("clean", "Deletes all .json files in the target directory.");
       writeAllFieldsSpec = optionHandler.accepts("write-all-fields", "Writes all the fields.");
+      inventorySpec = optionHandler.accepts("inventory", "Include inventory of creatures.").withOptionalArg().describedAs("summary|long").defaultsTo("summary");
 
       options = optionHandler.reparse();
 
@@ -101,7 +99,7 @@ public class CreatureListCommands {
         DataManager.loadData(optionHandler.lang());
       }
 
-      String savePath = params.get(0);
+      Path savePath = Paths.get(params.get(0));
       outputDirectory = Paths.get(params.get(1));
 
       ReadingOptions readingOptions = optionHandler.readingOptions().withObjectFilter(CreatureListCommands::neededClasses);
@@ -150,9 +148,9 @@ public class CreatureListCommands {
       writeClassNames(classNames);
 
       if (options.has(statisticsSpec)) {
-        writerFunction = g -> g.writeStartObject().write("count", 0).writeStartArray("dinos").writeEnd().writeEnd();
+        writerFunction = CreatureListCommands::writeEmptyWithStatistic;
       } else {
-        writerFunction = g -> g.writeStartArray().writeEnd();
+        writerFunction = CreatureListCommands::writeEmptyWithoutStatistic;
       }
 
       classNames.keySet().stream().filter(s -> !dinoLists.containsKey(s)).forEach(CreatureListCommands::writeEmpty);
@@ -166,16 +164,34 @@ public class CreatureListCommands {
     Map<String, String> classNames = new HashMap<>();
 
     if (Files.exists(classFile)) {
-      try (InputStream classStream = Files.newInputStream(classFile)) {
-        JsonReader classReader = Json.createReader(classStream);
-        JsonArray classArray = classReader.readArray();
-        for (JsonObject o : classArray.getValuesAs(JsonObject.class)) {
-          String cls = o.getString("cls");
-          String name = o.getString("name");
-          if (!classNames.containsKey(cls)) {
-            classNames.put(cls, name);
+      
+      try {
+        CommonFunctions.readJson(classFile, parser -> {
+          parser.nextToken();
+          if (!parser.isExpectedStartArrayToken()) {
+            return;
           }
-        }
+
+          while (parser.nextToken() != JsonToken.END_ARRAY) {
+            if (!parser.isExpectedStartObjectToken()) {
+              return;
+            }
+
+            String cls = null;
+            String name = null;
+            while (parser.nextValue() != JsonToken.END_OBJECT) {
+              if ("cls".equals(parser.getCurrentName())) {
+                cls = parser.getValueAsString();
+              } else if ("name".equals(parser.getCurrentName())) {
+                name = parser.getValueAsString();
+              }
+            }
+
+            if (cls != null && name != null && !classNames.containsKey(cls)) {
+              classNames.put(cls, name);
+            }
+          }
+        });
       } catch (IOException e) {
         e.printStackTrace();
       }
@@ -187,13 +203,20 @@ public class CreatureListCommands {
   public static void writeClassNames(Map<String, String> classNames) {
     Path classFile = outputDirectory.resolve("classes.json");
 
-    try (OutputStream clsStream = Files.newOutputStream(classFile)) {
-      CommonFunctions.writeJson(clsStream, g -> {
-        g.writeStartArray();
+    try {
+      CommonFunctions.writeJson(classFile, generator -> {
+        generator.writeStartArray();
 
-        classNames.forEach((cls, name) -> g.writeStartObject().write("cls", cls).write("name", name).writeEnd());
+        for (String cls: classNames.keySet()) {
+          generator.writeStartObject();
 
-        g.writeEnd();
+          generator.writeStringField("cls", cls);
+          generator.writeStringField("name", classNames.get(cls));
+
+          generator.writeEndObject();
+        }
+
+        generator.writeEndArray();
       }, optionHandler);
     } catch (IOException e) {
       e.printStackTrace();
@@ -206,51 +229,59 @@ public class CreatureListCommands {
     List<? extends GameObject> filteredClasses = entry.getValue();
     LatLonCalculator latLongCalculator = LatLonCalculator.forSave(saveFile);
 
-    try (OutputStream out = Files.newOutputStream(outputFile)) {
-      CommonFunctions.writeJson(out, generator -> {
+    try {
+      CommonFunctions.writeJson(outputFile, generator -> {
         if (options.has(statisticsSpec)) {
           generator.writeStartObject();
 
-          generator.write("count", filteredClasses.size());
+          generator.writeNumberField("count", filteredClasses.size());
 
           IntSummaryStatistics statistics =
               filteredClasses.stream().filter(a -> CommonFunctions.onlyWild(a, saveFile)).mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
           if (statistics.getCount() > 0) {
-            generator.write("wildMin", statistics.getMin());
-            generator.write("wildMax", statistics.getMax());
-            generator.write("wildAverage", statistics.getAverage());
+            generator.writeNumberField("wildMin", statistics.getMin());
+            generator.writeNumberField("wildMax", statistics.getMax());
+            generator.writeNumberField("wildAverage", statistics.getAverage());
           }
 
           IntSummaryStatistics tamedBaseStatistics =
               filteredClasses.stream().filter(a -> CommonFunctions.onlyTamed(a, saveFile)).mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
           if (tamedBaseStatistics.getCount() > 0) {
-            generator.write("tamedBaseMin", tamedBaseStatistics.getMin());
-            generator.write("tamedBaseMax", tamedBaseStatistics.getMax());
-            generator.write("tamedBaseAverage", tamedBaseStatistics.getAverage());
+            generator.writeNumberField("tamedBaseMin", tamedBaseStatistics.getMin());
+            generator.writeNumberField("tamedBaseMax", tamedBaseStatistics.getMax());
+            generator.writeNumberField("tamedBaseAverage", tamedBaseStatistics.getAverage());
           }
 
           IntSummaryStatistics tamedFullStatistics =
               filteredClasses.stream().filter(a -> CommonFunctions.onlyTamed(a, saveFile)).mapToInt(a -> CommonFunctions.getFullLevel(a, saveFile)).summaryStatistics();
           if (tamedFullStatistics.getCount() > 0) {
-            generator.write("tamedFullMin", tamedFullStatistics.getMin());
-            generator.write("tamedFullMax", tamedFullStatistics.getMax());
-            generator.write("tamedFullAverage", tamedFullStatistics.getAverage());
+            generator.writeNumberField("tamedFullMin", tamedFullStatistics.getMin());
+            generator.writeNumberField("tamedFullMax", tamedFullStatistics.getMax());
+            generator.writeNumberField("tamedFullAverage", tamedFullStatistics.getAverage());
           }
 
-          generator.writeStartArray("dinos");
+          generator.writeArrayFieldStart("dinos");
         } else {
           generator.writeStartArray();
         }
 
+        CustomDataContext context = new CustomDataContext();
+        context.setLatLonCalculator(latLongCalculator);
+        context.setObjectContainer(saveFile);
         for (GameObject creatureObject : filteredClasses) {
           Creature creature = new Creature(creatureObject, saveFile);
-          SharedWriters.writeCreatureInfo(generator, creature, latLongCalculator, saveFile, options.has(writeAllFieldsSpec));
+          generator.writeStartObject();
+          creature.writeAllProperties(generator, context, options.has(writeAllFieldsSpec));
+          if (options.has(inventorySpec)) {
+            creature.writeInventory(generator, context, options.has(writeAllFieldsSpec), "summary".equals(options.valueOf(inventorySpec)));
+          }
+          generator.writeEndObject();
         }
 
-        generator.writeEnd(); // Array
+        generator.writeEndArray();
 
         if (options.has(statisticsSpec)) {
-          generator.writeEnd(); // Object
+          generator.writeEndObject();
         }
       }, optionHandler);
     } catch (Exception e) {
@@ -258,11 +289,24 @@ public class CreatureListCommands {
     }
   }
 
-  public static void writeEmpty(String s) {
+  private static void writeEmptyWithStatistic(JsonGenerator generator) throws IOException {
+    generator.writeStartObject();
+    generator.writeNumberField("count", 0);
+    generator.writeArrayFieldStart("dinos");
+    generator.writeEndArray();
+    generator.writeEndObject();
+  }
+
+  private static void writeEmptyWithoutStatistic(JsonGenerator generator) throws IOException {
+    generator.writeStartArray();
+    generator.writeEndArray();
+  }
+
+  private static void writeEmpty(String s) {
     Path outputFile = outputDirectory.resolve(s + ".json");
 
-    try (OutputStream out = Files.newOutputStream(outputFile)) {
-      CommonFunctions.writeJson(out, writerFunction, optionHandler);
+    try {
+      CommonFunctions.writeJson(outputFile, writerFunction, optionHandler);
     } catch (IOException e) {
       e.printStackTrace();
     }
