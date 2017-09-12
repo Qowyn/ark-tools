@@ -1,37 +1,30 @@
 package qowyn.ark.tools;
 
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.function.Consumer;
+import java.nio.file.Path;
+import java.util.stream.Stream;
 
-import javax.json.Json;
-import javax.json.JsonReader;
-import javax.json.JsonStructure;
-import javax.json.JsonWriter;
-import javax.json.JsonWriterFactory;
-import javax.json.stream.JsonGenerator;
-import javax.json.stream.JsonGeneratorFactory;
-import javax.json.stream.JsonParser;
-
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.YieldingWaitStrategy;
-import com.lmax.disruptor.dsl.Disruptor;
-import com.lmax.disruptor.dsl.ProducerType;
+import com.fasterxml.jackson.core.JsonEncoding;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 
 import qowyn.ark.GameObject;
 import qowyn.ark.GameObjectContainer;
+import qowyn.ark.structs.StructLinearColor;
 import qowyn.ark.types.ObjectReference;
 
 public class CommonFunctions {
+
+  public static final JsonFactory JSON_FACTORY = new JsonFactory();
+
+  public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(JSON_FACTORY);
 
   public static boolean onlyTamed(GameObject animal, GameObjectContainer saveFile) {
     return animal.findPropertyValue("TargetingTeam", Integer.class).orElse(0) >= 50000;
@@ -63,114 +56,119 @@ public class CommonFunctions {
     return baseLevel + extraLevel;
   }
 
-  public static void writeJson(OutputStream out, JsonStructure structure, OptionHandler oh) throws IOException {
-    if (out == null) {
+  public static void writeJson(OutputStream out, JsonNode node, OptionHandler oh) throws IOException {
+    if (out == null || node == null) {
       throw new NullPointerException();
     }
 
-    if (oh.usePretty()) {
-      Map<String, Object> properties = new HashMap<>(1);
-      properties.put(JsonGenerator.PRETTY_PRINTING, true);
-
-      JsonWriterFactory jwf = Json.createWriterFactory(properties);
-      try (JsonWriter writer = jwf.createWriter(out)) {
-        writer.write(structure);
-      }
-    } else {
-      try (JsonWriter writer = Json.createWriter(out)) {
-        writer.write(structure);
-      }
-    }
+    ObjectWriter writer = oh.usePretty() ? OBJECT_MAPPER.writerWithDefaultPrettyPrinter() : OBJECT_MAPPER.writer();
+    writer.writeValue(out, node);
   }
 
-  public static void writeJson(String outFile, JsonStructure structure, OptionHandler oh) throws IOException {
-    try (OutputStream out = new FileOutputStream(outFile)) {
-      writeJson(out, structure, oh);
-    }
-  }
-
-  public static void writeJson(OutputStream out, Consumer<JsonGenerator> writeJson, OptionHandler oh) throws IOException {
-    if (out == null) {
+  public static void writeJson(Path outPath, JsonNode node, OptionHandler oh) throws IOException {
+    if (outPath == null || node == null) {
       throw new NullPointerException();
     }
 
-    if (oh.usePretty()) {
-      Map<String, Object> properties = new HashMap<>(1);
-      properties.put(JsonGenerator.PRETTY_PRINTING, true);
+    ObjectWriter writer = oh.usePretty() ? OBJECT_MAPPER.writerWithDefaultPrettyPrinter() : OBJECT_MAPPER.writer();
+    writer.writeValue(outPath.toFile(), node);
+  }
 
-      JsonGeneratorFactory jgf = Json.createGeneratorFactory(properties);
-      try (JsonGenerator jg = jgf.createGenerator(out)) {
-        writeJson.accept(jg);
+  public static void writeJson(OutputStream out, WriteJsonCallback writeJson, OptionHandler oh) throws IOException {
+    if (out == null || writeJson == null) {
+      throw new NullPointerException();
+    }
+
+    try (JsonGenerator generator = JSON_FACTORY.createGenerator(out)) {
+      if (oh.usePretty()) {
+        generator.useDefaultPrettyPrinter();
       }
-    } else {
-      try (JsonGenerator jg = Json.createGenerator(out)) {
-        writeJson.accept(jg);
-      }
+
+      writeJson.accept(generator);
     }
   }
 
-  public static void writeJson(String outFile, Consumer<JsonGenerator> writeJson, OptionHandler oh) throws IOException {
-    try (OutputStream out = new FileOutputStream(outFile)) {
-      writeJson(out, writeJson, oh);
+  public static void writeJson(Path outPath, WriteJsonCallback writeJson, OptionHandler oh) throws IOException {
+    if (outPath == null || writeJson == null) {
+      throw new NullPointerException();
+    }
+
+    try (JsonGenerator generator = JSON_FACTORY.createGenerator(outPath.toFile(), JsonEncoding.UTF8)) {
+      if (oh.usePretty()) {
+        generator.useDefaultPrettyPrinter();
+      }
+
+      writeJson.accept(generator);
     }
   }
 
-  public static JsonStructure readJson(InputStream stream) throws IOException {
+  public static JsonNode readJson(InputStream stream) throws IOException {
     if (stream == null) {
       throw new NullPointerException();
     }
 
-    try (JsonReader reader = Json.createReader(stream)) {
-      return reader.read();
-    }
+    return OBJECT_MAPPER.readTree(stream);
   }
 
-  public static JsonStructure readJson(String inFile) throws IOException {
-    try (InputStream stream = new FileInputStream(inFile)) {
-      return readJson(stream);
+  public static JsonNode readJson(Path inPath) throws IOException {
+    if (inPath == null) {
+      throw new NullPointerException();
     }
+
+    return OBJECT_MAPPER.readTree(inPath.toFile());
   }
 
-  public static JsonStructure readJsonRelative(String inFile) throws IOException {
+  public static JsonNode readJsonRelative(String inFile) throws IOException {
     try (InputStream stream = CommonFunctions.class.getResourceAsStream(inFile)) {
       if (stream == null) {
         throw new FileNotFoundException();
       }
 
-      return readJson(stream);
+      return OBJECT_MAPPER.readTree(stream);
     }
   }
 
-  public static void readJson(InputStream stream, Consumer<JsonParser> parseJson) throws IOException {
+  public static void readJson(InputStream stream, ParseJsonCallback parseJson) throws IOException {
     if (stream == null) {
       throw new NullPointerException();
     }
 
-    try (JsonParser parser = Json.createParser(stream)) {
+    try (JsonParser parser = JSON_FACTORY.createParser(stream)) {
       parseJson.accept(parser);
     }
   }
 
-  public static void readJson(String inFile, Consumer<JsonParser> parseJson) throws IOException {
-    try (InputStream stream = new FileInputStream(inFile)) {
-      readJson(stream, parseJson);
+  public static void readJson(Path inPath, ParseJsonCallback parseJson) throws IOException {
+    if (inPath == null) {
+      throw new NullPointerException();
+    }
+
+    try (JsonParser parser = JSON_FACTORY.createParser(inPath.toFile())) {
+      parseJson.accept(parser);
     }
   }
 
-  @SuppressWarnings("unchecked")
-  public static <T> void processAsyncronously(EventFactory<T> factory, EventHandler<T> consumer, Consumer<RingBuffer<T>> producer, int bufferSize) {
+  public static String getRGBA(StructLinearColor lc) {
+    double clampR = Math.min(1, Math.max(lc.getR(), 0));
+    double clampG = Math.min(1, Math.max(lc.getG(), 0));
+    double clampB = Math.min(1, Math.max(lc.getB(), 0));
+    double clampA = Math.min(1, Math.max(lc.getA(), 0));
 
-    Disruptor<T> disruptor = new Disruptor<>(factory, bufferSize, Executors.defaultThreadFactory(), ProducerType.SINGLE, new YieldingWaitStrategy());
+    // Gamma correction
+    clampR = clampR <= 0.0031308 ? clampR * 12.92 : 1.055 * Math.pow(clampR, 1.0 / 2.4) - 0.055;
+    clampG = clampG <= 0.0031308 ? clampG * 12.92 : 1.055 * Math.pow(clampG, 1.0 / 2.4) - 0.055;
+    clampB = clampB <= 0.0031308 ? clampB * 12.92 : 1.055 * Math.pow(clampB, 1.0 / 2.4) - 0.055;
 
-    disruptor.handleEventsWith(consumer);
+    String rs = ("0" + Integer.toHexString((int) Math.floor(clampR * 255.999999)));
+    String gs = ("0" + Integer.toHexString((int) Math.floor(clampG * 255.999999)));
+    String bs = ("0" + Integer.toHexString((int) Math.floor(clampB * 255.999999)));
+    String as = ("0" + Integer.toHexString((int) Math.floor(clampA * 255.999999)));
 
-    disruptor.start();
+    return "#" + rs.substring(rs.length() - 2) + gs.substring(gs.length() - 2) + bs.substring(bs.length() - 2) + as.substring(as.length() - 2);
+  }
 
-    RingBuffer<T> ringBuffer = disruptor.getRingBuffer();
-
-    producer.accept(ringBuffer);
-
-    disruptor.shutdown();
+  public static <T> Iterable<T> iterable(Stream<T> stream) {
+    return stream::iterator;
   }
 
 }

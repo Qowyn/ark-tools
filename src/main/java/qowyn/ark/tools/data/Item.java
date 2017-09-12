@@ -1,15 +1,19 @@
 package qowyn.ark.tools.data;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Optional;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.function.Function;
 
-import javax.json.JsonObject;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import qowyn.ark.GameObject;
 import qowyn.ark.PropertyContainer;
@@ -29,15 +33,15 @@ import qowyn.ark.properties.PropertyUInt16;
 import qowyn.ark.properties.PropertyUInt32;
 import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.structs.StructVector;
+import qowyn.ark.tools.DataManager;
+import qowyn.ark.tools.ItemData;
 import qowyn.ark.types.ArkByteValue;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.ObjectReference;
 
-public class ArkItem {
+public class Item {
 
-  private static final int COLOR_SLOT_COUNT = 6;
-  
-  public long itemId;
+  public static final int COLOR_SLOT_COUNT = 6;
 
   public boolean canEquip;
 
@@ -54,6 +58,8 @@ public class ArkItem {
   public boolean isHidden;
 
   public ArkName className;
+
+  public String type;
 
   public String blueprintGeneratedClass;
 
@@ -79,9 +85,15 @@ public class ArkItem {
 
   public final byte[] eggColors = new byte[COLOR_SLOT_COUNT];
 
+  public String crafterCharacterName;
+
+  public String crafterTribeName;
+
+  public float craftedSkillBonus;
+
   public int uploadOffset;
 
-  public ArkItem() {
+  public Item() {
     canEquip = true;
     canSlot = true;
     canRemove = true;
@@ -89,13 +101,17 @@ public class ArkItem {
     quantity = 1;
     customName = "";
     customDescription = "";
+    crafterCharacterName = "";
+    crafterTribeName = "";
   }
 
   /**
    * From ArkSavegame
    */
-  public ArkItem(GameObject item) {
+  public Item(GameObject item) {
     className = item.getClassName();
+    ItemData itemData = DataManager.getItem(className.toString());
+    type = itemData != null ? itemData.getName() : className.toString();
 
     canEquip = item.findPropertyValue("bAllowEquppingItem", Boolean.class).orElse(true);
     canSlot = item.findPropertyValue("bCanSlot", Boolean.class).orElse(true);
@@ -136,14 +152,20 @@ public class ArkItem {
     for (int i = 0; i < eggColors.length; i++) {
       eggColors[i] = item.findPropertyValue("EggColorSetIndices", ArkByteValue.class, i).map(ArkByteValue::getByteValue).orElse((byte) 0);
     }
+
+    crafterCharacterName = item.findPropertyValue("CrafterCharacterName", String.class).orElse("");
+    crafterTribeName = item.findPropertyValue("CrafterTribeName", String.class).orElse("");
+    craftedSkillBonus = item.findPropertyValue("CraftedSkillBonus", Float.class).orElse(0.0f);
   }
 
   /**
    * From cluster storage
    */
-  public ArkItem(PropertyContainer item) {
+  public Item(PropertyContainer item) {
     blueprintGeneratedClass = item.getPropertyValue("ItemArchetype", ObjectReference.class).getObjectString().toString();
     className = ArkName.from(blueprintGeneratedClass.substring(blueprintGeneratedClass.lastIndexOf('.') + 1));
+    ItemData itemData = DataManager.getItem(className.toString());
+    type = itemData != null ? itemData.getName() : className.toString();
 
     canEquip = true;
     canSlot = item.findPropertyValue("bIsSlot", Boolean.class).orElse(true);
@@ -184,56 +206,65 @@ public class ArkItem {
     for (int i = 0; i < eggColors.length; i++) {
       eggColors[i] = item.findPropertyValue("EggColorSetIndices", ArkByteValue.class, i).map(ArkByteValue::getByteValue).orElse((byte) 0);
     }
+
+    crafterCharacterName = item.findPropertyValue("CrafterCharacterName", String.class).orElse("");
+    crafterTribeName = item.findPropertyValue("CrafterTribeName", String.class).orElse("");
+    craftedSkillBonus = item.findPropertyValue("CraftedSkillBonus", Float.class).orElse(0.0f);
   }
 
   /**
    * From JSON / ModificationFile
    */
-  public ArkItem(JsonObject object) {
-    className = ArkName.from(object.getString("className"));
-    blueprintGeneratedClass = "BlueprintGeneratedClass " + object.getString("blueprintGeneratedClass", "");
+  public Item(JsonNode node) {
+    className = ArkName.from(node.path("className").asText());
+    ItemData itemData = DataManager.getItem(className.toString());
+    type = itemData != null ? itemData.getName() : className.toString();
+    blueprintGeneratedClass = "BlueprintGeneratedClass " + node.path("blueprintGeneratedClass").asText();
 
-    canEquip = object.getBoolean("canEquip", true);
-    canSlot = object.getBoolean("canSlot", true);
-    isEngram = object.getBoolean("isEngram", false);
-    isBlueprint = object.getBoolean("isBlueprint", false);
-    canRemove = object.getBoolean("canRemove", true);
-    canRemoveFromCluster = object.getBoolean("canRemoveFromCluster", true);
-    isHidden = object.getBoolean("isHidden", false);
+    canEquip = node.path("canEquip").asBoolean(true);
+    canSlot = node.path("canSlot").asBoolean(true);
+    isEngram = node.path("isEngram").asBoolean();
+    isBlueprint = node.path("isBlueprint").asBoolean();
+    canRemove = node.path("canRemove").asBoolean(true);
+    canRemoveFromCluster = node.path("canRemoveFromCluster").asBoolean(true);
+    isHidden = node.path("isHidden").asBoolean();
 
-    quantity = Math.max(1, object.getInt("quantity", 1));
+    quantity = Math.max(1, node.path("quantity").asInt(1));
 
-    customName = object.getString("customName", "");
+    customName = node.path("customName").asText();
 
-    customDescription = object.getString("customDescription", "");
+    customDescription = node.path("customDescription").asText();
 
-    // Getting a float with a default value using JSR 353? Eaaaaasy
-    durability = Optional.ofNullable(object.getJsonNumber("durability")).map(n -> n.bigDecimalValue().floatValue()).orElse(0.0f);
-    rating = Optional.ofNullable(object.getJsonNumber("rating")).map(n -> n.bigDecimalValue().floatValue()).orElse(0.0f);
+    durability = (float) node.path("durability").asDouble();
+    rating = (float) node.path("rating").asDouble();
 
-    quality = (byte) object.getInt("quality", 0);
+    quality = (byte) node.path("quality").asInt();
 
     for (int i = 0; i < itemStatValues.length; i++) {
-      itemStatValues[i] = (short) object.getInt("itemStatsValue_" + i, 0);
+      itemStatValues[i] = (short) node.path("itemStatsValue_" + i).asInt();
     }
 
     for (int i = 0; i < itemColors.length; i++) {
-      itemColors[i] = (short) object.getInt("itemColor_" + i, 0);
+      itemColors[i] = (short) node.path("itemColor_" + i).asInt();
     }
 
     for (int i = 0; i < preSkinItemColors.length; i++) {
-      preSkinItemColors[i] = (short) object.getInt("preSkinItemColor_" + i, 0);
+      preSkinItemColors[i] = (short) node.path("preSkinItemColor_" + i).asInt();
     }
 
     for (int i = 0; i < eggLevelups.length; i++) {
-      eggLevelups[i] = (byte) object.getInt("eggLevelup_" + i, 0);
+      eggLevelups[i] = (byte) node.path("eggLevelup_" + i).asInt();
     }
 
     for (int i = 0; i < eggColors.length; i++) {
-      eggColors[i] = (byte) object.getInt("eggColor_" + i, 0);
+      eggColors[i] = (byte) node.path("eggColor_" + i).asInt();
     }
 
-    uploadOffset = object.getInt("uploadOffset", 0);
+    crafterCharacterName = node.path("crafterCharacterName").asText();
+    crafterTribeName = node.path("crafterTribeName").asText();
+    craftedSkillBonus = (float) node.path("craftedSkillBonus").asDouble();
+
+    uploadOffset = node.path("uploadOffset").asInt();
   }
 
   public StructPropertyList toClusterData() {
@@ -334,6 +365,10 @@ public class ArkItem {
       arkTributeItem.getProperties().add(new PropertyByte("EggColorSetIndices", i, eggColors[i]));
     }
 
+    arkTributeItem.getProperties().add(new PropertyStr("CrafterCharacterName", crafterCharacterName));
+    arkTributeItem.getProperties().add(new PropertyStr("CrafterTribeName", crafterTribeName));
+    arkTributeItem.getProperties().add(new PropertyFloat("CraftedSkillBonus", craftedSkillBonus));
+
     arkTributeItem.getProperties().add(new PropertyByte("ItemVersion", (byte) 0));
     arkTributeItem.getProperties().add(new PropertyInt("CustomItemID", 0));
     arkTributeItem.getProperties().add(new PropertyArray("SteamUserItemID", new ArkArrayUInt64()));
@@ -399,6 +434,16 @@ public class ArkItem {
       }
     }
 
+    if (crafterCharacterName != null && !crafterCharacterName.isEmpty()) {
+      object.getProperties().add(new PropertyStr("CrafterCharacterName", crafterCharacterName));
+    }
+    if (crafterTribeName != null && !crafterTribeName.isEmpty()) {
+      object.getProperties().add(new PropertyStr("CrafterTribeName", crafterTribeName));
+    }
+    if (craftedSkillBonus != 0.0f) {
+      object.getProperties().add(new PropertyFloat("CraftedSkillBonus", craftedSkillBonus));
+    }
+
     Set<Long> itemIDs = new HashSet<>(); // Stored as StructPropertyList with 2 UInt32
     Set<ArkName> names = new HashSet<>();
 
@@ -456,6 +501,223 @@ public class ArkItem {
     object.setExtraData(new ExtraDataZero());
 
     return object;
+  }
+
+  public static final SortedMap<String, WriterFunction<Item>> PROPERTIES = new TreeMap<>();
+
+  static {
+    /**
+     * Item Properties
+     */
+    PROPERTIES.put("canEquip", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || !item.canEquip) {
+        generator.writeBooleanField("canEquip", item.canEquip);
+      }
+    });
+    PROPERTIES.put("canSlot", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || !item.canSlot) {
+        generator.writeBooleanField("canSlot", item.canSlot);
+      }
+    });
+    PROPERTIES.put("isEngram", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || item.isEngram) {
+        generator.writeBooleanField("isEngram", item.isEngram);
+      }
+    });
+    PROPERTIES.put("isBlueprint", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || item.isBlueprint) {
+        generator.writeBooleanField("isBlueprint", item.isBlueprint);
+      }
+    });
+    PROPERTIES.put("canRemove", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || !item.canRemove) {
+        generator.writeBooleanField("canRemove", item.canRemove);
+      }
+    });
+    PROPERTIES.put("canRemoveFromCluster", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || !item.canRemoveFromCluster) {
+        generator.writeBooleanField("canRemoveFromCluster", item.canRemoveFromCluster);
+      }
+    });
+    PROPERTIES.put("isHidden", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || item.isHidden) {
+        generator.writeBooleanField("isHidden", item.isHidden);
+      }
+    });
+    PROPERTIES.put("type", (item, generator, context, writeEmpty) -> {
+      if (context instanceof DataCollector) {
+        generator.writeStringField("type", item.className.toString());
+      } else {
+        generator.writeStringField("type", item.type);
+      }
+    });
+    PROPERTIES.put("blueprintGeneratedClass", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || item.blueprintGeneratedClass != null && !item.blueprintGeneratedClass.isEmpty()) {
+        if (item.blueprintGeneratedClass != null) {
+          generator.writeStringField("blueprintGeneratedClass", item.blueprintGeneratedClass);
+        } else {
+          generator.writeNullField("blueprintGeneratedClass");
+        }
+      }
+    });
+    PROPERTIES.put("quantity", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || item.quantity != 0) {
+        generator.writeNumberField("quantity", item.quantity);
+      }
+    });
+    PROPERTIES.put("customName", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || !item.customName.isEmpty()) {
+        generator.writeStringField("customName", item.customName);
+      }
+    });
+    PROPERTIES.put("customDescription", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || !item.customDescription.isEmpty()) {
+        generator.writeStringField("customDescription", item.customDescription);
+      }
+    });
+    PROPERTIES.put("durability", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || item.durability != 0.0f) {
+        generator.writeNumberField("durability", item.durability);
+      }
+    });
+    PROPERTIES.put("rating", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || item.rating != 0.0f) {
+        generator.writeNumberField("rating", item.rating);
+      }
+    });
+    PROPERTIES.put("quality", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || item.quality != 0) {
+        generator.writeNumberField("quality", Byte.toUnsignedInt(item.quality));
+      }
+    });
+    PROPERTIES.put("itemStatValues", (item, generator, context, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeObjectFieldStart("itemStatValues");
+      }
+      for (int index = 0; index < item.itemStatValues.length; index++) {
+        if (writeEmpty || item.itemStatValues[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeObjectFieldStart("itemStatValues");
+          }
+          generator.writeNumberField(ItemStatDefinitions.get(index), Short.toUnsignedInt(item.itemStatValues[index]));
+        }
+      }
+      if (!empty) {
+        generator.writeEndObject();
+      }
+    });
+    PROPERTIES.put("itemColors", (item, generator, context, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeObjectFieldStart("itemColors");
+      }
+      for (int index = 0; index < item.itemColors.length; index++) {
+        if (writeEmpty || item.itemColors[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeObjectFieldStart("itemColors");
+          }
+          generator.writeNumberField(Integer.toString(index), Short.toUnsignedInt(item.itemColors[index]));
+        }
+      }
+      if (!empty) {
+        generator.writeEndObject();
+      }
+    });
+    PROPERTIES.put("preSkinItemColors", (item, generator, context, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeObjectFieldStart("preSkinItemColors");
+      }
+      for (int index = 0; index < item.preSkinItemColors.length; index++) {
+        if (writeEmpty || item.preSkinItemColors[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeObjectFieldStart("preSkinItemColors");
+          }
+          generator.writeNumberField(Integer.toString(index), Short.toUnsignedInt(item.preSkinItemColors[index]));
+        }
+      }
+      if (!empty) {
+        generator.writeEndObject();
+      }
+    });
+    PROPERTIES.put("eggColors", (item, generator, context, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeObjectFieldStart("eggColors");
+      }
+      for (int index = 0; index < item.eggColors.length; index++) {
+        if (writeEmpty || item.eggColors[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeObjectFieldStart("eggColors");
+          }
+          generator.writeNumberField(Integer.toString(index), Byte.toUnsignedInt(item.eggColors[index]));
+        }
+      }
+      if (!empty) {
+        generator.writeEndObject();
+      }
+    });
+    PROPERTIES.put("eggLevelups", (item, generator, context, writeEmpty) -> {
+      boolean empty = !writeEmpty;
+      if (!empty) {
+        generator.writeObjectFieldStart("eggLevelups");
+      }
+      for (int index = 0; index < item.eggLevelups.length; index++) {
+        if (writeEmpty || item.eggLevelups[index] != 0) {
+          if (empty) {
+            empty = false;
+            generator.writeObjectFieldStart("eggLevelups");
+          }
+          generator.writeNumberField(AttributeNames.get(index), Byte.toUnsignedInt(item.eggLevelups[index]));
+        }
+      }
+      if (!empty) {
+        generator.writeEndObject();
+      }
+    });
+    PROPERTIES.put("crafterCharacterName", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || !item.crafterCharacterName.isEmpty()) {
+        generator.writeStringField("crafterCharacterName", item.crafterCharacterName);
+      }
+    });
+    PROPERTIES.put("crafterTribeName", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || !item.crafterTribeName.isEmpty()) {
+        generator.writeStringField("crafterTribeName", item.crafterTribeName);
+      }
+    });
+    PROPERTIES.put("craftedSkillBonus", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || item.craftedSkillBonus != 0.0f) {
+        generator.writeNumberField("craftedSkillBonus", item.craftedSkillBonus);
+      }
+    });
+    PROPERTIES.put("uploadOffset", (item, generator, context, writeEmpty) -> {
+      if (writeEmpty || item.uploadOffset != 0) {
+        generator.writeNumberField("uploadOffset", item.uploadOffset);
+      }
+    });
+  }
+
+  public static final List<WriterFunction<Item>> PROPERTIES_LIST = new ArrayList<>(PROPERTIES.values());
+
+  public static boolean isDefaultItem(GameObject item) {
+    if (item.findPropertyValue("bIsEngram", Boolean.class).orElse(false)) {
+      return true;
+    }
+    if (item.findPropertyValue("bHideFromInventoryDisplay", Boolean.class).orElse(false)) {
+      return true;
+    }
+    return false;
+  }
+
+  public void writeAllProperties(JsonGenerator generator, DataContext context, boolean writeEmpty) throws IOException {
+    for (WriterFunction<Item> writer: PROPERTIES_LIST) {
+      writer.accept(this, generator, context, writeEmpty);
+    }
   }
 
 }

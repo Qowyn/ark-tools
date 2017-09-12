@@ -1,26 +1,33 @@
 package qowyn.ark.tools;
 
+import static qowyn.ark.tools.CommonFunctions.iterable;
+import static qowyn.ark.tools.CommonFunctions.writeJson;
+
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import javax.json.stream.JsonGenerator;
-
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
+import qowyn.ark.ArkArchive;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
+import qowyn.ark.NameSizeCalculator;
 import qowyn.ark.ReadingOptions;
 import qowyn.ark.types.ArkName;
 
 public class DebugCommands {
+
+  private static final Comparator<Map.Entry<String, List<GameObject>>> SORT_BY_SIZE = Comparator.comparing(e -> e.getValue().size(), Comparator.reverseOrder());
 
   public static void classes(OptionHandler oh) {
     OptionSpec<Void> withoutDupesSpec = oh.accepts("without-dupes", "Removes duplicate objects");
@@ -41,7 +48,7 @@ public class DebugCommands {
     }
 
     try {
-      String savePath = params.get(0);
+      Path savePath = Paths.get(params.get(0));
 
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
 
@@ -72,16 +79,16 @@ public class DebugCommands {
 
       stopwatch.stop("Grouping");
 
-      Consumer<JsonGenerator> writer = g -> {
-        g.writeStartObject();
+      WriteJsonCallback writer = generator -> {
+        generator.writeStartObject();
 
-        g.write("_count", objects.size());
+        generator.writeNumberField("_count", objects.size());
 
-        map.entrySet().stream().sorted(Comparator.comparing(e -> e.getValue().size(), Comparator.reverseOrder())).forEach(e -> {
-          String name = e.getKey();
+        for (Map.Entry<String, List<GameObject>> entry: iterable(map.entrySet().stream().sorted(SORT_BY_SIZE))) {
+          String name = entry.getKey();
 
           if (options.has(withNames)) {
-            if (e.getValue().get(0).isItem()) {
+            if (entry.getValue().get(0).isItem()) {
               if (DataManager.hasItem(name)) {
                 name = DataManager.getItem(name).getName();
               }
@@ -94,16 +101,16 @@ public class DebugCommands {
             }
           }
 
-          g.write(name, e.getValue().size());
-        });
+          generator.writeNumberField(name, entry.getValue().size());
+        }
 
-        g.writeEnd();
+        generator.writeEndObject();
       };
 
       if (params.size() > 1) {
-        CommonFunctions.writeJson(params.get(1), writer, oh);
+        writeJson(Paths.get(params.get(1)), writer, oh);
       } else {
-        CommonFunctions.writeJson(System.out, writer, oh);
+        writeJson(System.out, writer, oh);
       }
 
       stopwatch.stop("Writing");
@@ -124,30 +131,33 @@ public class DebugCommands {
     }
 
     try {
-      String savePath = params.get(0);
+      Path savePath = Paths.get(params.get(0));
       String className = params.get(1);
 
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
 
-      Predicate<GameObject> filter = o -> o.getClassString().equals(className);
+      Predicate<GameObject> filter = object -> object.getClassString().equals(className);
 
       ArkSavegame savegame = new ArkSavegame(savePath, oh.readingOptions().withObjectFilter(filter));
 
       stopwatch.stop("Loading");
 
-      Consumer<JsonGenerator> dumpObjects = g -> {
-        g.writeStartArray();
+      WriteJsonCallback dumpObjects = generator -> {
+        generator.writeStartArray();
 
-        savegame.getObjects().stream().filter(filter).forEach(o -> g.write(o.toJson(true)));
+        for (GameObject object: savegame) {
+          if (filter.test(object)) {
+            object.writeJson(generator, true);
+          }
+        }
 
-        g.writeEnd();
-        g.flush();
+        generator.writeEndArray();
       };
 
       if (params.size() > 2) {
-        CommonFunctions.writeJson(params.get(2), dumpObjects, oh);
+        writeJson(Paths.get(params.get(2)), dumpObjects, oh);
       } else {
-        CommonFunctions.writeJson(System.out, dumpObjects, oh);
+        writeJson(System.out, dumpObjects, oh);
       }
 
       stopwatch.stop("Writing");
@@ -167,7 +177,7 @@ public class DebugCommands {
     }
 
     try {
-      String savePath = params.get(0);
+      Path savePath = Paths.get(params.get(0));
 
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
 
@@ -182,24 +192,23 @@ public class DebugCommands {
 
       stopwatch.stop("Collecting");
 
-      Consumer<JsonGenerator> writer = g -> {
-        g.writeStartArray();
+      WriteJsonCallback writer = generator -> {
+        generator.writeStartArray();
 
-        pairList.forEach(pair -> {
-          g.writeStartObject();
-          g.write("class", pair.object.getClassString());
-          g.write("size", pair.size);
-          g.writeEnd();
-        });
+        for (SizeObjectPair pair: pairList) {
+          generator.writeStartObject();
+          generator.writeStringField("class", pair.object.getClassString());
+          generator.writeNumberField("size", pair.size);
+          generator.writeEndObject();
+        }
 
-        g.writeEnd();
-        g.flush();
+        generator.writeEndObject();
       };
 
       if (params.size() > 1) {
-        CommonFunctions.writeJson(params.get(1), writer, oh);
+        writeJson(Paths.get(params.get(1)), writer, oh);
       } else {
-        CommonFunctions.writeJson(System.out, writer, oh);
+        writeJson(System.out, writer, oh);
       }
 
       stopwatch.stop("Writing");
@@ -210,12 +219,13 @@ public class DebugCommands {
   }
 
   private static class SizeObjectPair {
+    private final static NameSizeCalculator NAME_SIZER = ArkArchive.getNameSizer(true);
     private final int size;
     private final GameObject object;
 
     public SizeObjectPair(GameObject object) {
       this.object = object;
-      this.size = object.getSize(true) + object.getPropertiesSize(true);
+      this.size = object.getSize(NAME_SIZER) + object.getPropertiesSize(NAME_SIZER);
     }
 
     public int getSize() {

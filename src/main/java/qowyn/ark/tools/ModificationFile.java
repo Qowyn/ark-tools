@@ -10,12 +10,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonString;
-import javax.json.JsonValue;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeType;
 
-import qowyn.ark.tools.data.ArkItem;
+import qowyn.ark.tools.data.Item;
 import qowyn.ark.types.ArkName;
 
 public class ModificationFile {
@@ -26,58 +24,52 @@ public class ModificationFile {
 
   public final Set<ArkName> removeItems = new HashSet<>();
 
-  public final List<ArkItem> addItems = new ArrayList<>();
+  public final List<Item> addItems = new ArrayList<>();
 
-  public final Map<ArkName, List<ArkItem>> replaceDefaultInventoriesMap = new HashMap<>();
+  public final Map<ArkName, List<Item>> replaceDefaultInventoriesMap = new HashMap<>();
 
-  public final Map<ArkName, List<ArkItem>> replaceInventoriesMap = new HashMap<>();
+  public final Map<ArkName, List<Item>> replaceInventoriesMap = new HashMap<>();
 
-  public final Map<ArkName, List<ArkItem>> addDefaultInventoriesMap = new HashMap<>();
+  public final Map<ArkName, List<Item>> addDefaultInventoriesMap = new HashMap<>();
 
-  public final Map<ArkName, List<ArkItem>> addInventoriesMap = new HashMap<>();
+  public final Map<ArkName, List<Item>> addInventoriesMap = new HashMap<>();
 
-  public void readJson(JsonObject object) {
-    
+  public void readJson(JsonNode node) {
     // Cluster and LocalProfile start
 
-    JsonValue dinoClassNamesValue = object.get("remapDinoClassNames");
+    JsonNode dinoClassNamesValue = node.path("remapDinoClassNames");
 
-    if (expect(dinoClassNamesValue, "remapDinoClassNames", JsonValue.ValueType.OBJECT)) {
-      JsonObject dinoClassNames = (JsonObject) dinoClassNamesValue;
-
-      dinoClassNames.forEach((name, value) -> {
-        if (expect(value, name, JsonValue.ValueType.STRING)) {
-          remapDinoClassName.put(name, ((JsonString) value).getString());
+    if (expect(dinoClassNamesValue, "remapDinoClassNames", JsonNodeType.OBJECT)) {
+      dinoClassNamesValue.fields().forEachRemaining(entry -> {
+        if (expect(entry.getValue(), entry.getKey(), JsonNodeType.STRING)) {
+          remapDinoClassName.put(entry.getKey(), entry.getValue().asText());
         }
       });
     }
 
-    JsonValue itemArchetypesValue = object.get("remapItemArchetypes");
+    JsonNode itemArchetypesValue = node.path("remapItemArchetypes");
 
-    if (expect(itemArchetypesValue, "remapItemArchetypes", JsonValue.ValueType.OBJECT)) {
-      JsonObject itemArchetypes = (JsonObject) itemArchetypesValue;
-
-      itemArchetypes.forEach((name, value) -> {
-        if (expect(value, name, JsonValue.ValueType.STRING)) {
-          remapItemArchetypes.put(ArkName.from(name), ArkName.from(((JsonString) value).getString()));
+    if (expect(itemArchetypesValue, "remapItemArchetypes", JsonNodeType.OBJECT)) {
+      itemArchetypesValue.fields().forEachRemaining(entry -> {
+        if (expect(entry.getValue(), entry.getKey(), JsonNodeType.STRING)) {
+          remapItemArchetypes.put(ArkName.from(entry.getKey()), ArkName.from(entry.getValue().asText()));
         }
       });
     }
 
-    JsonValue removeItemsValue = object.get("removeItems");
+    JsonNode removeItemsValue = node.path("removeItems");
 
-    if (expect(removeItemsValue, "removeItems", JsonValue.ValueType.ARRAY)) {
-      for (JsonString itemClass : ((JsonArray) removeItemsValue).getValuesAs(JsonString.class)) {
-        removeItems.add(ArkName.from(itemClass.getString()));
+    if (expect(removeItemsValue, "removeItems", JsonNodeType.ARRAY)) {
+      for (JsonNode itemClass : removeItemsValue) {
+        removeItems.add(ArkName.from(itemClass.asText()));
       }
     }
 
-    JsonValue addItemsValue = object.get("addItems");
+    JsonNode addItemsValue = node.path("addItems");
 
-    if (expect(addItemsValue, "addItems", JsonValue.ValueType.ARRAY)) {
-      JsonArray itemArray = (JsonArray) addItemsValue;
-      for (JsonObject item : itemArray.getValuesAs(JsonObject.class)) {
-        addItems.add(new ArkItem(item));
+    if (expect(addItemsValue, "addItems", JsonNodeType.ARRAY)) {
+      for (JsonNode item : addItemsValue) {
+        addItems.add(new Item(item));
       }
     }
     
@@ -85,22 +77,19 @@ public class ModificationFile {
     
     // Map start
 
-    BiConsumer<String, Map<ArkName, List<ArkItem>>> inventoryLoader = (fieldName, map) -> {
-      JsonValue inventoriesValue = object.get(fieldName);
+    BiConsumer<String, Map<ArkName, List<Item>>> inventoryLoader = (fieldName, map) -> {
+      JsonNode inventoriesValue = node.path(fieldName);
 
-      if (expect(inventoriesValue, fieldName, JsonValue.ValueType.OBJECT)) {
-        JsonObject inventories = (JsonObject) inventoriesValue;
+      if (expect(inventoriesValue, fieldName, JsonNodeType.OBJECT)) {
+        inventoriesValue.fields().forEachRemaining(entry -> {
+          if (expect(entry.getValue(), entry.getKey(), JsonNodeType.ARRAY)) {
+            List<Item> items = new ArrayList<>();
 
-        inventories.forEach((name, value) -> {
-          if (expect(value, name, JsonValue.ValueType.ARRAY)) {
-            JsonArray itemArray = (JsonArray) value;
-            List<ArkItem> items = new ArrayList<>();
-
-            for (JsonObject item : itemArray.getValuesAs(JsonObject.class)) {
-              items.add(new ArkItem(item));
+            for (JsonNode item : entry.getValue()) {
+              items.add(new Item(item));
             }
 
-            map.put(ArkName.from(name), items);
+            map.put(ArkName.from(entry.getKey()), items);
           }
         });
       }
