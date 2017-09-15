@@ -235,6 +235,7 @@ public class PlayerListCommands {
     OptionSpec<String> structuresSpec = optionHandler.accepts("structures", "Include a list of all structures belonging to the tribe.").withOptionalArg().describedAs("summary|long").defaultsTo("summary");
     OptionSpec<Void> basesSpec = optionHandler.accepts("bases", "Allows tribes to create 'bases', groups creatures etc by base.");
     OptionSpec<Void> tribelessSpec = optionHandler.accepts("tribeless", "Put all players without a tribe into the 'tribeless' tribe.");
+    OptionSpec<Void> nonPlayerSpec = optionHandler.accepts("non-player", "Include stuff owned by non-player factions. Generates a 'non-players.json' file.");
     OptionSpec<Void> writeAllFieldsSpec = optionHandler.accepts("write-all-fields", "Writes all the fields.");
 
     OptionSet options = optionHandler.reparse();
@@ -336,10 +337,15 @@ public class PlayerListCommands {
               continue;
             }
 
-            Number targetingTeam = object.getPropertyValue("TargetingTeam", Number.class);
-            if (targetingTeam == null 
-                || (tribeId != null && targetingTeam.intValue() != tribeId)
-                || (tribeId == null && (targetingTeam.intValue() < 50000 || tribeIds.contains(targetingTeam.intValue())))) {
+            int targetingTeam = object.findPropertyValue("TargetingTeam", Integer.class).orElse(-1);
+            if (targetingTeam == -1) {
+              continue;
+            }
+            if (tribeId == -1 && (targetingTeam < 50000 || tribeIds.contains(targetingTeam))) {
+              continue;
+            } else if (tribeId == 0 && targetingTeam >= 50000) {
+              continue;
+            } else if (tribeId > 0 && tribeId != targetingTeam) {
               continue;
             }
 
@@ -633,7 +639,19 @@ public class PlayerListCommands {
         CommonFunctions.writeJson(tribePath, generator -> {
           generator.writeStartObject();
 
-          mapWriter.accept(generator, null);
+          mapWriter.accept(generator, -1);
+
+          generator.writeEndObject();
+        }, optionHandler);
+      }
+
+      if (options.has(nonPlayerSpec)) {
+        Path tribePath = outputDirectory.resolve("non-players.json");
+
+        CommonFunctions.writeJson(tribePath, generator -> {
+          generator.writeStartObject();
+
+          mapWriter.accept(generator, 0);
 
           generator.writeEndObject();
         }, optionHandler);

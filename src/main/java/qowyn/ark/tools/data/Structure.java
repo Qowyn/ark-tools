@@ -117,8 +117,8 @@ public class Structure {
           generator.writeNumberField("y", structure.location.getY());
           generator.writeNumberField("z", structure.location.getZ());
           if (context.getLatLonCalculator() != null) {
-            generator.writeNumberField("lat", context.getLatLonCalculator().calculateLat(structure.location.getX()));
-            generator.writeNumberField("lon", context.getLatLonCalculator().calculateLon(structure.location.getY()));
+            generator.writeNumberField("lat", context.getLatLonCalculator().calculateLat(structure.location.getY()));
+            generator.writeNumberField("lon", context.getLatLonCalculator().calculateLon(structure.location.getX()));
           }
           generator.writeEndObject();
         }

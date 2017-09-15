@@ -407,8 +407,8 @@ public class Player {
           generator.writeNumberField("y", player.location.getY());
           generator.writeNumberField("z", player.location.getZ());
           if (context.getLatLonCalculator() != null) {
-            generator.writeNumberField("lat", context.getLatLonCalculator().calculateLat(player.location.getX()));
-            generator.writeNumberField("lon", context.getLatLonCalculator().calculateLon(player.location.getY()));
+            generator.writeNumberField("lat", context.getLatLonCalculator().calculateLat(player.location.getY()));
+            generator.writeNumberField("lon", context.getLatLonCalculator().calculateLon(player.location.getX()));
           }
           generator.writeEndObject();
         }

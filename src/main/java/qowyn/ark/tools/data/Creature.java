@@ -143,10 +143,12 @@ public class Creature {
         StructPropertyList propertyList = (StructPropertyList)value;
         AncestorLineEntry entry = new AncestorLineEntry();
 
+        entry.maleName = propertyList.findPropertyValue("MaleName", String.class).orElse("");
         int fatherID1 = propertyList.getPropertyValue("MaleDinoID1", Integer.class);
         int fatherID2 = propertyList.getPropertyValue("MaleDinoID2", Integer.class);
         entry.maleId = (long) fatherID1 << Integer.SIZE | (fatherID2 & 0xFFFFFFFFL);
 
+        entry.femaleName = propertyList.findPropertyValue("FemaleName", String.class).orElse("");
         int motherID1 = propertyList.getPropertyValue("FemaleDinoID1", Integer.class);
         int motherID2 = propertyList.getPropertyValue("FemaleDinoID2", Integer.class);
         entry.femaleId = (long) motherID1 << Integer.SIZE | (motherID2 & 0xFFFFFFFFL);
@@ -161,10 +163,12 @@ public class Creature {
         StructPropertyList propertyList = (StructPropertyList)value;
         AncestorLineEntry entry = new AncestorLineEntry();
 
+        entry.maleName = propertyList.findPropertyValue("MaleName", String.class).orElse("");
         int fatherID1 = propertyList.getPropertyValue("MaleDinoID1", Integer.class);
         int fatherID2 = propertyList.getPropertyValue("MaleDinoID2", Integer.class);
         entry.maleId = (long) fatherID1 << Integer.SIZE | (fatherID2 & 0xFFFFFFFFL);
 
+        entry.femaleName = propertyList.findPropertyValue("FemaleName", String.class).orElse("");
         int motherID1 = propertyList.getPropertyValue("FemaleDinoID1", Integer.class);
         int motherID2 = propertyList.getPropertyValue("FemaleDinoID2", Integer.class);
         entry.femaleId = (long) motherID1 << Integer.SIZE | (motherID2 & 0xFFFFFFFFL);
@@ -228,7 +232,11 @@ public class Creature {
 
   public static class AncestorLineEntry {
 
+    public String maleName;
+
     public long maleId;
+
+    public String femaleName;
 
     public long femaleId;
 
@@ -257,8 +265,8 @@ public class Creature {
           generator.writeNumberField("y", creature.location.getY());
           generator.writeNumberField("z", creature.location.getZ());
           if (context.getLatLonCalculator() != null) {
-            generator.writeNumberField("lat", context.getLatLonCalculator().calculateLat(creature.location.getX()));
-            generator.writeNumberField("lon", context.getLatLonCalculator().calculateLon(creature.location.getY()));
+            generator.writeNumberField("lat", context.getLatLonCalculator().calculateLat(creature.location.getY()));
+            generator.writeNumberField("lon", context.getLatLonCalculator().calculateLon(creature.location.getX()));
           }
           generator.writeEndObject();
         }
@@ -305,6 +313,38 @@ public class Creature {
       }
       if (!empty) {
         generator.writeEndObject();
+      }
+    });
+    PROPERTIES.put("femaleAncestors", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || !creature.femaleAncestors.isEmpty()) {
+        generator.writeArrayFieldStart("femaleAncestors");
+        for (AncestorLineEntry entry: creature.femaleAncestors) {
+          generator.writeStartObject();
+
+          generator.writeStringField("maleName", entry.maleName);
+          generator.writeNumberField("maleId", entry.maleId);
+          generator.writeStringField("femaleName", entry.femaleName);
+          generator.writeNumberField("femaleId", entry.femaleId);
+
+          generator.writeEndObject();
+        }
+        generator.writeEndArray();
+      }
+    });
+    PROPERTIES.put("maleAncestors", (creature, generator, context, writeEmpty) -> {
+      if (writeEmpty || !creature.maleAncestors.isEmpty()) {
+        generator.writeArrayFieldStart("maleAncestors");
+        for (AncestorLineEntry entry: creature.maleAncestors) {
+          generator.writeStartObject();
+
+          generator.writeStringField("maleName", entry.maleName);
+          generator.writeNumberField("maleId", entry.maleId);
+          generator.writeStringField("femaleName", entry.femaleName);
+          generator.writeNumberField("femaleId", entry.femaleId);
+
+          generator.writeEndObject();
+        }
+        generator.writeEndArray();
       }
     });
     PROPERTIES.put("tamedAtTime", (creature, generator, context, writeEmpty) -> {

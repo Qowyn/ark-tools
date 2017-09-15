@@ -5,6 +5,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.IntSummaryStatistics;
 import java.util.List;
@@ -65,8 +66,10 @@ public class CreatureListCommands {
     listImpl(CommonFunctions::onlyWild);
   }
 
+  private static final List<String> KNOWN_CREATURES = Arrays.asList("Raft_BP_C", "Polar_Bear_C", "Ragnarok_Wyvern_Override_C", "Ragnarok_Wyvern_Override_Ice_C");
+
   protected static boolean neededClasses(GameObject object) {
-    return object.getClassString().contains("_Character_") || object.getClassString().startsWith("DinoCharacterStatusComponent_") || object.getClassString().equals("Raft_BP_C");
+    return object.getClassString().contains("_Character_") || object.getClassString().startsWith("DinoCharacterStatusComponent_") || KNOWN_CREATURES.contains(object.getClassString());
   }
 
   protected static boolean onlyTameable(GameObject object) {
@@ -74,7 +77,7 @@ public class CreatureListCommands {
   }
 
   protected static boolean onlyCreatures(GameObject object) {
-    return object.getClassString().contains("_Character_") || object.getClassString().equals("Raft_BP_C");
+    return object.getClassString().contains("_Character_") || KNOWN_CREATURES.contains(object.getClassString());
   }
 
   protected static void listImpl(BiPredicate<GameObject, ArkSavegame> filter) {
