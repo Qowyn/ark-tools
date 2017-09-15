@@ -45,6 +45,7 @@ import qowyn.ark.arrays.ArkArrayUInt8;
 import qowyn.ark.structs.Struct;
 import qowyn.ark.tools.data.Creature;
 import qowyn.ark.tools.data.CustomDataContext;
+import qowyn.ark.tools.data.DroppedItem;
 import qowyn.ark.tools.data.Inventory;
 import qowyn.ark.tools.data.Item;
 import qowyn.ark.tools.data.Player;
@@ -131,9 +132,9 @@ public class PlayerListCommands {
           Runnable task = () -> {
             try {
               Player player = new Player(path, context, optionHandler.readingOptions());
-  
+
               long playerId = player.playerDataId;
-  
+
               String playerFileName;
               if (naming.equals("steamid")) {
                 playerFileName = player.uniqueId.getNetId() + ".json";
@@ -142,7 +143,7 @@ public class PlayerListCommands {
               } else {
                 throw new Error();
               }
-  
+
               if (player.tribeId != 0) {
                 tribes.computeIfAbsent(player.tribeId, id -> {
                   Path tribePath = saveDir.resolve(player.tribeId + ".arktribe");
@@ -162,23 +163,23 @@ public class PlayerListCommands {
                   }
                 });
               }
-  
+
               Path playerPath = outputDirectory.resolve(playerFileName);
-  
+
               CommonFunctions.writeJson(playerPath, generator -> {
                 generator.writeStartObject();
-  
+
                 // Player data
-  
+
                 player.writeAllProperties(generator, context, options.has(writeAllFieldsSpec), options.has(noPrivacySpec));
 
                 // Inventory
                 if (options.has(inventorySpec)) {
                   player.writeInventory(generator, context, options.has(writeAllFieldsSpec), !inventoryLong);
                 }
-  
+
                 // Tribe
-  
+
                 if (player.tribeId != 0) {
                   Tribe tribe = tribes.get(player.tribeId);
                   if (tribe != null) {
@@ -193,7 +194,7 @@ public class PlayerListCommands {
                     }
                   }
                 }
-  
+
                 generator.writeEndObject();
               }, optionHandler);
             } catch (RuntimeException | IOException ex) {
@@ -225,17 +226,21 @@ public class PlayerListCommands {
     }
 
   }
-  
+
   private static final Comparator<Map.Entry<ArkName, Long>> ENTRY_VALUE_REVERSE = comparing(Map.Entry::getValue, reverseOrder());
 
   public static void tribes(OptionHandler optionHandler) {
-    OptionSpec<String> itemsSpec = optionHandler.accepts("items", "Include a list of all items belonging to the tribe.").withOptionalArg().describedAs("summary|long").defaultsTo("summary");
-    OptionSpec<String> inventorySpec = optionHandler.accepts("inventory", "Include inventories of creatures, players and structures.").withOptionalArg().describedAs("summary|long").defaultsTo("summary");
-    OptionSpec<String> tamedSpec = optionHandler.accepts("creatures", "Include a list of all tamed dinos of the tribe.").withOptionalArg().describedAs("summary|long").defaultsTo("summary");
-    OptionSpec<String> structuresSpec = optionHandler.accepts("structures", "Include a list of all structures belonging to the tribe.").withOptionalArg().describedAs("summary|long").defaultsTo("summary");
+    OptionSpec<String> itemsSpec = optionHandler.accepts("items", "Include a list of all items belonging to the tribe.")
+        .withOptionalArg().describedAs("summary|long").defaultsTo("summary");
+    OptionSpec<String> inventorySpec = optionHandler.accepts("inventory", "Include inventories of creatures, players and structures.")
+        .withOptionalArg().describedAs("summary|long").defaultsTo("summary");
+    OptionSpec<String> tamedSpec = optionHandler.accepts("creatures", "Include a list of all tamed dinos of the tribe.")
+        .withOptionalArg().describedAs("summary|long").defaultsTo("summary");
+    OptionSpec<String> structuresSpec = optionHandler.accepts("structures", "Include a list of all structures belonging to the tribe.")
+        .withOptionalArg().describedAs("summary|long").defaultsTo("summary");
     OptionSpec<Void> basesSpec = optionHandler.accepts("bases", "Allows tribes to create 'bases', groups creatures etc by base.");
     OptionSpec<Void> tribelessSpec = optionHandler.accepts("tribeless", "Put all players without a tribe into the 'tribeless' tribe.");
-    OptionSpec<Void> nonPlayerSpec = optionHandler.accepts("non-player", "Include stuff owned by non-player factions. Generates a 'non-players.json' file.");
+    OptionSpec<Void> nonPlayerSpec = optionHandler.accepts("non-players", "Include stuff owned by non-player factions. Generates a 'non-players.json' file.");
     OptionSpec<Void> writeAllFieldsSpec = optionHandler.accepts("write-all-fields", "Writes all the fields.");
 
     OptionSet options = optionHandler.reparse();
@@ -255,7 +260,7 @@ public class PlayerListCommands {
     try {
       Stopwatch stopwatch = new Stopwatch(optionHandler.useStopwatch());
 
-      boolean mapNeeded = options.has(itemsSpec) || options.has(tamedSpec) || options.has(structuresSpec);
+      boolean mapNeeded = options.has(itemsSpec) || options.has(tamedSpec) || options.has(structuresSpec) || options.has(inventorySpec);
       if (!optionHandler.isQuiet() && mapNeeded) {
         System.out.println("Need to load map, this may take some time...");
       }
@@ -326,6 +331,7 @@ public class PlayerListCommands {
           List<GameObject> creatures = new ArrayList<>();
           List<Item> items = new ArrayList<>();
           List<Item> blueprints = new ArrayList<>();
+          List<DroppedItem> droppedItems = new ArrayList<>();
           // Apparently there is a behavior in ARK causing certain structures to exist twice
           // within a save
           Set<ArkName> processedList = new HashSet<>();
@@ -403,7 +409,7 @@ public class PlayerListCommands {
             ObjectReference inventoryReference = object.getPropertyValue("MyInventoryComponent", ObjectReference.class);
             GameObject inventory = inventoryReference != null ? inventoryReference.getObject(context.getSavegame()) : null;
 
-            Consumer<ObjectReference> itemHandler = itemReference -> {
+            Consumer<ObjectReference> itemHandler = (itemReference) -> {
               GameObject item = itemReference.getObject(context.getSavegame());
               if (item != null && !Item.isDefaultItem(item)) {
                 if (processedList.contains(item.getNames().get(0))) {
@@ -428,6 +434,15 @@ public class PlayerListCommands {
               }
             };
 
+            Consumer<GameObject> droppedItemHandler = (droppedItemObject) -> {
+              DroppedItem droppedItem = new DroppedItem(droppedItemObject, context.getSavegame());
+              if (base != null) {
+                base.getDroppedItems().add(droppedItem);
+              } else {
+                droppedItems.add(droppedItem);
+              }
+            };
+
             if (inventory != null && options.has(itemsSpec) && !options.has(inventorySpec)) {
               List<ObjectReference> inventoryItems = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
               List<ObjectReference> equippedItems = inventory.getPropertyValue("EquippedItems", ArkArrayObjectReference.class);
@@ -446,8 +461,12 @@ public class PlayerListCommands {
 
             ObjectReference myItem = object.getPropertyValue("MyItem", ObjectReference.class);
 
-            if (myItem != null && options.has(itemsSpec)) {
-              itemHandler.accept(myItem);
+            if (myItem != null) {
+              if (options.has(itemsSpec) && !options.has(inventorySpec)) {
+                itemHandler.accept(myItem);
+              } else if (options.has(inventorySpec)) {
+                droppedItemHandler.accept(object);
+              }
             }
           }
 
@@ -457,7 +476,7 @@ public class PlayerListCommands {
 
               if (structuresLong) {
 
-                for (GameObject structureObject: structList) {
+                for (GameObject structureObject : structList) {
                   Structure structure = new Structure(structureObject, context.getSavegame());
 
                   generator.writeStartObject();
@@ -473,17 +492,17 @@ public class PlayerListCommands {
 
               } else {
                 Map<ArkName, Long> structMap = structList.stream().collect(groupingBy(GameObject::getClassName, counting()));
-                for (Map.Entry<ArkName, Long> entry: iterable(structMap.entrySet().stream().sorted(ENTRY_VALUE_REVERSE))) {
+                for (Map.Entry<ArkName, Long> entry : iterable(structMap.entrySet().stream().sorted(ENTRY_VALUE_REVERSE))) {
                   generator.writeStartObject();
-  
+
                   String name = entry.getKey().toString();
                   if (DataManager.hasStructure(name)) {
                     name = DataManager.getStructure(name).getName();
                   }
-  
+
                   generator.writeStringField("name", name);
                   generator.writeNumberField("count", entry.getValue());
-  
+
                   generator.writeEndObject();
                 }
               }
@@ -498,7 +517,7 @@ public class PlayerListCommands {
 
               if (tamedLong) {
 
-                for (GameObject creatureObject: creaList) {
+                for (GameObject creatureObject : creaList) {
                   Creature creature = new Creature(creatureObject, context.getSavegame());
 
                   generator.writeStartObject();
@@ -511,22 +530,39 @@ public class PlayerListCommands {
 
                   generator.writeEndObject();
                 }
-                
+
               } else {
                 Map<ArkName, Long> creaMap = creaList.stream().collect(groupingBy(GameObject::getClassName, counting()));
-                for (Map.Entry<ArkName, Long> entry: iterable(creaMap.entrySet().stream().sorted(ENTRY_VALUE_REVERSE))) {
+                for (Map.Entry<ArkName, Long> entry : iterable(creaMap.entrySet().stream().sorted(ENTRY_VALUE_REVERSE))) {
                   generator.writeStartObject();
-  
+
                   String name = entry.getKey().toString();
                   if (DataManager.hasCreature(name)) {
                     name = DataManager.getCreature(name).getName();
                   }
-  
+
                   generator.writeStringField("name", name);
                   generator.writeNumberField("count", entry.getValue());
-  
+
                   generator.writeEndObject();
                 }
+              }
+
+              generator.writeEndArray();
+            }
+          };
+
+          ExceptionConsumer<List<DroppedItem>> writeDroppedItems = droppedList -> {
+            if (options.has(inventorySpec)) {
+              generator.writeArrayFieldStart("droppedItems");
+
+              for (DroppedItem droppedItem : droppedList) {
+                generator.writeStartObject();
+
+                droppedItem.writeAllProperties(generator, context, options.has(writeAllFieldsSpec));
+                droppedItem.writeInventory(generator, context, options.has(writeAllFieldsSpec), !inventoryLong);
+
+                generator.writeEndObject();
               }
 
               generator.writeEndArray();
@@ -549,6 +585,7 @@ public class PlayerListCommands {
               generator.writeNumberField("radius", base.getSize());
               writeCreatures.accept(base.getCreatures());
               writeStructures.accept(base.getStructures());
+              writeDroppedItems.accept(base.getDroppedItems());
               if (itemsLong) {
                 generator.writeFieldName("items");
                 Inventory.writeInventoryLong(generator, context, base.getItems(), options.has(writeAllFieldsSpec));
@@ -570,6 +607,7 @@ public class PlayerListCommands {
 
           writeCreatures.accept(creatures);
           writeStructures.accept(structures);
+          writeDroppedItems.accept(droppedItems);
           if (itemsLong) {
             generator.writeFieldName("items");
             Inventory.writeInventoryLong(generator, context, items, options.has(writeAllFieldsSpec));
@@ -581,7 +619,7 @@ public class PlayerListCommands {
             generator.writeFieldName("blueprints");
             Inventory.writeInventorySummary(generator, blueprints);
           }
-          
+
           if (options.has(basesSpec) && bases != null) {
             generator.writeEndObject();
 
@@ -606,9 +644,9 @@ public class PlayerListCommands {
                 generator.writeStartObject();
 
                 tribe.writeAllProperties(generator, context, options.has(writeAllFieldsSpec));
-  
+
                 mapWriter.accept(generator, tribe.tribeId);
-  
+
                 generator.writeEndObject();
               }, optionHandler);
             } catch (RuntimeException | IOException ex) {
@@ -701,13 +739,13 @@ public class PlayerListCommands {
 
             CustomDataContext context = new CustomDataContext();
             context.setObjectContainer(cloudInventory);
-  
+
             PropertyContainer arkData = cloudInventory.getInventoryData().getPropertyValue("MyArkData", PropertyContainer.class);
-  
+
             CommonFunctions.writeJson(outputDirectory.resolve(path.getFileName().toString() + ".json"), generator -> {
-  
+
               generator.writeStartObject();
-  
+
               ArkArrayStruct tamedDinosData = arkData.getPropertyValue("ArkTamedDinosData", ArkArrayStruct.class);
               if (tamedDinosData != null && !tamedDinosData.isEmpty()) {
                 generator.writeArrayFieldStart("creatures");
@@ -716,21 +754,21 @@ public class PlayerListCommands {
                   ArkContainer container = null;
                   if (cloudInventory.getInventoryVersion() == 1) {
                     ArkArrayUInt8 byteData = dino.getPropertyValue("DinoData", ArkArrayUInt8.class);
-  
+
                     container = new ArkContainer(byteData);
                   } else if (cloudInventory.getInventoryVersion() == 3) {
                     ArkArrayInt8 byteData = dino.getPropertyValue("DinoData", ArkArrayInt8.class);
-  
+
                     container = new ArkContainer(byteData);
                   }
-  
+
                   ObjectReference dinoClass = dino.getPropertyValue("DinoClass", ObjectReference.class);
                   // Skip "BlueprintGeneratedClass " = 24 chars
                   String dinoClassName = dinoClass.getObjectString().toString().substring(24);
                   generator.writeStartObject();
-  
+
                   generator.writeStringField("type", DataManager.hasCreatureByPath(dinoClassName) ? DataManager.getCreatureByPath(dinoClassName).getName() : dinoClassName);
-  
+
                   // NPE for unknown versions
                   Creature creature = new Creature(container.getObjects().get(0), container);
                   generator.writeObjectFieldStart("data");
@@ -741,27 +779,27 @@ public class PlayerListCommands {
                 }
                 generator.writeEndArray();
               }
-  
+
               ArkArrayStruct arkItems = arkData.getPropertyValue("ArkItems", ArkArrayStruct.class);
               if (arkItems != null) {
                 List<Item> items = new ArrayList<>();
                 for (Struct itemStruct : arkItems) {
                   PropertyContainer item = (PropertyContainer) itemStruct;
                   PropertyContainer netItem = item.getPropertyValue("ArkTributeItem", PropertyContainer.class);
-  
+
                   items.add(new Item(netItem));
                 }
-  
+
                 if (!items.isEmpty()) {
                   generator.writeFieldName("items");
                   Inventory.writeInventoryLong(generator, context, items, options.has(writeAllFieldsSpec));
                 }
               }
-  
+
               generator.writeEndObject();
-  
+
             }, optionHandler);
-  
+
           } catch (RuntimeException | IOException ex) {
             System.err.println("Found potentially corrupt cluster data: " + path.toString());
             if (optionHandler.isVerbose()) {

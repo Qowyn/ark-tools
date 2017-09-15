@@ -79,8 +79,6 @@ public class Player {
 
   public GameObject inventory;
 
-  public int inventoryId = -1;
-
   public LocationData location;
 
   public int characterLevel;
@@ -178,7 +176,6 @@ public class Player {
     }
 
     inventory = player.findPropertyValue("MyInventoryComponent", ObjectReference.class).map(context.getObjectContainer()::getObject).orElse(null);
-    inventoryId = inventory != null ? inventory.getId() : -1;
     location = player.getLocation();
 
     if (playerCharacterStatus != null) {
@@ -392,9 +389,11 @@ public class Player {
         generator.writeNumberField("percentageOfFacialHairGrowth", player.percentageOfFacialHairGrowth);
       }
     });
-    PROPERTIES.put("inventoryId", (player, generator, context, writeEmpty) -> {
-      if (writeEmpty || player.inventoryId != -1) {
-        generator.writeNumberField("inventoryId", player.inventoryId);
+    PROPERTIES.put("myInventoryComponent", (player, generator, context, writeEmpty) -> {
+      if (player.inventory != null) {
+        generator.writeNumberField("myInventoryComponent", player.inventory.getId());
+      } else if (writeEmpty) {
+        generator.writeNullField("myInventoryComponent");
       }
     });
     PROPERTIES.put("location", (player, generator, context, writeEmpty) -> {

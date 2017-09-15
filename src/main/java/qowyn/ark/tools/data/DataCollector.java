@@ -36,6 +36,8 @@ public class DataCollector implements DataContext {
 
   public final SortedMap<Integer, Item> itemMap = new TreeMap<>();
 
+  public final SortedMap<Integer, DroppedItem> droppedItemMap = new TreeMap<>();
+
   public final SortedMap<Integer, Inventory> inventoryMap = new TreeMap<>();
 
   public final SortedMap<Integer, Creature> creatureMap = new TreeMap<>();
@@ -97,6 +99,9 @@ public class DataCollector implements DataContext {
             // Skip players, weapons and items on the ground
             // is (probably) a structure
             structureMap.put(obj.getId(), new Structure(obj, savegame));
+          } else if (obj.hasAnyProperty("MyItem")) {
+            // dropped Item
+            droppedItemMap.put(obj.getId(), new DroppedItem(obj, savegame));
           }
         }
       }

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import qowyn.ark.GameObject;
+import qowyn.ark.tools.data.DroppedItem;
 import qowyn.ark.tools.data.Item;
 import qowyn.ark.types.LocationData;
 
@@ -26,6 +27,8 @@ public class TribeBase {
   private final List<Item> items = new ArrayList<>();
 
   private final List<Item> blueprints = new ArrayList<>();
+
+  private final List<DroppedItem> droppedItems = new ArrayList<>();
 
   public TribeBase(String name, float x, float y, float z, float size) {
     this.name = name;
@@ -69,6 +72,10 @@ public class TribeBase {
 
   public List<Item> getBlueprints() {
     return blueprints;
+  }
+
+  public List<DroppedItem> getDroppedItems() {
+    return droppedItems;
   }
 
   @Override

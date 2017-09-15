@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 import qowyn.ark.tools.CommonFunctions;
 import qowyn.ark.tools.data.Creature;
 import qowyn.ark.tools.data.DataCollector;
+import qowyn.ark.tools.data.DroppedItem;
 import qowyn.ark.tools.data.Inventory;
 import qowyn.ark.tools.data.Item;
 import qowyn.ark.tools.data.Player;
@@ -59,6 +60,7 @@ public class JsonDriver implements DBDriver {
     parameters.put("creatureFields", "comma delimited list of fields to write - default: " + Creature.PROPERTIES.keySet().stream().collect(Collectors.joining(",")));
     parameters.put("inventoryFields", "comma delimited list of fields to write - default: " + Inventory.PROPERTIES.keySet().stream().collect(Collectors.joining(",")));
     parameters.put("itemFields", "comma delimited list of fields to write - default: " + Item.PROPERTIES.keySet().stream().collect(Collectors.joining(",")));
+    parameters.put("droppedItemFields", "comma delimited list of fields to write - default: " + DroppedItem.PROPERTIES.keySet().stream().collect(Collectors.joining(",")));
     parameters.put("playerFields", "comma delimited list of fields to write - default: " + Player.PROPERTIES.keySet().stream().collect(Collectors.joining(",")));
     parameters.put("structureFields", "comma delimited list of fields to write - default: " + Structure.PROPERTIES.keySet().stream().collect(Collectors.joining(",")));
     parameters.put("tribeFields", "comma delimited list of fields to write - default: " + Tribe.PROPERTIES.keySet().stream().collect(Collectors.joining(",")));
@@ -160,6 +162,7 @@ public class JsonDriver implements DBDriver {
     List<WriterFunction<Creature>> creatureWriters = generateList("creatureFields", Creature.PROPERTIES);
     List<WriterFunction<Inventory>> inventoryWriters = generateList("inventoryFields", Inventory.PROPERTIES);
     List<WriterFunction<Item>> itemWriters = generateList("itemFields", Item.PROPERTIES);
+    List<WriterFunction<DroppedItem>> droppedItemWriters = generateList("droppedItemFields", DroppedItem.PROPERTIES);
     List<WriterFunction<Player>> playerWriters = generateList("playerFields", Player.PROPERTIES);
     List<WriterFunction<Structure>> structureWriters = generateList("structureFields", Structure.PROPERTIES);
     List<WriterFunction<Tribe>> tribeWriters = generateList("tribeFields", Tribe.PROPERTIES);
@@ -209,6 +212,22 @@ public class JsonDriver implements DBDriver {
 
         for (WriterFunction<Item> writer: itemWriters) {
           writer.accept(item, generator, data, writeEmpty);
+        }
+
+        generator.writeEndObject();
+      }
+
+      generator.writeEndObject();
+
+      generator.writeObjectFieldStart("droppedItems");
+
+      for (int index: data.droppedItemMap.keySet()) {
+        DroppedItem droppedItem = data.droppedItemMap.get(index);
+
+        generator.writeObjectFieldStart(Integer.toString(index));
+
+        for (WriterFunction<DroppedItem> writer: droppedItemWriters) {
+          writer.accept(droppedItem, generator, data, writeEmpty);
         }
 
         generator.writeEndObject();

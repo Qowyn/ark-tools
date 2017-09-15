@@ -104,7 +104,7 @@ public class Creature {
   public Creature(GameObject creature, GameObjectContainer saveFile) {
     className = creature.getClassName();
     CreatureData creatureData = DataManager.getCreature(creature.getClassString());
-    type = creatureData != null ? creatureData.getName() : creature.getClassString(); 
+    type = creatureData != null ? creatureData.getName() : creature.getClassString();
 
     location = creature.getLocation();
     
@@ -270,6 +270,13 @@ public class Creature {
           }
           generator.writeEndObject();
         }
+      }
+    });
+    PROPERTIES.put("myInventoryComponent", (creature, generator, context, writeEmpty) -> {
+      if (creature.inventory != null) {
+        generator.writeNumberField("myInventoryComponent", creature.inventory.getId());
+      } else if (writeEmpty) {
+        generator.writeNullField("myInventoryComponent");
       }
     });
     PROPERTIES.put("id", (creature, generator, context, writeEmpty) -> {
