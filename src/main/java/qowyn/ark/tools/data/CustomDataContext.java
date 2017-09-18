@@ -30,16 +30,15 @@ public class CustomDataContext implements DataContext {
 
   public void setObjectContainer(GameObjectContainer objectContainer) {
     this.objectContainer = objectContainer;
-    if (objectContainer instanceof ArkSavegame) {
-      this.savegame = (ArkSavegame) objectContainer;
-    } else {
-      this.savegame = null;
-    }
   }
 
   @Override
   public ArkSavegame getSavegame() {
     return savegame;
+  }
+
+  public void setSavegame(ArkSavegame savegame) {
+    this.savegame = savegame;
   }
 
 }

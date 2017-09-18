@@ -4,6 +4,11 @@ import static java.util.Comparator.comparing;
 import static java.util.Comparator.reverseOrder;
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
+import static qowyn.ark.tools.CommonFunctions.isCreature;
+import static qowyn.ark.tools.CommonFunctions.isDroppedItem;
+import static qowyn.ark.tools.CommonFunctions.isInventory;
+import static qowyn.ark.tools.CommonFunctions.isPlayer;
+import static qowyn.ark.tools.CommonFunctions.isWeapon;
 import static qowyn.ark.tools.CommonFunctions.iterable;
 
 import java.io.IOException;
@@ -37,6 +42,7 @@ import qowyn.ark.ArkCloudInventory;
 import qowyn.ark.ArkContainer;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
+import qowyn.ark.HibernationEntry;
 import qowyn.ark.PropertyContainer;
 import qowyn.ark.arrays.ArkArrayInt8;
 import qowyn.ark.arrays.ArkArrayObjectReference;
@@ -50,6 +56,7 @@ import qowyn.ark.tools.data.Inventory;
 import qowyn.ark.tools.data.Item;
 import qowyn.ark.tools.data.Player;
 import qowyn.ark.tools.data.Structure;
+import qowyn.ark.tools.data.TeamType;
 import qowyn.ark.tools.data.Tribe;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.LocationData;
@@ -275,12 +282,13 @@ public class PlayerListCommands {
       if (mapNeeded) {
         DataManager.loadData(optionHandler.lang());
 
-        context.setObjectContainer(new ArkSavegame(saveGame, optionHandler.readingOptions()));
+        ArkSavegame mapSave = new ArkSavegame(saveGame, optionHandler.readingOptions().buildComponentTree(true));
+        context.setSavegame(mapSave);
         context.setLatLonCalculator(LatLonCalculator.forSave(context.getSavegame()));
         stopwatch.stop("Loading map data");
         if (options.has(basesSpec)) {
           baseMap = new HashMap<>();
-          for (GameObject object : context.getSavegame().getObjects()) {
+          for (GameObject object : mapSave) {
             // Skip items and stuff without a location
             if (object.isItem() || object.getLocation() == null) {
               continue;
@@ -309,19 +317,29 @@ public class PlayerListCommands {
         } else {
           baseMap = null;
         }
+
+        if (!mapSave.getHibernationEntries().isEmpty() && options.has(tamedSpec)) {
+          List<GameObject> combinedObjects = new ArrayList<>(context.getSavegame().getObjects());
+  
+          for (HibernationEntry entry: context.getSavegame().getHibernationEntries()) {
+            ObjectCollector collector = new ObjectCollector(entry, 1);
+            combinedObjects.addAll(collector.remap(combinedObjects.size()));
+          }
+
+          context.setObjectContainer(new GameObjectList(combinedObjects));
+        } else {
+          context.setObjectContainer(mapSave);
+        }
       } else {
         baseMap = null;
       }
 
       Filter<Path> tribeFilter = path -> TRIBE_PATTERN.matcher(path.getFileName().toString()).matches();
-      final Set<Integer> tribeIds;
       final List<Callable<Object>> tasks;
 
       if (optionHandler.useParallel()) {
-        tribeIds = ConcurrentHashMap.newKeySet();
         tasks = new ArrayList<>();
       } else {
-        tribeIds = new HashSet<>();
         tasks = null;
       }
 
@@ -338,7 +356,7 @@ public class PlayerListCommands {
           // Bases
           Set<TribeBase> bases = options.has(basesSpec) ? baseMap.get(tribeId) : null;
 
-          for (GameObject object : context.getSavegame().getObjects()) {
+          for (GameObject object : context.getObjectContainer()) {
             if (object.isItem()) {
               continue;
             }
@@ -347,9 +365,10 @@ public class PlayerListCommands {
             if (targetingTeam == -1) {
               continue;
             }
-            if (tribeId == -1 && (targetingTeam < 50000 || tribeIds.contains(targetingTeam))) {
+            TeamType teamType = TeamType.forTeam(targetingTeam);
+            if (tribeId == -1 && teamType != TeamType.PLAYER) {
               continue;
-            } else if (tribeId == 0 && targetingTeam >= 50000) {
+            } else if (tribeId == 0 && teamType != TeamType.NON_PLAYER) {
               continue;
             } else if (tribeId > 0 && tribeId != targetingTeam) {
               continue;
@@ -370,7 +389,7 @@ public class PlayerListCommands {
               base = null;
             }
 
-            if (object.getClassString().contains("_Character_") || object.getClassString().equals("Raft_BP_C")) {
+            if (isCreature(object)) {
               if (!processedList.contains(object.getNames().get(0))) {
                 if (base != null) {
                   base.getCreatures().add(object);
@@ -382,7 +401,7 @@ public class PlayerListCommands {
                 // Duped Creature
                 continue;
               }
-            } else if (!object.hasAnyProperty("LinkedPlayerDataID") && !object.hasAnyProperty("AssociatedPrimalItem") && !object.hasAnyProperty("MyItem")) {
+            } else if (!isPlayer(object) && !isWeapon(object) && !isDroppedItem(object)) {
               // LinkedPlayerDataID: Players ain't structures
               // AssociatedPrimalItem: Items equipped by sleeping players
               // MyItem: dropped item
@@ -401,13 +420,10 @@ public class PlayerListCommands {
               if (!processedList.contains(object.getNames().get(0))) {
                 processedList.add(object.getNames().get(0));
               } else {
-                // Duped Player or dropped Item
+                // Duped Player or dropped Item or weapon
                 continue;
               }
             }
-
-            ObjectReference inventoryReference = object.getPropertyValue("MyInventoryComponent", ObjectReference.class);
-            GameObject inventory = inventoryReference != null ? inventoryReference.getObject(context.getSavegame()) : null;
 
             Consumer<ObjectReference> itemHandler = (itemReference) -> {
               GameObject item = itemReference.getObject(context.getSavegame());
@@ -443,20 +459,26 @@ public class PlayerListCommands {
               }
             };
 
-            if (inventory != null && options.has(itemsSpec) && !options.has(inventorySpec)) {
-              List<ObjectReference> inventoryItems = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
-              List<ObjectReference> equippedItems = inventory.getPropertyValue("EquippedItems", ArkArrayObjectReference.class);
-
-              Consumer<List<ObjectReference>> itemListHandler = list -> {
-                if (list != null) {
-                  for (ObjectReference itemReference : list) {
-                    itemHandler.accept(itemReference);
-                  }
+            if (options.has(itemsSpec) && !options.has(inventorySpec)) {
+              for (GameObject inventory: object.getComponents().values()) {
+                if (!isInventory(inventory)) {
+                  continue;
                 }
-              };
-
-              itemListHandler.accept(inventoryItems);
-              itemListHandler.accept(equippedItems);
+  
+                List<ObjectReference> inventoryItems = inventory.getPropertyValue("InventoryItems", ArkArrayObjectReference.class);
+                List<ObjectReference> equippedItems = inventory.getPropertyValue("EquippedItems", ArkArrayObjectReference.class);
+  
+                Consumer<List<ObjectReference>> itemListHandler = list -> {
+                  if (list != null) {
+                    for (ObjectReference itemReference : list) {
+                      itemHandler.accept(itemReference);
+                    }
+                  }
+                };
+  
+                itemListHandler.accept(inventoryItems);
+                itemListHandler.accept(equippedItems);
+              }
             }
 
             ObjectReference myItem = object.getPropertyValue("MyItem", ObjectReference.class);
@@ -633,8 +655,6 @@ public class PlayerListCommands {
           Runnable task = () -> {
             try {
               Tribe tribe = new Tribe(path, optionHandler.readingOptions());
-
-              tribeIds.add(tribe.tribeId);
 
               String tribeFileName = tribe.tribeId + ".json";
 

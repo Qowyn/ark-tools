@@ -75,6 +75,10 @@ public class Item {
 
   public byte quality;
 
+  public double nextSpoilingTime;
+
+  public double lastSpoilingTime;
+
   public final short[] itemStatValues = new short[ItemStatDefinitions.size()];
 
   public final short[] itemColors = new short[COLOR_SLOT_COUNT];
@@ -112,6 +116,7 @@ public class Item {
     className = item.getClassName();
     ItemData itemData = DataManager.getItem(className.toString());
     type = itemData != null ? itemData.getName() : className.toString();
+    blueprintGeneratedClass = itemData != null ? itemData.getBlueprintGeneratedClass() : null;
 
     canEquip = item.findPropertyValue("bAllowEquppingItem", Boolean.class).orElse(true);
     canSlot = item.findPropertyValue("bCanSlot", Boolean.class).orElse(true);
@@ -132,6 +137,9 @@ public class Item {
     rating = item.findPropertyValue("ItemRating", Float.class).orElse(0.0f);
 
     quality = item.findPropertyValue("ItemQualityIndex", ArkByteValue.class).map(ArkByteValue::getByteValue).orElse((byte) 0);
+
+    nextSpoilingTime = item.findPropertyValue("NextSpoilingTime", Double.class).orElse(0.0);
+    lastSpoilingTime = item.findPropertyValue("LastSpoilingTime", Double.class).orElse(0.0);
 
     for (int i = 0; i < ItemStatDefinitions.size(); i++) {
       itemStatValues[i] = item.findPropertyValue("ItemStatValues", Short.class, i).orElse((short) 0);
@@ -187,6 +195,9 @@ public class Item {
 
     quality = item.findPropertyValue("ItemQualityIndex", ArkByteValue.class).map(ArkByteValue::getByteValue).orElse((byte) 0);
 
+    nextSpoilingTime = item.findPropertyValue("NextSpoilingTime", Double.class).orElse(0.0);
+    lastSpoilingTime = item.findPropertyValue("LastSpoilingTime", Double.class).orElse(0.0);
+
     for (int i = 0; i < itemStatValues.length; i++) {
       itemStatValues[i] = item.findPropertyValue("ItemStatValues", Short.class, i).orElse((short) 0);
     }
@@ -219,7 +230,7 @@ public class Item {
     className = ArkName.from(node.path("className").asText());
     ItemData itemData = DataManager.getItem(className.toString());
     type = itemData != null ? itemData.getName() : className.toString();
-    blueprintGeneratedClass = "BlueprintGeneratedClass " + node.path("blueprintGeneratedClass").asText();
+    blueprintGeneratedClass = "BlueprintGeneratedClass " + node.path("blueprintGeneratedClass").textValue();
 
     canEquip = node.path("canEquip").asBoolean(true);
     canSlot = node.path("canSlot").asBoolean(true);
@@ -239,6 +250,9 @@ public class Item {
     rating = (float) node.path("rating").asDouble();
 
     quality = (byte) node.path("quality").asInt();
+
+    nextSpoilingTime = node.path("nextSpoilingTime").asDouble();
+    lastSpoilingTime = node.path("lastSpoilingTime").asDouble();
 
     for (int i = 0; i < itemStatValues.length; i++) {
       itemStatValues[i] = (short) node.path("itemStatsValue_" + i).asInt();
@@ -339,8 +353,8 @@ public class Item {
 
     // TODO: add other values
 
-    arkTributeItem.getProperties().add(new PropertyDouble("NextSpoilingTime", 0.0));
-    arkTributeItem.getProperties().add(new PropertyDouble("LastSpoilingTime", 0.0));
+    arkTributeItem.getProperties().add(new PropertyDouble("NextSpoilingTime", nextSpoilingTime));
+    arkTributeItem.getProperties().add(new PropertyDouble("LastSpoilingTime", lastSpoilingTime));
 
     ObjectReference lastOwnerPlayer = new ObjectReference();
     lastOwnerPlayer.setLength(4);
@@ -372,6 +386,10 @@ public class Item {
     arkTributeItem.getProperties().add(new PropertyByte("ItemVersion", (byte) 0));
     arkTributeItem.getProperties().add(new PropertyInt("CustomItemID", 0));
     arkTributeItem.getProperties().add(new PropertyArray("SteamUserItemID", new ArkArrayUInt64()));
+
+    arkTributeItem.getProperties().add(new PropertyBool("bIsInitialItem", false));
+
+    arkTributeItem.getProperties().add(new PropertyDouble("ClusterSpoilingTimeUTC", Instant.now().getEpochSecond()));
 
     result.getProperties().add(new PropertyFloat("Version", 2.0f));
     result.getProperties().add(new PropertyInt("UploadTime", (int) Instant.now().plusSeconds(uploadOffset).getEpochSecond()));
@@ -426,6 +444,14 @@ public class Item {
 
     if (quality > 0) {
       object.getProperties().add(new PropertyByte("ItemQualityIndex", quality));
+    }
+
+    if (nextSpoilingTime > 0) {
+      object.getProperties().add(new PropertyDouble("NextSpoilingTime", nextSpoilingTime));
+    }
+
+    if (lastSpoilingTime > 0) {
+      object.getProperties().add(new PropertyDouble("LastSpoilingTime", lastSpoilingTime));
     }
 
     for (int i = 0; i < itemStatValues.length; i++) {

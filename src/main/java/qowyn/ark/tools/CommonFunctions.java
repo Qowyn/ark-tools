@@ -18,20 +18,47 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import qowyn.ark.GameObject;
 import qowyn.ark.GameObjectContainer;
 import qowyn.ark.structs.StructLinearColor;
+import qowyn.ark.tools.data.TeamType;
 import qowyn.ark.types.ObjectReference;
 
-public class CommonFunctions {
+public final class CommonFunctions {
 
   public static final JsonFactory JSON_FACTORY = new JsonFactory();
 
   public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(JSON_FACTORY);
 
-  public static boolean onlyTamed(GameObject animal, GameObjectContainer saveFile) {
-    return animal.findPropertyValue("TargetingTeam", Integer.class).orElse(0) >= 50000;
+  public static boolean isCreature(GameObject object) {
+    return object.hasAnyProperty("bServerInitializedDino");
   }
 
-  public static boolean onlyWild(GameObject animal, GameObjectContainer saveFile) {
-    return animal.findPropertyValue("TargetingTeam", Integer.class).orElse(0) < 50000;
+  public static boolean isDroppedItem(GameObject object) {
+    return object.hasAnyProperty("MyItem");
+  }
+
+  public static boolean isInventory(GameObject object) {
+    return object.hasAnyProperty("bInitializedMe");
+  }
+
+  public static boolean isPlayer(GameObject object) {
+    return object.hasAnyProperty("LinkedPlayerDataID");
+  }
+
+  public static boolean isStatusComponent(GameObject object) {
+    return object.hasAnyProperty("bServerFirstInitialized");
+  }
+
+  public static boolean isTamed(GameObject animal) {
+    TeamType teamType = TeamType.forTeam(animal.findPropertyValue("TargetingTeam", Integer.class).orElse(0));
+    return teamType.tamed;
+  }
+
+  public static boolean isWeapon(GameObject object) {
+    return object.hasAnyProperty("AssociatedPrimalItem") || object.hasAnyProperty("MyPawn");
+  }
+
+  public static boolean isWild(GameObject animal) {
+    TeamType teamType = TeamType.forTeam(animal.findPropertyValue("TargetingTeam", Integer.class).orElse(0));
+    return !teamType.tamed;
   }
 
   public static int getBaseLevel(GameObject animal, GameObjectContainer saveFile) {

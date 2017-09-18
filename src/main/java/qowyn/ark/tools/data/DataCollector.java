@@ -1,5 +1,7 @@
 package qowyn.ark.tools.data;
 
+import static qowyn.ark.tools.CommonFunctions.*;
+
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -22,7 +24,10 @@ import java.util.regex.Pattern;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
 import qowyn.ark.GameObjectContainer;
+import qowyn.ark.HibernationEntry;
+import qowyn.ark.tools.GameObjectList;
 import qowyn.ark.tools.LatLonCalculator;
+import qowyn.ark.tools.ObjectCollector;
 import qowyn.ark.tools.OptionHandler;
 import qowyn.ark.types.ArkName;
 
@@ -54,6 +59,8 @@ public class DataCollector implements DataContext {
 
   public ArkSavegame savegame;
 
+  public GameObjectContainer container;
+
   public LatLonCalculator latLonCalculator;
 
   public long maxAge;
@@ -80,28 +87,41 @@ public class DataCollector implements DataContext {
     savegame = new ArkSavegame(path, oh.readingOptions().withObjectFilter(obj -> {
       // Skip things like NPCZoneVolume and non-instanced objects
       return !obj.isFromDataFile() && (obj.getNames().size() > 1 || obj.getNames().get(0).getInstance() > 0);
-    }));
+    }).buildComponentTree(true));
     latLonCalculator = LatLonCalculator.forSave(savegame);
 
-    for (GameObject obj: savegame.getObjects()) {
-      if (obj.isFromDataFile() || (obj.getNames().size() == 1 && obj.getNames().get(0).getInstance() == 0)) {
+    if (!savegame.getHibernationEntries().isEmpty()) {
+      List<GameObject> combinedObjects = new ArrayList<>(savegame.getObjects());
+
+      for (HibernationEntry entry: savegame.getHibernationEntries()) {
+        ObjectCollector collector = new ObjectCollector(entry, 1);
+        combinedObjects.addAll(collector.remap(combinedObjects.size()));
+      }
+
+      container = new GameObjectList(combinedObjects);
+    } else {
+      container = savegame;
+    }
+
+    for (GameObject object: container) {
+      if (object.isFromDataFile() || (object.getNames().size() == 1 && object.getNames().get(0).getInstance() == 0)) {
         // Skip things like NPCZoneVolume and non-instanced objects
-      } else if (obj.getClassString().contains("Inventory")) {
-        inventoryMap.put(obj.getId(), new Inventory(obj));
+      } else if (isInventory(object)) {
+        inventoryMap.put(object.getId(), new Inventory(object));
       } else {
-        if (!nameObjectMap.containsKey(obj.getNames().get(0))) {
-          nameObjectMap.put(obj.getNames().get(0), obj.getId());
-          if (obj.isItem()) {
-            itemMap.put(obj.getId(), new Item(obj));
-          } else if (obj.hasAnyProperty("MyCharacterStatusComponent") && !obj.hasAnyProperty("LinkedPlayerDataID")) {
-            creatureMap.put(obj.getId(), new Creature(obj, savegame));
-          } else if (obj.getLocation() != null && !obj.hasAnyProperty("LinkedPlayerDataID") && !obj.hasAnyProperty("AssociatedPrimalItem") && !obj.hasAnyProperty("MyItem") && !obj.hasAnyProperty("MyPawn")) {
+        if (!nameObjectMap.containsKey(object.getNames().get(0))) {
+          nameObjectMap.put(object.getNames().get(0), object.getId());
+          if (object.isItem()) {
+            itemMap.put(object.getId(), new Item(object));
+          } else if (isCreature(object)) {
+            creatureMap.put(object.getId(), new Creature(object, savegame));
+          } else if (object.getLocation() != null && !isPlayer(object) && !isDroppedItem(object) && !isWeapon(object)) {
             // Skip players, weapons and items on the ground
             // is (probably) a structure
-            structureMap.put(obj.getId(), new Structure(obj, savegame));
-          } else if (obj.hasAnyProperty("MyItem")) {
+            structureMap.put(object.getId(), new Structure(object, savegame));
+          } else if (isDroppedItem(object)) {
             // dropped Item
-            droppedItemMap.put(obj.getId(), new DroppedItem(obj, savegame));
+            droppedItemMap.put(object.getId(), new DroppedItem(object, savegame));
           }
         }
       }
@@ -203,7 +223,7 @@ public class DataCollector implements DataContext {
 
   @Override
   public GameObjectContainer getObjectContainer() {
-    return savegame;
+    return container;
   }
 
   @Override

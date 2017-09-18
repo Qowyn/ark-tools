@@ -1,13 +1,16 @@
 package qowyn.ark.tools;
 
+import static qowyn.ark.tools.CommonFunctions.*;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -15,6 +18,7 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -44,6 +48,8 @@ import qowyn.ark.properties.PropertyUInt32;
 import qowyn.ark.structs.Struct;
 import qowyn.ark.structs.StructPropertyList;
 import qowyn.ark.tools.data.Item;
+import qowyn.ark.tools.modification.DeleteOperation;
+import qowyn.ark.tools.modification.ModificationFile;
 import qowyn.ark.tools.data.AttributeNames;
 import qowyn.ark.types.ArkName;
 import qowyn.ark.types.ObjectReference;
@@ -74,7 +80,7 @@ public class EditingCommands {
 
       stopwatch.stop("Reading");
 
-      savegame.getObjects().parallelStream().filter(c -> CommonFunctions.onlyTamed(c, savegame)).forEach(object -> {
+      savegame.getObjects().parallelStream().filter(CommonFunctions::isTamed).forEach(object -> {
         ObjectReference statusComponentReference = object.getPropertyValue("MyCharacterStatusComponent", ObjectReference.class);
 
         if (statusComponentReference != null) {
@@ -106,15 +112,19 @@ public class EditingCommands {
   }
 
   public static void exportThing(OptionHandler oh) {
-    OptionSpec<String> creatureSpec = oh.accepts("creature", "Export creature by Name - required if object not set").withRequiredArg().describedAs("name");
-    OptionSpec<Long> dinoIdSpec = oh.accepts("dinoid", "Export creature by DinoID - required if object not set").withRequiredArg().ofType(Long.class).describedAs("id");
-    OptionSpec<Integer> objectSpec = oh.accepts("object", "Export object by index - required if creature not set").withRequiredArg().ofType(Integer.class).describedAs("index");
+    OptionSpec<String> creatureSpec = oh.accepts("creature", "Export creature by Name - required if other options not set").withRequiredArg().describedAs("name");
+    OptionSpec<Long> dinoIdSpec = oh.accepts("dinoid", "Export creature by DinoID - required if other options not set").withRequiredArg().ofType(Long.class).describedAs("id");
+    OptionSpec<Integer> objectSpec = oh.accepts("object", "Export object by index - required if other options not set").withRequiredArg().ofType(Integer.class).describedAs("index");
+    OptionSpec<String> classSpec = oh.accepts("class", "Export objects by class - required if other options not set").withRequiredArg().describedAs("class");
+
+    OptionSpec<Void> withoutReferences = oh.accepts("without-references", "Do not grab additional objects by following references");
+    OptionSpec<Void> withoutComponents = oh.accepts("without-components", "Do not grab additional objects by traversing components");
 
     OptionSet options = oh.reparse();
 
     List<String> params = oh.getParams(options);
 
-    if (params.size() != 2 || oh.wantsHelp() || !(options.has(creatureSpec) || options.has(objectSpec) || options.has(dinoIdSpec))) {
+    if (params.size() != 2 || oh.wantsHelp() || !(options.has(creatureSpec) || options.has(objectSpec) || options.has(dinoIdSpec) || options.has(classSpec))) {
       oh.printCommandHelp();
       System.exit(1);
       return;
@@ -143,7 +153,7 @@ public class EditingCommands {
         for (GameObject go : savegame.getObjects()) {
           String objectName = go.getPropertyValue("TamedName", String.class);
           if (name.equals(objectName)) {
-            collector = new ObjectCollector(savegame, go);
+            collector = new ObjectCollector(savegame, go, !options.has(withoutReferences), !options.has(withoutComponents));
             break;
           }
         }
@@ -164,7 +174,7 @@ public class EditingCommands {
             if (dinoID2 != null) {
               long otherId = (long) dinoID1 << Integer.SIZE | (dinoID2 & 0xFFFFFFFFL);
               if (id == otherId) {
-                collector = new ObjectCollector(savegame, creature);
+                collector = new ObjectCollector(savegame, creature, !options.has(withoutReferences), !options.has(withoutComponents));
                 break;
               }
             }
@@ -185,7 +195,9 @@ public class EditingCommands {
           return;
         }
 
-        collector = new ObjectCollector(savegame, savegame.getObjects().get(index));
+        collector = new ObjectCollector(savegame, savegame.getObjects().get(index), !options.has(withoutReferences), !options.has(withoutComponents));
+      } else if (options.has(classSpec)) {
+        collector = new ObjectCollector(savegame, ArkName.from(options.valueOf(classSpec)), !options.has(withoutReferences), !options.has(withoutComponents));
       } else {
         // Makes FindBugs happy
         return;
@@ -237,12 +249,10 @@ public class EditingCommands {
     try {
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
 
-      FileFormat fileFormat = options.has(fileFormatSpec) ? FileFormat.valueOf(options.valueOf(fileFormatSpec)) : FileFormat.fromExtension(fileToRead);
+      FileFormat fileFormat = options.has(fileFormatSpec) ? FileFormat.valueOf(options.valueOf(fileFormatSpec).toUpperCase()) : FileFormat.fromExtension(fileToRead);
 
       ArkContainer jsonFile = new ArkContainer(CommonFunctions.readJson(Paths.get(params.get(1))));
       stopwatch.stop("Reading import container");
-
-      boolean containsCreature = jsonFile.getObjects().stream().anyMatch(o -> o.getClassString().contains("_Character_"));
 
       if (fileFormat == FileFormat.MAP) {
         ArkSavegame savegame = new ArkSavegame(fileToRead, oh.readingOptions());
@@ -254,45 +264,34 @@ public class EditingCommands {
 
         stopwatch.stop("Writing");
       } else if (fileFormat == FileFormat.CLUSTER) {
-        if (!containsCreature) {
-          System.err.println("No creature in import file.");
-          System.exit(1);
+        DataManager.loadData(oh.lang());
+        ArkCloudInventory cloudInventory;
+        if (Files.exists(fileToRead) && Files.size(fileToRead) > 0) {
+          cloudInventory = new ArkCloudInventory(fileToRead, oh.readingOptions());
         } else {
-          DataManager.loadData(oh.lang());
-          ArkCloudInventory cloudInventory;
-          if (Files.exists(fileToRead) && Files.size(fileToRead) > 0) {
-            cloudInventory = new ArkCloudInventory(fileToRead, oh.readingOptions());
-          } else {
-            cloudInventory = new ArkCloudInventory();
-            cloudInventory.setInventoryVersion(1);
-            cloudInventory.setInventoryData(new GameObject());
-            cloudInventory.getInventoryData().setClassName(CLOUD_INVENTORY_CLASS);
-            cloudInventory.getInventoryData().setItem(true);
-            cloudInventory.getInventoryData().setNames(new ArrayList<>());
-            cloudInventory.getInventoryData().getNames().add(CLOUD_INVENTORY_NAME);
-            cloudInventory.getInventoryData().setExtraData(new ExtraDataZero());
-          }
-
-          importIntoClusterData(cloudInventory, jsonFile, stopwatch);
-
-          cloudInventory.writeBinary(fileToWrite, oh.writingOptions());
-
-          stopwatch.stop("Writing");
+          cloudInventory = new ArkCloudInventory();
+          cloudInventory.setInventoryVersion(4);
+          cloudInventory.setInventoryData(new GameObject());
+          cloudInventory.getInventoryData().setClassName(CLOUD_INVENTORY_CLASS);
+          cloudInventory.getInventoryData().setItem(true);
+          cloudInventory.getInventoryData().getNames().add(CLOUD_INVENTORY_NAME);
+          cloudInventory.getInventoryData().setExtraData(new ExtraDataZero());
         }
+
+        importIntoClusterData(cloudInventory, jsonFile, stopwatch);
+
+        cloudInventory.writeBinary(fileToWrite, oh.writingOptions());
+
+        stopwatch.stop("Writing");
       } else if (fileFormat == FileFormat.LOCALPROFILE) {
-        if (!containsCreature) {
-          System.err.println("No creature in import file.");
-          System.exit(1);
-        } else {
-          DataManager.loadData(oh.lang());
-          ArkLocalProfile localInventory = new ArkLocalProfile(fileToRead, oh.readingOptions());
+        DataManager.loadData(oh.lang());
+        ArkLocalProfile localInventory = new ArkLocalProfile(fileToRead, oh.readingOptions());
 
-          importIntoClusterData(localInventory, jsonFile, stopwatch);
+        importIntoClusterData(localInventory, jsonFile, stopwatch);
 
-          localInventory.writeBinary(fileToWrite, oh.writingOptions());
+        localInventory.writeBinary(fileToWrite, oh.writingOptions());
 
-          stopwatch.stop("Writing");
-        }
+        stopwatch.stop("Writing");
       } else {
         System.err.println("Modifying " + fileFormat + " is not yet implemented.");
         System.exit(1);
@@ -399,24 +398,38 @@ public class EditingCommands {
 
   private static void importIntoClusterData(PropertyContainer container, ArkContainer importFile, Stopwatch stopwatch) {
 
-    StructPropertyList arkData = container.getPropertyValue("MyArkData", StructPropertyList.class);
-    if (arkData == null) {
-      arkData = new StructPropertyList();
-      container.getProperties().add(new PropertyStruct("MyArkData", arkData, ARK_INVENTORY_DATA));
-    }
+    StructPropertyList arkData = container.findPropertyValue("MyArkData", StructPropertyList.class).orElseGet(() -> {
+      StructPropertyList temp = new StructPropertyList();
+      container.getProperties().add(new PropertyStruct("MyArkData", temp, ARK_INVENTORY_DATA));
+      return temp;
+    });
 
-    ArkArrayStruct tamedDinosData = arkData.getPropertyValue("ArkTamedDinosData", ArkArrayStruct.class);
-    if (tamedDinosData == null) {
-      tamedDinosData = new ArkArrayStruct();
-      arkData.getProperties().add(new PropertyArray("ArkTamedDinosData", tamedDinosData));
-    }
+    Supplier<ArkArrayStruct> getTamedDinosData = () -> {
+      ArkArrayStruct tamedDinosData = arkData.getPropertyValue("ArkTamedDinosData", ArkArrayStruct.class);
+      if (tamedDinosData == null) {
+        tamedDinosData = new ArkArrayStruct();
+        arkData.getProperties().add(new PropertyArray("ArkTamedDinosData", tamedDinosData));
+      }
 
-    for (GameObject creature : importFile.getObjects()) {
-      if (creature.getClassString().contains("_Character_")) {
-        CreatureData creatureData = DataManager.getCreature(creature.getClassString());
+      return tamedDinosData;
+    };
+
+    Supplier<ArkArrayStruct> getArkItems = () -> {
+      ArkArrayStruct arkItems = arkData.getPropertyValue("ArkItems", ArkArrayStruct.class);
+      if (arkItems == null) {
+        arkItems = new ArkArrayStruct();
+        arkData.getProperties().add(new PropertyArray("ArkItems", arkItems));
+      }
+
+      return arkItems;
+    };
+
+    for (GameObject object : importFile.getObjects()) {
+      if (isCreature(object)) {
+        CreatureData creatureData = DataManager.getCreature(object.getClassString());
 
         if (creatureData == null) {
-          System.err.println("Unknown creature class " + creature.getClassString());
+          System.err.println("Unknown creature class " + object.getClassString());
           System.exit(1);
           return;
         }
@@ -433,26 +446,32 @@ public class EditingCommands {
 
         creatureProperties.add(new PropertyArray("DinoData", importFile.toByteArray()));
 
-        String tamedName = creature.findPropertyValue("TamedName", String.class).orElse(creatureData.getName());
-        String fullName = tamedName + " - Lvl " + CommonFunctions.getFullLevel(creature, importFile) + " (" + creatureData.getName() + ")";
+        String tamedName = object.findPropertyValue("TamedName", String.class).orElse(creatureData.getName());
+        String fullName = tamedName + " - Lvl " + CommonFunctions.getFullLevel(object, importFile) + " (" + creatureData.getName() + ")";
         creatureProperties.add(new PropertyStr("DinoName", fullName));
 
-        creatureProperties.add(new PropertyStr("DinoNameInMap", creature.getNames().get(0).toString()));
+        creatureProperties.add(new PropertyStr("DinoNameInMap", object.getNames().get(0).toString()));
 
         for (int i = 0; i < AttributeNames.size(); i++) {
           creatureProperties.add(new PropertyStr("DinoStats", i, AttributeNames.get(i)));
         }
 
-        float experience = creature.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class)
+        float experience = object.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class)
             .map(importFile::getObject).map(o -> o.getPropertyValue("ExperiencePoints", Float.class)).orElse(0.0f);
         creatureProperties.add(new PropertyFloat("DinoExperiencePoints", experience));
 
         creatureProperties.add(new PropertyFloat("Version", 2.0f));
-        creatureProperties.add(new PropertyUInt32("DinoID1", creature.findPropertyValue("DinoID1", Integer.class).orElse(0)));
-        creatureProperties.add(new PropertyUInt32("DinoID2", creature.findPropertyValue("DinoID2", Integer.class).orElse(0)));
+        creatureProperties.add(new PropertyUInt32("DinoID1", object.findPropertyValue("DinoID1", Integer.class).orElse(0)));
+        creatureProperties.add(new PropertyUInt32("DinoID2", object.findPropertyValue("DinoID2", Integer.class).orElse(0)));
         creatureProperties.add(new PropertyInt("UploadTime", (int) Instant.now().getEpochSecond()));
 
+        ArkArrayStruct tamedDinosData = getTamedDinosData.get();
         tamedDinosData.add(creatureStruct);
+      } else if (object.isItem()) {
+        Item item = new Item(object);
+
+        ArkArrayStruct arkItems = getArkItems.get();
+        arkItems.add(item.toClusterData());
       }
     }
   }
@@ -548,10 +567,10 @@ public class EditingCommands {
             System.exit(3);
             return;
           }
-          cloudInventory = new ArkCloudInventory(fileToRead, oh.readingOptions());
+          cloudInventory = new ArkCloudInventory(fileToRead, oh.readingOptions().buildComponentTree(true));
         } else {
           cloudInventory = new ArkCloudInventory();
-          cloudInventory.setInventoryVersion(3);
+          cloudInventory.setInventoryVersion(4);
           cloudInventory.setInventoryData(new GameObject());
           cloudInventory.getInventoryData().setClassName(CLOUD_INVENTORY_CLASS);
           cloudInventory.getInventoryData().setItem(true);
@@ -571,7 +590,7 @@ public class EditingCommands {
         }
         cloudInventory.writeBinary(fileToWrite, oh.writingOptions());
       } else if (fileFormat == FileFormat.LOCALPROFILE) {
-        ArkLocalProfile localInventory = new ArkLocalProfile(fileToRead, oh.readingOptions());
+        ArkLocalProfile localInventory = new ArkLocalProfile(fileToRead, oh.readingOptions().buildComponentTree(true));
 
         int modifications = modifyClusterData(localInventory, modificationFile);
         if (!oh.isQuiet()) {
@@ -580,7 +599,7 @@ public class EditingCommands {
 
         localInventory.writeBinary(fileToWrite, oh.writingOptions());
       } else if (fileFormat == FileFormat.MAP) {
-        ArkSavegame savegame = new ArkSavegame(fileToRead, oh.readingOptions());
+        ArkSavegame savegame = new ArkSavegame(fileToRead, oh.readingOptions().buildComponentTree(true));
 
         int modifications = modifySavegame(savegame, modificationFile);
         if (!oh.isQuiet()) {
@@ -611,10 +630,27 @@ public class EditingCommands {
 
     ArkArrayStruct tamedDinosData = arkData.getPropertyValue("ArkTamedDinosData", ArkArrayStruct.class);
     if (tamedDinosData != null) {
-      for (Struct dinoStruct : tamedDinosData) {
-        PropertyContainer dino = (PropertyContainer) dinoStruct;
+      Iterator<Struct> iter = tamedDinosData.iterator();
+
+      while (iter.hasNext()) {
+        PropertyContainer dino = (PropertyContainer) iter.next();
 
         String dinoClassName = dino.getPropertyValue("DinoClassName", String.class);
+
+        boolean removed = false;
+        for (DeleteOperation delete: modificationFile.deleteOperations) {
+          if (delete.checkAndDecrease(ArkName.from(dinoClassName))) {
+            modifications++;
+            iter.remove();
+            removed = true;
+            break;
+          }
+        }
+
+        if (removed) {
+          continue;
+        }
+
         String replacementName = modificationFile.remapDinoClassName.get(dinoClassName);
 
         if (replacementName != null) {
@@ -635,11 +671,28 @@ public class EditingCommands {
 
     ArkArrayStruct arkItems = arkData.getPropertyValue("ArkItems", ArkArrayStruct.class);
     if (arkItems != null) {
-      for (Struct itemStruct : arkItems) {
-        PropertyContainer item = (PropertyContainer) itemStruct;
+      Iterator<Struct> iter = arkItems.iterator();
+
+      while (iter.hasNext()) {
+        PropertyContainer item = (PropertyContainer) iter.next();
         PropertyContainer netItem = item.getPropertyValue("ArkTributeItem", PropertyContainer.class);
 
         ObjectReference archetypeReference = netItem.getPropertyValue("ItemArchetype", ObjectReference.class);
+
+        boolean removed = false;
+        for (DeleteOperation delete: modificationFile.deleteOperations) {
+          if (delete.checkAndDecrease(archetypeReference.getObjectString())) {
+            modifications++;
+            iter.remove();
+            removed = true;
+            break;
+          }
+        }
+
+        if (removed) {
+          continue;
+        }
+
         ArkName newArchetype = modificationFile.remapItemArchetypes.get(archetypeReference.getObjectString());
 
         if (newArchetype != null) {
@@ -670,11 +723,31 @@ public class EditingCommands {
 
   private static int modifySavegame(ArkSavegame savegame, ModificationFile modificationFile) {
     int modifications = 0;
-    Map<GameObject, List<Item>> replaceDefaultInventories = new HashMap<>();
-    Map<GameObject, List<Item>> replaceInventories = new HashMap<>();
-    Map<GameObject, List<Item>> addDefaultInventories = new HashMap<>();
-    Map<GameObject, List<Item>> addInventories = new HashMap<>();
+    Map<GameObject, List<Item>> replaceDefaultInventories = new LinkedHashMap<>();
+    Map<GameObject, List<Item>> replaceInventories = new LinkedHashMap<>();
+    Map<GameObject, List<Item>> addDefaultInventories = new LinkedHashMap<>();
+    Map<GameObject, List<Item>> addInventories = new LinkedHashMap<>();
     ObjectCollector collector = new ObjectCollector(savegame);
+
+    if (!modificationFile.deleteOperations.isEmpty()) {
+      for (GameObject object : savegame) {
+        if (object.getParent() != null || object.isItem()) {
+          continue;
+        }
+
+        for (DeleteOperation delete: modificationFile.deleteOperations) {
+          // Skip if object does not match conditions or delete has been used up
+          if (!delete.canApplyTo(object)) {
+            continue;
+          }
+
+          // Stop deleteOperations if object itself got deleted
+          if (delete.apply(object, collector)) {
+            break;
+          }
+        }
+      }
+    }
 
     BiFunction<Map<ArkName, List<Item>>, GameObject, List<Item>> mapChecker = (map, object) -> {
       if (map.containsKey(object.getClassName())) {
@@ -686,7 +759,7 @@ public class EditingCommands {
       return null;
     };
 
-    for (GameObject object : savegame.getObjects()) {
+    for (GameObject object : collector) {
       List<Item> replaceDefault = mapChecker.apply(modificationFile.replaceDefaultInventoriesMap, object);
       List<Item> addDefault = mapChecker.apply(modificationFile.addDefaultInventoriesMap, object);
 
@@ -715,7 +788,6 @@ public class EditingCommands {
         continue;
       }
 
-      modifications += defaultItemCount;
       for (int i = 0; i < defaultItemCount; i++) {
         collector.remove(inventoryItems.get(i).getObjectId());
       }
@@ -731,7 +803,6 @@ public class EditingCommands {
       }
 
       int newDefaultItemCount = newInventoryItems.size();
-      modifications += newDefaultItemCount;
       // Add all non-default items
       if (defaultItemCount > 0) {
         newInventoryItems.addAll(inventoryItems.subList(defaultItemCount, inventoryItems.size()));
@@ -767,7 +838,6 @@ public class EditingCommands {
         newItemReference.setObjectType(ObjectReference.TYPE_ID);
         newItemReference.setObjectId(collector.add(newItem.toGameObject(collector.getMappedObjects().values(), inventory.getId())));
         inventoryItems.add(defaultItemCount, newItemReference);
-        modifications++;
         defaultItemCount++;
       }
 
@@ -793,7 +863,6 @@ public class EditingCommands {
         inventory.getProperties().add(new PropertyArray("InventoryItems", inventoryItems));
       }
 
-      modifications += inventoryItems.size() - defaultItemCount;
       for (int i = inventoryItems.size() - 1; i >= defaultItemCount; i--) {
         collector.remove(inventoryItems.get(i).getObjectId());
         inventoryItems.remove(i);
@@ -805,7 +874,6 @@ public class EditingCommands {
         newItemReference.setObjectType(ObjectReference.TYPE_ID);
         newItemReference.setObjectId(collector.add(newItem.toGameObject(collector.getMappedObjects().values(), inventory.getId())));
         inventoryItems.add(newItemReference);
-        modifications++;
       }
     }
 
@@ -823,14 +891,13 @@ public class EditingCommands {
         newItemReference.setObjectType(ObjectReference.TYPE_ID);
         newItemReference.setObjectId(collector.add(newItem.toGameObject(collector.getMappedObjects().values(), inventory.getId())));
         inventoryItems.add(newItemReference);
-        modifications++;
       }
     }
 
     savegame.getObjects().clear();
     savegame.getObjects().addAll(collector.remap(0));
 
-    return modifications;
+    return modifications + collector.getAdded() + collector.getDeleted();
   }
 
 }

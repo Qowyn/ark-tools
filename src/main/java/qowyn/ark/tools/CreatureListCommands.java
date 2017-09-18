@@ -5,14 +5,14 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -23,6 +23,8 @@ import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
+import qowyn.ark.GameObjectContainer;
+import qowyn.ark.HibernationEntry;
 import qowyn.ark.ReadingOptions;
 import qowyn.ark.tools.data.Creature;
 import qowyn.ark.tools.data.CustomDataContext;
@@ -30,6 +32,8 @@ import qowyn.ark.tools.data.CustomDataContext;
 public class CreatureListCommands {
 
   private static ArkSavegame saveFile;
+
+  private static GameObjectContainer container;
 
   private static OptionHandler optionHandler;
 
@@ -58,29 +62,25 @@ public class CreatureListCommands {
 
   public static void tamed(OptionHandler optionHandler) {
     CreatureListCommands.optionHandler = optionHandler;
-    listImpl(CommonFunctions::onlyTamed);
+    listImpl(CommonFunctions::isTamed);
   }
 
   public static void wild(OptionHandler optionHandler) {
     CreatureListCommands.optionHandler = optionHandler;
-    listImpl(CommonFunctions::onlyWild);
+    listImpl(CommonFunctions::isWild);
   }
 
-  private static final List<String> KNOWN_CREATURES = Arrays.asList("Raft_BP_C", "Polar_Bear_C", "Ragnarok_Wyvern_Override_C", "Ragnarok_Wyvern_Override_Ice_C");
-
   protected static boolean neededClasses(GameObject object) {
-    return object.getClassString().contains("_Character_") || object.getClassString().startsWith("DinoCharacterStatusComponent_") || KNOWN_CREATURES.contains(object.getClassString());
+    // Load everything that is not an item and either has a parent or components
+    // Drawback: includes structures and players
+    return !object.isItem() && (object.getParent() != null || !object.getComponents().isEmpty());
   }
 
   protected static boolean onlyTameable(GameObject object) {
-    return (!object.hasAnyProperty("bForceDisablingTaming") || !object.getPropertyValue("bForceDisablingTaming", Boolean.class)) || object.getClassString().equals("Raft_BP_C");
+    return !object.findPropertyValue("bForceDisablingTaming", Boolean.class).orElse(false) || object.getClassString().equals("Raft_BP_C");
   }
 
-  protected static boolean onlyCreatures(GameObject object) {
-    return object.getClassString().contains("_Character_") || KNOWN_CREATURES.contains(object.getClassString());
-  }
-
-  protected static void listImpl(BiPredicate<GameObject, ArkSavegame> filter) {
+  protected static void listImpl(Predicate<GameObject> filter) {
     try {
       untameableSpec = optionHandler.accepts("include-untameable", "Include untameable high-level dinos.");
       statisticsSpec = optionHandler.accepts("statistics", "Wrap list of dinos in statistics block.");
@@ -105,7 +105,7 @@ public class CreatureListCommands {
       Path savePath = Paths.get(params.get(0));
       outputDirectory = Paths.get(params.get(1));
 
-      ReadingOptions readingOptions = optionHandler.readingOptions().withObjectFilter(CreatureListCommands::neededClasses);
+      ReadingOptions readingOptions = optionHandler.readingOptions().withObjectFilter(CreatureListCommands::neededClasses).buildComponentTree(true);
 
       Stopwatch stopwatch = new Stopwatch(optionHandler.useStopwatch());
       saveFile = new ArkSavegame(savePath, readingOptions);
@@ -119,11 +119,24 @@ public class CreatureListCommands {
     }
   }
 
-  public static void writeAnimalLists(BiPredicate<GameObject, ArkSavegame> filter) {
-    Stream<GameObject> objectStream = saveFile.getObjects().parallelStream().filter(CreatureListCommands::onlyCreatures);
+  public static void writeAnimalLists(Predicate<GameObject> filter) {
+    if (!saveFile.getHibernationEntries().isEmpty()) {
+      List<GameObject> combinedObjects = new ArrayList<>(saveFile.getObjects());
+
+      for (HibernationEntry entry: saveFile.getHibernationEntries()) {
+        ObjectCollector collector = new ObjectCollector(entry, 1);
+        combinedObjects.addAll(collector.remap(combinedObjects.size()));
+      }
+
+      container = new GameObjectList(combinedObjects);
+    } else {
+      container = saveFile;
+    }
+
+    Stream<GameObject> objectStream = container.getObjects().parallelStream().filter(CommonFunctions::isCreature);
 
     if (filter != null) {
-      objectStream = objectStream.filter(object -> filter.test(object, saveFile));
+      objectStream = objectStream.filter(filter::test);
     }
 
     if (!options.has(untameableSpec)) {
@@ -240,7 +253,7 @@ public class CreatureListCommands {
           generator.writeNumberField("count", filteredClasses.size());
 
           IntSummaryStatistics statistics =
-              filteredClasses.stream().filter(a -> CommonFunctions.onlyWild(a, saveFile)).mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
+              filteredClasses.stream().filter(CommonFunctions::isWild).mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
           if (statistics.getCount() > 0) {
             generator.writeNumberField("wildMin", statistics.getMin());
             generator.writeNumberField("wildMax", statistics.getMax());
@@ -248,7 +261,7 @@ public class CreatureListCommands {
           }
 
           IntSummaryStatistics tamedBaseStatistics =
-              filteredClasses.stream().filter(a -> CommonFunctions.onlyTamed(a, saveFile)).mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
+              filteredClasses.stream().filter(CommonFunctions::isTamed).mapToInt(a -> CommonFunctions.getBaseLevel(a, saveFile)).summaryStatistics();
           if (tamedBaseStatistics.getCount() > 0) {
             generator.writeNumberField("tamedBaseMin", tamedBaseStatistics.getMin());
             generator.writeNumberField("tamedBaseMax", tamedBaseStatistics.getMax());
@@ -256,7 +269,7 @@ public class CreatureListCommands {
           }
 
           IntSummaryStatistics tamedFullStatistics =
-              filteredClasses.stream().filter(a -> CommonFunctions.onlyTamed(a, saveFile)).mapToInt(a -> CommonFunctions.getFullLevel(a, saveFile)).summaryStatistics();
+              filteredClasses.stream().filter(CommonFunctions::isTamed).mapToInt(a -> CommonFunctions.getFullLevel(a, saveFile)).summaryStatistics();
           if (tamedFullStatistics.getCount() > 0) {
             generator.writeNumberField("tamedFullMin", tamedFullStatistics.getMin());
             generator.writeNumberField("tamedFullMax", tamedFullStatistics.getMax());
@@ -270,9 +283,10 @@ public class CreatureListCommands {
 
         CustomDataContext context = new CustomDataContext();
         context.setLatLonCalculator(latLongCalculator);
-        context.setObjectContainer(saveFile);
+        context.setObjectContainer(container);
+        context.setSavegame(saveFile);
         for (GameObject creatureObject : filteredClasses) {
-          Creature creature = new Creature(creatureObject, saveFile);
+          Creature creature = new Creature(creatureObject, container);
           generator.writeStartObject();
           creature.writeAllProperties(generator, context, options.has(writeAllFieldsSpec));
           if (options.has(inventorySpec)) {

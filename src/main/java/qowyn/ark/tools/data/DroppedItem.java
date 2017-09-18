@@ -36,14 +36,14 @@ public class DroppedItem {
 
   public DroppedItem() {}
 
-  public DroppedItem(GameObject droppedItem, GameObjectContainer saveFile) {
+  public DroppedItem(GameObject droppedItem, GameObjectContainer container) {
     className = droppedItem.getClassName();
     CreatureData structureData = DataManager.getStructure(droppedItem.getClassString());
     type = structureData != null ? structureData.getName() : droppedItem.getClassString();
 
     location = droppedItem.getLocation();
 
-    myItem = droppedItem.findPropertyValue("MyItem", ObjectReference.class).map(saveFile::getObject).orElse(null);
+    myItem = droppedItem.findPropertyValue("MyItem", ObjectReference.class).map(container::getObject).orElse(null);
     droppedByName = droppedItem.findPropertyValue("DroppedByName", String.class).orElse("");
     targetingTeam = droppedItem.findPropertyValue("TargetingTeam", Integer.class).orElse(0);
     originalCreationTime = droppedItem.findPropertyValue("OriginalCreationTime", Double.class).orElse(0.0);

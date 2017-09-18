@@ -2,7 +2,7 @@ package qowyn.ark.tools.data;
 
 public enum TeamType {
 
-  NON_PLAYER, PLAYER, TRIBE, BREEDING, UNKNOWN;
+  NON_PLAYER(false), PLAYER(true), TRIBE(true), BREEDING(true), UNKNOWN(true);
 
   public static final int PLAYER_START = 50000;
 
@@ -10,7 +10,13 @@ public enum TeamType {
 
   public static final int BREEDING_ID = 2000000000;
 
-  public static TeamType forTargetingTeam(int teamId) {
+  public final boolean tamed;
+
+  private TeamType(boolean tamed) {
+    this.tamed = tamed;
+  }
+
+  public static TeamType forTeam(int teamId) {
     if (teamId < PLAYER_START) {
       return NON_PLAYER;
     }

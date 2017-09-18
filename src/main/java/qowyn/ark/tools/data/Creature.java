@@ -101,7 +101,7 @@ public class Creature {
 
   public GameObject inventory;
 
-  public Creature(GameObject creature, GameObjectContainer saveFile) {
+  public Creature(GameObject creature, GameObjectContainer container) {
     className = creature.getClassName();
     CreatureData creatureData = DataManager.getCreature(creature.getClassString());
     type = creatureData != null ? creatureData.getName() : creature.getClassString();
@@ -203,9 +203,9 @@ public class Creature {
 
     lastEnterStasisTime = creature.findPropertyValue("LastEnterStasisTime", Double.class).orElse(0.0);
 
-    status = creature.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(saveFile::getObject).orElse(null);
+    status = creature.findPropertyValue("MyCharacterStatusComponent", ObjectReference.class).map(container::getObject).orElse(null);
 
-    inventory = creature.findPropertyValue("MyInventoryComponent", ObjectReference.class).map(saveFile::getObject).orElse(null);
+    inventory = creature.findPropertyValue("MyInventoryComponent", ObjectReference.class).map(container::getObject).orElse(null);
 
     if (status != null && status.getClassString().startsWith("DinoCharacterStatusComponent_")) {
       baseCharacterLevel = status.findPropertyValue("BaseCharacterLevel", Integer.class).orElse(1);
