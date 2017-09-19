@@ -4,7 +4,7 @@
 
 	<groupId>qowyn.ark</groupId>
 	<artifactId>ark-tools</artifactId>
-	<version>0.6.3</version>
+	<version>0.6.4</version>
 	<packaging>jar</packaging>
 
 	<name>ark-tools</name>
@@ -13,7 +13,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.target>1.8</maven.compiler.target>
 		<maven.compiler.source>1.8</maven.compiler.source>
-		<launch4j.version>0.6.3.0</launch4j.version>
+		<launch4j.version>0.6.4.0</launch4j.version>
 	</properties>
 
 	<dependencies>

@@ -64,7 +64,7 @@ import qowyn.ark.types.ObjectReference;
 
 public class PlayerListCommands {
 
-  private static final Pattern PROFILE_PATTERN = Pattern.compile("\\d+\\.arkprofile");
+  private static final Pattern PROFILE_PATTERN = Pattern.compile("(\\d+|LocalPlayer)\\.arkprofile");
 
   private static final Pattern TRIBE_PATTERN = Pattern.compile("\\d+\\.arktribe");
 
@@ -109,8 +109,10 @@ public class PlayerListCommands {
       CustomDataContext context = new CustomDataContext();
 
       if (mapNeeded) {
-        context.setObjectContainer(new ArkSavegame(saveGame, optionHandler.readingOptions()));
-        context.setLatLonCalculator(LatLonCalculator.forSave(context.getSavegame()));
+        ArkSavegame mapSave = new ArkSavegame(saveGame, optionHandler.readingOptions().buildComponentTree(true));
+        context.setObjectContainer(mapSave);
+        context.setSavegame(mapSave);
+        context.setLatLonCalculator(LatLonCalculator.forSave(mapSave));
         stopwatch.stop("Loading map data");
       }
 

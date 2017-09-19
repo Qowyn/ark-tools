@@ -8,19 +8,20 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import qowyn.ark.ArkArchive;
 import qowyn.ark.ArkSavegame;
 import qowyn.ark.GameObject;
+import qowyn.ark.HibernationEntry;
 import qowyn.ark.NameSizeCalculator;
 import qowyn.ark.ReadingOptions;
 import qowyn.ark.types.ArkName;
@@ -51,28 +52,45 @@ public class DebugCommands {
       Path savePath = Paths.get(params.get(0));
 
       Stopwatch stopwatch = new Stopwatch(oh.useStopwatch());
+      boolean withoutDupes = options.has(withoutDupesSpec);
 
       // Don't load any properties, we don't need them
-      ArkSavegame savegame = new ArkSavegame(savePath, ReadingOptions.create().withObjectFilter(o -> false));
+      ArkSavegame savegame = new ArkSavegame(savePath, ReadingOptions.create().withObjectFilter(o -> false).buildComponentTree(withoutDupes));
 
       stopwatch.stop("Loading");
 
       List<GameObject> objects;
+      Map<Integer, Map<List<ArkName>, GameObject>> objectMap;
 
-      if (options.has(withoutDupesSpec)) {
-        Set<ArkName> nameSet = new HashSet<>();
-        objects = new ArrayList<>();
+      if (!savegame.getHibernationEntries().isEmpty()) {
+        objects = new ArrayList<>(savegame.getObjects());
+        if (withoutDupes) {
+          objectMap = new HashMap<>();
+          savegame.getObjectMap().forEach((key, map) -> objectMap.put(key, new HashMap<>(map)));
+        } else {
+          objectMap = null;
+        }
 
-        for (GameObject object : savegame.getObjects()) {
-          if (object.getNames().size() != 1) {
-            objects.add(object);
-          } else if (!nameSet.contains(object.getNames().get(0))) {
-            objects.add(object);
-            nameSet.add(object.getNames().get(0));
+        for (HibernationEntry entry: savegame.getHibernationEntries()) {
+          ObjectCollector collector = new ObjectCollector(entry, 1);
+          objects.addAll(collector.remap(objects.size()));
+          if (withoutDupes) {
+            for (GameObject object: collector) {
+              Integer key = object.isFromDataFile() ? object.getDataFileIndex() : null;
+              objectMap.computeIfAbsent(key, k -> new HashMap<>()).putIfAbsent(object.getNames(), object);
+            }
           }
         }
       } else {
         objects = savegame.getObjects();
+        objectMap = savegame.getObjectMap();
+      }
+
+      if (withoutDupes) {
+        objects.removeIf(object -> {
+          Integer key = object.isFromDataFile() ? object.getDataFileIndex() : null;
+          return objectMap.get(key).get(object.getNames()) != object;
+        });
       }
 
       ConcurrentMap<String, List<GameObject>> map = objects.parallelStream().collect(Collectors.groupingByConcurrent(GameObject::getClassString));
@@ -151,6 +169,14 @@ public class DebugCommands {
           }
         }
 
+        for (HibernationEntry entry: savegame.getHibernationEntries()) {
+          for (GameObject object: entry) {
+            if (filter.test(object)) {
+              object.writeJson(generator, true);
+            }
+          }
+        }
+
         generator.writeEndArray();
       };
 
@@ -185,8 +211,15 @@ public class DebugCommands {
 
       stopwatch.stop("Loading");
 
-      List<SizeObjectPair> pairList = savegame.getObjects().parallelStream()
-          .map(SizeObjectPair::new)
+      List<GameObject> hibernationObjects = new ArrayList<>();
+
+      for (HibernationEntry entry: savegame.getHibernationEntries()) {
+        hibernationObjects.addAll(entry.getObjects());
+      }
+
+      List<SizeObjectPair> pairList = Stream.concat(
+          savegame.getObjects().parallelStream().map(object -> new SizeObjectPair(object, savegame.getSaveVersion() < 6, false)),
+          hibernationObjects.parallelStream().map(object -> new SizeObjectPair(object, false, true)))
           .sorted(Comparator.comparingInt(SizeObjectPair::getSize).reversed())
           .collect(Collectors.toList());
 
@@ -197,12 +230,20 @@ public class DebugCommands {
 
         for (SizeObjectPair pair: pairList) {
           generator.writeStartObject();
+          generator.writeArrayFieldStart("names");
+          for (ArkName name: pair.object.getNames()) {
+            generator.writeString(name.toString());
+          }
+          generator.writeEndArray();
+          if (pair.object.isFromDataFile()) {
+            generator.writeNumberField("dataFileIndex", pair.object.getDataFileIndex());
+          }
           generator.writeStringField("class", pair.object.getClassString());
           generator.writeNumberField("size", pair.size);
           generator.writeEndObject();
         }
 
-        generator.writeEndObject();
+        generator.writeEndArray();
       };
 
       if (params.size() > 1) {
@@ -219,13 +260,16 @@ public class DebugCommands {
   }
 
   private static class SizeObjectPair {
-    private final static NameSizeCalculator NAME_SIZER = ArkArchive.getNameSizer(true);
+    private final static NameSizeCalculator ANCIENT_SIZER = ArkArchive.getNameSizer(false);
+    private final static NameSizeCalculator MODERN_SIZER = ArkArchive.getNameSizer(true);
+    private final static NameSizeCalculator HIBERNATION_SIZER = ArkArchive.getNameSizer(true, true);
     private final int size;
     private final GameObject object;
 
-    public SizeObjectPair(GameObject object) {
+    public SizeObjectPair(GameObject object, boolean ancient, boolean hibernation) {
+      NameSizeCalculator nameSizer = hibernation ? HIBERNATION_SIZER : ancient ? ANCIENT_SIZER : MODERN_SIZER;
       this.object = object;
-      this.size = object.getSize(NAME_SIZER) + object.getPropertiesSize(NAME_SIZER);
+      this.size = object.getSize(nameSizer) + object.getPropertiesSize(nameSizer);
     }
 
     public int getSize() {
