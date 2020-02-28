@@ -106,7 +106,7 @@ public class Player {
     uniqueId = myData.getPropertyValue("UniqueID", StructUniqueNetIdRepl.class);
     savedNetworkAddress = myData.getPropertyValue("SavedNetworkAddress", String.class);
     playerName = myData.getPropertyValue("PlayerName", String.class);
-    tribeId = myData.findPropertyValue("TribeID", Integer.class).orElse(0);
+    tribeId = myData.findPropertyValue("TribeID", Integer.class).orElse(myData.findPropertyValue("TribeId", Integer.class).orElse(0));
     playerDataVersion = myData.findPropertyValue("PlayerDataVersion", Integer.class).orElse(0);
     spawnDayNumber = myData.findPropertyValue("SpawnDayNumber", Integer.class).orElse(0);
     spawnDayTime = myData.findPropertyValue("SpawnDayTime", Float.class).orElse(0.0f);
