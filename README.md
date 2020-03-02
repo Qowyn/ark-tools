@@ -15,6 +15,6 @@ export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 cd ark-savegame-toolkit
 mvn install
 #
-cd ark-tools
+cd ../ark-tools
 mvn install
 ```
