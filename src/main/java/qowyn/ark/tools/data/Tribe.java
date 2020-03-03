@@ -64,7 +64,7 @@ public class Tribe {
 
     tribeName = tribeData.findPropertyValue("TribeName", String.class).orElse("");
     ownerPlayerDataId = tribeData.findPropertyValue("OwnerPlayerDataID", Integer.class).orElse(0);
-    tribeId = tribeData.findPropertyValue("TribeID", Integer.class).orElse(0);
+    tribeId = tribeData.findPropertyValue("TribeID", Integer.class).orElse(tribeData.findPropertyValue("TribeId", Integer.class).orElse(0));
 
     ArkArrayString membersNames = tribeData.getPropertyValue("MembersPlayerName", ArkArrayString.class);
     if (membersNames != null) {
